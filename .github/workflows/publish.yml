@@ -1,0 +1,49 @@
+name: Publish site (no Odds API credits)
+
+# Rebuilds the GitHub Pages site from the saved database and redeploys it. It never calls The Odds
+# API, so it costs no credits. Runs when the Edge Finder app (web/) or the results page code changes,
+# or by hand from the Actions tab.
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", "assets/**", "edge_engine/results.py", "edge_engine/ui.py", "edge_engine/export.py"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: edge-engine
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[fast]"
+      - name: Build site from the saved database
+        env:
+          EDGE_DB: data/edge.db
+        run: |
+          mkdir -p site
+          edge results --out site/results.html
+          edge export --out site/index.json
+          if [ -d assets ]; then cp assets/* site/; fi
+          if [ -d web ]; then cp web/* site/; fi
+          cp site/results.html site/index.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

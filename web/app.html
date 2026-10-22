@@ -1,0 +1,1150 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" type="image/png" href="apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Edge Finder"><meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="theme-color" content="#10161F"><meta name="robots" content="noindex"></head><body>
+<title>Edge Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one sticky header with tabs over a single working column (max 1180px); cards only for things you act on. */
+:root{
+  --bg:#F2F4F1; --panel:#FFFFFF; --panel2:#F6F8F5; --line:#DCE1DA; --ink:#121A16; --muted:#56615A;
+  --accent:#1F8A50; --on-accent:#FFFFFF; --gold:#8F6300; --gold-bg:#FBF1D6;
+  --good:#1B7A47; --good-bg:#E2F3E8; --warn:#8A5A00; --warn-bg:#FCF0D4; --bad:#B3261E; --bad-bg:#FBE7E5;
+  --s-actual:#1F8A50; --s-exp:#3B6FD1; --grid:#E6EAE4; --focus:#3B6FD1;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E141B; --panel:#151D27; --panel2:#1B2531; --line:#2A3645; --ink:#E8EDF2; --muted:#9AA6B4;
+  --accent:#34D27B; --on-accent:#0B1A12; --gold:#E8B23A; --gold-bg:#33280F;
+  --good:#5FD197; --good-bg:#14301F; --warn:#E8B45C; --warn-bg:#33270F; --bad:#F2867B; --bad-bg:#3A1C19;
+  --s-actual:#25A15E; --s-exp:#5A8BE6; --grid:#223040; --focus:#7FA6F0; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0E141B; --panel:#151D27; --panel2:#1B2531; --line:#2A3645; --ink:#E8EDF2; --muted:#9AA6B4;
+  --accent:#34D27B; --on-accent:#0B1A12; --gold:#E8B23A; --gold-bg:#33280F;
+  --good:#5FD197; --good-bg:#14301F; --warn:#E8B45C; --warn-bg:#33270F; --bad:#F2867B; --bad-bg:#3A1C19;
+  --s-actual:#25A15E; --s-exp:#5A8BE6; --grid:#223040; --focus:#7FA6F0; color-scheme:dark }
+html,body{background:var(--bg);color:var(--ink)}
+body{font:15px/1.5 var(--body)}
+*{box-sizing:border-box}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--panel)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--panel);border-bottom:1px solid var(--line)}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:12px;padding-block:12px 4px;flex-wrap:wrap}
+.brand svg{width:40px;height:40px;flex:none;border-radius:10px}
+.brand h1{font:700 1.75rem/1 var(--display);letter-spacing:.01em;margin:0}
+.brand .sub{color:var(--muted);font-size:.8rem}
+.brand .sub.stale{color:var(--warn);font-weight:600}
+.bk{margin-left:auto;display:flex;gap:16px;align-items:baseline;font-family:var(--mono);font-size:.85rem;flex-wrap:wrap}
+.bk b{font:600 1.15rem var(--mono)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;padding-block:6px 0}
+.tabs button{appearance:none;border:0;background:none;color:var(--muted);font:600 .9rem var(--body);padding:10px 12px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap;min-height:44px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+main{padding-block:20px 40px}
+h2{font:700 1.5rem/1.1 var(--display);margin:0 0 4px;text-wrap:balance}
+h3{font:700 1.15rem/1.15 var(--display);margin:0 0 6px;letter-spacing:.01em}
+.lead{color:var(--muted);margin:0 0 16px;max-width:70ch}
+.muted{color:var(--muted)}.small{font-size:.82rem}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+section{display:flex;flex-direction:column;gap:20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--panel);padding:12px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.kpi .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.kpi .v{font:500 1.35rem var(--mono);font-variant-numeric:tabular-nums}
+.kpi .s{font-size:.78rem;color:var(--muted)}
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:flex;gap:10px;align-items:flex-start;border-radius:8px;padding:10px 12px;font-size:.9rem}
+.alert.warn{background:var(--warn-bg);color:var(--warn)}.alert.bad{background:var(--bad-bg);color:var(--bad)}.alert.good{background:var(--good-bg);color:var(--good)}
+.alert svg{flex:none;margin-top:2px}
+.chip{display:inline-block;font:600 .75rem var(--mono);padding:2px 8px;border-radius:99px;white-space:nowrap}
+.chip.good{background:var(--good-bg);color:var(--good)}.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}.chip.gold{background:var(--gold-bg);color:var(--gold)}
+.chip.plain{background:var(--panel2);color:var(--muted)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.scroll table{min-width:560px}
+.side{font-weight:600}.MORE{color:var(--good)}.LESS{color:var(--s-exp)}
+button.btn,label.btn{appearance:none;font:600 .9rem var(--body);border-radius:8px;padding:10px 14px;min-height:44px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+button.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+button.btn.danger{color:var(--bad)}
+button.btn:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:44px;min-width:0}
+input.num{font-family:var(--mono)}
+textarea{width:100%;min-height:90px;font:.8rem var(--mono)}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:500}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:12px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.logged{border-color:var(--gold)}
+.card .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.legs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.legs li{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;font-size:.9rem}
+.legs .meta{color:var(--muted);font-size:.8rem}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:var(--panel);color:var(--muted);font:600 .85rem var(--body);padding:8px 12px;min-height:44px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.res{display:inline-flex;gap:4px;flex-wrap:wrap}
+.res button{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);font:600 .75rem var(--body);padding:6px 9px;border-radius:6px;cursor:pointer;min-height:36px}
+.res button[aria-pressed="true"].hit,.res button[aria-pressed="true"].win{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+.res button[aria-pressed="true"].miss,.res button[aria-pressed="true"].loss{background:var(--bad-bg);color:var(--bad);border-color:var(--bad)}
+.res button[aria-pressed="true"].push,.res button[aria-pressed="true"].void{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+.bet{border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+.bet summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 14px;align-items:center}
+.bet summary::-webkit-details-marker{display:none}
+.bet .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.betside{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+button.btn.delquick{min-height:36px;padding:4px 10px;font-size:.8rem}
+.betleg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.empty{text-align:center;padding:32px 16px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.empty ol{text-align:left;margin:0;padding-left:20px;color:var(--muted);max-width:52ch}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:18px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.8rem;box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap}
+.meter{position:relative;height:36px;margin-top:8px}
+.meter .track{position:absolute;left:0;right:0;top:14px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--bad-bg),var(--panel2) 50%,var(--good-bg))}
+.meter .mid{position:absolute;left:50%;top:8px;height:20px;border-left:2px solid var(--muted)}
+.meter .dot{position:absolute;top:9px;width:18px;height:18px;margin-left:-9px;border-radius:50%;background:var(--ink);border:3px solid var(--panel)}
+.meter-l{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted)}
+.verdict{font:700 1.3rem/1.2 var(--display)}
+.bar{height:8px;border-radius:4px;background:var(--panel2);overflow:hidden}
+.bar span{display:block;height:100%;background:var(--accent)}
+.bar.over span{background:var(--bad)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--panel);padding:10px 16px;border-radius:8px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.note{font-size:.8rem;color:var(--muted);max-width:80ch}
+.calc-legs{display:flex;flex-direction:column;gap:10px}
+.calc-leg{display:grid;grid-template-columns:minmax(0,2fr) repeat(4,minmax(0,1fr)) auto;gap:8px;align-items:end}
+@media (max-width:720px){.calc-leg{grid-template-columns:repeat(2,minmax(0,1fr))}.calc-leg .who{grid-column:1/-1}}
+.fair-out{font:500 .95rem var(--mono);padding-bottom:10px}
+.bignum{font:500 2rem var(--mono);font-variant-numeric:tabular-nums;line-height:1}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));gap:12px}
+.statgrid div{display:flex;flex-direction:column;gap:2px}
+.statgrid .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.statgrid .v{font:500 1.1rem var(--mono)}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.drop.on{border-color:var(--accent);background:var(--good-bg)}
+footer{color:var(--muted);font-size:.78rem;padding-block:24px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#10161F"/><line x1="96" y1="300" x2="416" y2="300" stroke="#3A4658" stroke-width="10" stroke-dasharray="16 14" stroke-linecap="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#E8B23A" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#E8B23A" stroke="#E8B23A" stroke-width="28" stroke-linejoin="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#34D27B" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#34D27B" stroke="#34D27B" stroke-width="10" stroke-linejoin="round"/></svg>
+      <div><h1>Edge Finder</h1><div class="sub" id="dataNote">No picks loaded yet</div><div class="sub" id="syncNote">Connecting to your saved data…</div></div>
+      <div class="bk"><span class="muted">Bankroll</span><b id="hdrBank">–</b><span class="muted">At risk</span><b id="hdrRisk">–</b></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button role="tab" id="tab-dash" aria-selected="true" data-tab="dash">Dashboard</button>
+      <button role="tab" id="tab-picks" aria-selected="false" data-tab="picks">Today's picks</button>
+      <button role="tab" id="tab-bets" aria-selected="false" data-tab="bets">Bet log</button>
+      <button role="tab" id="tab-calc" aria-selected="false" data-tab="calc">EV calculator</button>
+      <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings">Bankroll &amp; settings</button>
+      <button role="tab" id="tab-people" aria-selected="false" data-tab="people" hidden>People</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- DASHBOARD -->
+  <section id="view-dash" role="tabpanel" aria-labelledby="tab-dash"></section>
+
+  <!-- PICKS -->
+  <section id="view-picks" role="tabpanel" aria-labelledby="tab-picks" hidden>
+    <div>
+      <h2>Today's picks</h2>
+      <p class="lead" id="picksLead">Load the app data file from your daily report, then log the entries you actually play. Logged entries are graded automatically when you load the next day's file.</p>
+    </div>
+    <details class="panel" id="loadBox"><summary style="cursor:pointer;font-weight:600">Load a file or restore a backup</summary><div class="drop" id="drop" style="margin-top:12px" hidden>
+      <div class="row">
+        <label class="btn" for="fileIn">Choose file…</label>
+        <input type="file" id="fileIn" accept=".json,.csv,application/json,text/csv" hidden>
+        <span class="muted small">or drop <span class="num">index.json</span>, <span class="num">picks.csv</span> or a backup here, or paste it below.</span>
+      </div>
+      <textarea id="pasteIn" placeholder="Paste the contents of index.json or picks.csv"></textarea>
+      <div class="row"><button class="btn primary" id="pasteBtn">Load pasted data</button><span class="muted small" id="importNote"></span></div>
+    </div></details>
+    <div id="boardOut"></div>
+  </section>
+
+  <!-- BETS -->
+  <section id="view-bets" role="tabpanel" aria-labelledby="tab-bets" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div><h2>Bet log</h2><p class="lead" style="margin:0">Grade each leg as it finishes. An entry settles once every leg has a result.</p></div>
+      <div class="seg" role="group" aria-label="Filter bets" id="betFilter">
+        <button aria-pressed="true" data-f="open">Open</button><button aria-pressed="false" data-f="settled">Settled</button><button aria-pressed="false" data-f="all">All</button>
+      </div>
+    </div>
+    <div id="betList" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
+  <!-- CALCULATOR -->
+  <section id="view-calc" role="tabpanel" aria-labelledby="tab-calc" hidden>
+    <div class="row" style="justify-content:space-between">
+      <div><h2>EV calculator</h2><p class="lead" style="margin:0">Price an entry from sportsbook odds, see its expected value, and get a stake that fits your limits.</p></div>
+      <div class="seg" role="group" aria-label="Bet type" id="calcMode">
+        <button aria-pressed="true" data-m="pp">PrizePicks entry</button><button aria-pressed="false" data-m="book">Sportsbook bet</button>
+      </div>
+    </div>
+    <div class="grid2" id="calcPP">
+      <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+        <div class="row">
+          <label class="f">Entry type<select id="cEntry"></select></label>
+          <label class="f">Remove vig with<select id="cDevig"><option value="power">Power method (default)</option><option value="mult">Multiplicative</option></select></label>
+        </div>
+        <p class="note" style="margin:0">For each leg, enter the sharp book's over and under odds at the PrizePicks line, or type a fair % directly. The example values are placeholders; replace them with your own.</p>
+        <div class="calc-legs" id="cLegs"></div>
+      </div>
+      <div class="panel" id="cOut"></div>
+    </div>
+    <div class="grid2" id="calcBook" hidden>
+      <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+        <label class="f">Bet description<input id="bLabel" value="Example: Player over 24.5 points"></label>
+        <div class="fields">
+          <label class="f">Your odds (American)<input class="num" id="bOdds" value="+110" inputmode="numeric"></label>
+          <label class="f">Sharp odds, your side<input class="num" id="bSharpA" value="-105" inputmode="numeric"></label>
+          <label class="f">Sharp odds, other side<input class="num" id="bSharpB" value="-115" inputmode="numeric"></label>
+          <label class="f">Or fair win %<input class="num" id="bFair" placeholder="e.g. 51.2" inputmode="decimal"></label>
+        </div>
+        <p class="note" style="margin:0">Fair win % is the sharp book's price with the vig removed. If you type a fair %, it is used instead of the sharp odds.</p>
+      </div>
+      <div class="panel" id="bOut"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="view-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <div><h2>Bankroll &amp; settings</h2><p class="lead">Your limits drive every suggested stake and the warnings on the dashboard. Changes save as you go.</p></div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:14px">
+      <h3>Bankroll and staking</h3>
+      <div class="fields">
+        <label class="f">Starting bankroll ($)<input class="num" id="sBank" inputmode="decimal"></label>
+        <label class="f">Kelly fraction<select id="sKelly"><option value="0.1">1/10 Kelly</option><option value="0.25">1/4 Kelly (default)</option><option value="0.5">1/2 Kelly</option></select></label>
+        <label class="f">Max stake per entry (% of bankroll)<input class="num" id="sMax" inputmode="decimal"></label>
+        <label class="f">Max staked per day (% of bankroll)<input class="num" id="sDay" inputmode="decimal"></label>
+        <label class="f">Daily stop-loss (% of bankroll)<input class="num" id="sDStop" inputmode="decimal"></label>
+        <label class="f">Weekly stop-loss (% of bankroll)<input class="num" id="sWStop" inputmode="decimal"></label>
+      </div>
+      <p class="note" style="margin:0">Bankroll here is your starting amount. The app adds your settled profit and loss to it. If you deposit or withdraw, change the starting amount by the same figure.</p>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+      <h3>PrizePicks payouts</h3>
+      <p class="note" style="margin:0">Multipliers by number of hits. Check these against the PrizePicks app; they change from time to time and can differ by state. Format: <span class="num">hits:multiplier</span>, separated by commas.</p>
+      <div class="fields" id="payEdit"></div>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:12px" id="addEntry">
+      <h3>Other apps and custom entries</h3>
+      <p class="note" style="margin:0">Add Underdog, Sleeper, or a PrizePicks entry with goblins or demons. Copy the payouts exactly as the app shows them before you submit. Entries in the same group step down to a smaller entry when a leg is voided; otherwise a void returns your stake.</p>
+      <div class="fields">
+        <label class="f">Name<input id="neName" placeholder="Underdog 3-Pick Standard"></label>
+        <label class="f">Group<input id="neFamily" placeholder="Underdog Standard"></label>
+        <label class="f">Number of picks<input class="num" id="nePicks" inputmode="numeric" placeholder="3"></label>
+        <label class="f">Payouts (hits:multiplier)<input class="num" id="nePay" placeholder="3:6"></label>
+      </div>
+      <div class="row"><button class="btn primary" id="neAdd">Add entry type</button><button class="btn" id="nePreset">Add Underdog Standard 2–5 picks</button><span class="small" id="neNote" style="color:var(--warn)"></span></div>
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:12px">
+      <h3>Backup</h3>
+      <p class="note" style="margin:0">Your bets are saved on this phone or computer only. Download a backup now and then; to move your bets to another device, or bring them back after clearing your browser, load the backup under <b>Today's picks → Load a file or restore a backup</b>.</p>
+      <div class="row"><button class="btn" id="exportBtn">Download backup</button><button class="btn" id="exportCsv">Download bets as CSV</button></div>
+    </div>
+  </section>
+
+  <!-- PEOPLE (owner only) -->
+  <section id="view-people" role="tabpanel" aria-labelledby="tab-people" hidden>
+    <div><h2>People</h2><p class="lead">Everyone who has opened Edge Finder. Each person gets their own private bankroll and bet log; nobody, you included, can see anyone else's bets. Only you can load new picks.</p></div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <h3>Add someone</h3>
+      <ol style="margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px">
+        <li>Open this page's <b>Share</b> menu.</li>
+        <li>Invite them by email and set them to <b>Editor</b>. People outside your Claude organization can only save their own bets at Editor, and only while the page isn't shared by a public link, so leave link sharing off.</li>
+        <li>They sign in with their own Claude account and show up here the first time they open the app.</li>
+      </ol>
+      <p class="note" style="margin:0">To remove someone, take them off in the Share menu. Editors can also change the page itself, so only invite people you trust.</p>
+    </div>
+    <div class="panel"><h3>Members</h3><div id="peopleList"><p class="muted small" style="margin:0">Loading…</p></div></div>
+  </section>
+
+  <footer>Expected value is an estimate built on sportsbook prices; real results swing a lot over small samples. Bet only what you can afford to lose. Problem gambling help: <span class="num">1-800-GAMBLER</span>.</footer>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ============================== constants ============================== */
+const TZ = "America/Chicago";
+const PAYOUTS = {
+  "2-Pick Power": {n:2, pay:{2:3}}, "3-Pick Power": {n:3, pay:{3:5}}, "4-Pick Power": {n:4, pay:{4:10}},
+  "5-Pick Power": {n:5, pay:{5:20}}, "6-Pick Power": {n:6, pay:{6:37.5}},
+  "3-Pick Flex": {n:3, pay:{3:3, 2:1}}, "4-Pick Flex": {n:4, pay:{4:6, 3:1.5}},
+  "5-Pick Flex": {n:5, pay:{5:10, 4:2, 3:0.4}}, "6-Pick Flex": {n:6, pay:{6:25, 5:2, 4:0.4}},
+};
+const DEFAULTS = {startBankroll:500, kellyMult:0.25, maxPct:0.02, dayCapPct:0.08, dailyStop:0.05, weeklyStop:0.12, payouts:PAYOUTS};
+const GRADED = ["hit","miss","push","void"];
+
+/* ============================== state ============================== */
+const S = {settings: clone(DEFAULTS), bets: [], board: null, histDocs: {}, histIdx: new Map(), histLegs: [],
+           db: null, mode: "loading", tab: "dash", betFilter: "open", calcMode: "pp", openBet: null,
+           user: null, uid: null, isOwner: false, canSave: true, members: []};
+
+/* ============================== helpers ============================== */
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fin = x => typeof x === "number" && isFinite(x);
+function money(x, sign){ if(!fin(x)) return "–"; const v = Math.abs(x) < 0.005 ? 0 : x;
+  return (v < 0 ? "−" : (sign && v > 0 ? "+" : "")) + "$" + Math.abs(v).toLocaleString("en-US",{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function pct(x, d=1, sign){ if(!fin(x)) return "–"; const s = (Math.abs(x*100)).toFixed(d) + "%"; return (x < 0 && +s.slice(0,-1) !== 0 ? "−" : (sign && x > 0 ? "+" : "")) + s; }
+const cls = x => !fin(x) ? "" : x > 0.0001 ? "pos" : x < -0.0001 ? "neg" : "";
+function dayOf(iso){ const t = new Date(iso); return isNaN(t) ? "" : t.toLocaleDateString("en-CA", {timeZone: TZ}); }
+const today = () => dayOf(new Date().toISOString());
+function daysAgo(n){ const t = new Date(Date.now() - n*864e5); return t.toLocaleDateString("en-CA", {timeZone: TZ}); }
+function shortDate(d){ if(!d) return ""; const [y,m,dd] = d.split("-").map(Number); return new Date(y, m-1, dd).toLocaleDateString("en-US", {month:"short", day:"numeric"}); }
+function timeOf(iso){ const t = new Date(iso); return isNaN(t) ? "" : t.toLocaleString("en-US", {timeZone: TZ, weekday:"short", hour:"numeric", minute:"2-digit"}); }
+function normName(s){ return String(s||"").normalize("NFKD").replace(/[̀-ͯ]/g,"").toLowerCase()
+  .replace(/[.\-'’]/g," ").replace(/\b(jr|sr|ii|iii|iv|v)\b/g," ").replace(/\s+/g," ").trim(); }
+const legKey = l => `${normName(l.player)}|${l.market}|${+l.line}|${l.side}`;
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3200); }
+function num(v){ const x = parseFloat(String(v).replace(/[^0-9.+\-]/g, "")); return isFinite(x) ? x : NaN; }
+
+/* ============================== math ============================== */
+function americanToProb(a){ a = +a; return a < 0 ? -a/(-a+100) : 100/(a+100); }
+function americanToDec(a){ a = +a; return a > 0 ? 1 + a/100 : 1 + 100/(-a); }
+function devigPower(po, pu){ let lo = .5, hi = 3; for(let i=0;i<60;i++){ const k=(lo+hi)/2; if(po**k + pu**k > 1) lo=k; else hi=k; } return po ** ((lo+hi)/2); }
+function devigMult(po, pu){ return po/(po+pu); }
+function hitDist(ps){ let d = [1]; for(const p of ps){ const n = new Array(d.length+1).fill(0); d.forEach((v,k)=>{ n[k] += v*(1-p); n[k+1] += v*p; }); d = n; } return d; }
+/* Entry types the day's picks use (Underdog, promos) come with their payouts, so an entry this
+   viewer hasn't set up yet still prices. Your own settings win when you have that entry. */
+function boardTables(){ const m = {}; const B = S.board; if(!B) return m;
+  for(const s of [...(B.plays||[]), ...(B.slips||[])]) if(s && s.name && s.pay && !m[s.name])
+    m[s.name] = {n: +s.n || Object.keys(s.pay).reduce((a,k)=>Math.max(a,+k),0), pay: Object.fromEntries(Object.entries(s.pay).map(([h,v])=>[h,+v])),
+                 family: s.name.replace(/\s*\d+-Pick\s*/," ").trim(), custom: true};
+  return m; }
+function payTable(name){ return (S.settings.payouts || PAYOUTS)[name] || PAYOUTS[name] || boardTables()[name]; }
+async function adoptBoardTables(){
+  if(!S.canSave || !S.board) return;
+  const add = Object.entries(boardTables()).filter(([k]) => !S.settings.payouts[k] && !PAYOUTS[k]);
+  if(!add.length) return;
+  for(const [k,v] of add) S.settings.payouts[k] = v;
+  try { await store.saveSettings(); } catch(e){ dbError(e); }
+  buildCalc();
+}
+function entryStats(name, ps, dist){
+  const t = payTable(name); const d = dist && dist.length === t.n+1 ? dist : hitDist(ps);
+  let E=0, E2=0, cash=0, profit=0; const outs=[];
+  d.forEach((p,k)=>{ const m = +(t.pay[k] || 0); E += p*m; E2 += p*m*m; if(m >= 1) cash += p; if(m > 1) profit += p; outs.push({p, r:m-1}); });
+  return {d, E, V: Math.max(E2 - E*E, 0), cash, profit, outs, kelly: kellyFrac(outs)};
+}
+function bookStats(odds, p){ const D = americanToDec(odds); const outs = [{p, r:D-1}, {p:1-p, r:-1}];
+  const E = p*D; return {D, E, V: Math.max(p*D*D - E*E, 0), cash: p, profit: p, outs, kelly: kellyFrac(outs)}; }
+function kellyFrac(outs){ if(outs.reduce((s,o)=>s+o.p*o.r,0) <= 0) return 0; let lo=0, hi=.999;
+  for(let i=0;i<60;i++){ const f=(lo+hi)/2; const g = outs.reduce((s,o)=> s + (o.p>0 ? o.p*o.r/(1+f*o.r) : 0), 0); if(g>0) lo=f; else hi=f; } return lo; }
+function breakeven(name){ const t = payTable(name); let lo=.3, hi=.95; for(let i=0;i<60;i++){ const m=(lo+hi)/2; const d=hitDist(new Array(t.n).fill(m));
+  const E = d.reduce((s,p,k)=>s+p*(t.pay[k]||0),0); if(E<1) lo=m; else hi=m; } return (lo+hi)/2; }
+function erf(x){ const s = Math.sign(x); x = Math.abs(x); const t = 1/(1+0.3275911*x);
+  const y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x); return s*y; }
+const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
+
+/* A pushed or void leg drops out and the entry pays as the smaller entry of the same family
+   (PrizePicks Flex, PrizePicks Power, or a family you named). With no smaller entry, the stake comes back. */
+function familyOf(name){ const t = payTable(name) || {}; return t.family || (/Flex/.test(name) ? "PrizePicks Flex" : /Power/.test(name) ? "PrizePicks Power" : "Custom: " + name); }
+function ppReturnMult(name, legs){
+  const t = payTable(name);
+  const live = legs.filter(l => l.result === "hit" || l.result === "miss");
+  const hits = live.filter(l => l.result === "hit").length;
+  if(live.length === t.n) return +(t.pay[hits] || 0);
+  const n = live.length, fam = familyOf(name), pays = S.settings.payouts;
+  let alt = n >= 2 ? Object.keys(pays).find(k => familyOf(k) === fam && pays[k].n === n) : null;
+  if(!alt && fam === "PrizePicks Flex" && n === 2) alt = "2-Pick Power";
+  const at = alt ? payTable(alt) : null;
+  if(!at) return 1;
+  return +(at.pay[hits] || 0);
+}
+const INJ = {"out":3,"injured reserve":3,"-day il":3,"suspended":3,"inactive":3,"doubtful":2,"questionable":1,"day-to-day":1,"day to day":1};
+function injuryLevel(s){ s = String(s||"").toLowerCase(); let m = 0; for(const [k,v] of Object.entries(INJ)) if(s.includes(k)) m = Math.max(m, v); return m; }
+function watchLegs(){
+  const out = [], now = Date.now();
+  for(const b of S.bets){ if(b.kind !== "pp" || b.status === "settled") continue;
+    for(const l of b.legs){ if(GRADED.includes(l.result) || (l.start && new Date(l.start).getTime() < now)) continue;
+      const why = [];
+      if(injuryLevel(l.injury) >= 1) why.push(`listed ${l.injury}`);
+      if(l.ppLineNow) why.push(`PrizePicks line now ${l.ppLineNow}`);
+      if(l.clv !== "" && l.clv != null && fin(+l.clv) && +l.clv <= -0.02) why.push(`books moved against it (${(l.clv*100).toFixed(1)} pts)`);
+      if(why.length) out.push({b, l, why}); } }
+  return out;
+}
+function finalize(b){
+  if(b.kind === "pp"){
+    const done = b.legs.length && b.legs.every(l => GRADED.includes(l.result));
+    if(done){ b.ret = ppReturnMult(b.entry, b.legs); }
+    else { b.ret = null; }
+  } else {
+    const r = b.result;
+    b.ret = r === "win" ? americanToDec(b.odds) : r === "loss" ? 0 : (r === "push" || r === "void") ? 1 : null;
+  }
+  if(b.ret == null){ b.status = "open"; b.profit = null; b.settledAt = null; }
+  else { b.status = "settled"; b.profit = Math.round(b.stake*(b.ret-1)*100)/100; b.settledAt = b.settledAt || new Date().toISOString(); }
+  return b;
+}
+
+/* ============================== analysis ============================== */
+function analyze(){
+  const st = S.settings, bets = S.bets;
+  const settled = bets.filter(b => b.status === "settled").sort((a,b)=> (a.settledAt||a.placedAt).localeCompare(b.settledAt||b.placedAt));
+  const open = bets.filter(b => b.status !== "settled");
+  let cum=0, cumE=0, varSum=0, staked=0, peak=0, maxDD=0; const series=[{label:"Start", a:0, e:0}];
+  for(const b of settled){
+    cum += b.profit; cumE += b.stake*(b.E-1); varSum += b.stake*b.stake*b.V; staked += b.stake;
+    peak = Math.max(peak, cum); maxDD = Math.max(maxDD, peak - cum);
+    series.push({label: shortDate(dayOf(b.settledAt || b.placedAt)), a: cum, e: cumE, name: betTitle(b)});
+  }
+  const bank = st.startBankroll + cum, risk = open.reduce((s,b)=>s+b.stake, 0);
+  const sd = Math.sqrt(varSum), n = settled.length;
+  const z = sd > 0 ? (cum - cumE)/sd : null, conf = sd > 0 ? Phi(cum/sd) : null;
+  const meanE = n ? cumE/n : 0, meanSd = n ? Math.sqrt(varSum/n) : 0;
+  const need = meanE > 0 && meanSd > 0 ? Math.ceil((2*meanSd/meanE)**2) : null;
+  const t = today(), wk = daysAgo(6);
+  const todayStaked = bets.filter(b => b.date === t).reduce((s,b)=>s+b.stake, 0);
+  const todayPL = settled.filter(b => dayOf(b.settledAt) === t).reduce((s,b)=>s+b.profit, 0);
+  const weekPL = settled.filter(b => dayOf(b.settledAt) >= wk).reduce((s,b)=>s+b.profit, 0);
+  const openEV = open.reduce((s,b)=> s + b.stake*(b.E-1), 0);
+  return {settled, open, cum, cumE, sd, z, conf, n, staked, bank, risk, peak, maxDD, need, series,
+          todayStaked, todayPL, weekPL, openEV, roi: staked ? cum/staked : null, eroi: staked ? cumE/staked : null};
+}
+function limitState(A){
+  const st = S.settings, base = Math.max(A.bank, 0);
+  return {
+    dayCap: st.dayCapPct*base, dayLeft: st.dayCapPct*base - A.todayStaked,
+    dayStopHit: A.todayPL <= -st.dailyStop*base && A.todayPL < 0,
+    weekStopHit: A.weekPL <= -st.weeklyStop*base && A.weekPL < 0,
+    maxStake: st.maxPct*base,
+  };
+}
+function suggestStake(kelly){ const A = analyze(); const L = limitState(A);
+  const raw = Math.min(kelly*S.settings.kellyMult, S.settings.maxPct) * Math.max(A.bank, 0);
+  let s = raw >= 1 ? Math.round(raw) : (raw > 0 ? 1 : 0);
+  return {stake: s, raw, A, L}; }
+function stakeWarnings(stake){
+  const A = analyze(), L = limitState(A), w = [];
+  if(L.weekStopHit) w.push("You've hit your weekly stop-loss.");
+  else if(L.dayStopHit) w.push("You've hit your daily stop-loss.");
+  if(stake > L.maxStake + 0.005) w.push(`This is more than your ${pct(S.settings.maxPct,1)} per-entry limit (${money(L.maxStake)}).`);
+  if(A.todayStaked + stake > L.dayCap + 0.005) w.push(`This puts today's total at ${money(A.todayStaked + stake)}, over your ${money(L.dayCap)} daily limit.`);
+  if(stake > A.bank - A.risk) w.push("This is more than your bankroll not already at risk.");
+  return w;
+}
+function legStats(){
+  // Every graded leg we know of, from your bets and the daily history, counted once.
+  const seen = new Map();
+  for(const h of S.histLegs){ if(h.result==="hit"||h.result==="miss") seen.set(h.date+"|"+h.k, {fair:+h.fair, hit:h.result==="hit", clv:h.clv, sport:h.sport, played:false}); }
+  for(const b of S.bets){ if(b.kind!=="pp") continue; for(const l of b.legs){ if(!(l.result==="hit"||l.result==="miss") || !fin(+l.fair)) continue;
+    const key = (l.start ? dayOf(l.start) : b.date) + "|" + (l.market ? legKey(l) : normName(l.player)+"|"+l.line+"|"+l.side);
+    const prev = seen.get(key); seen.set(key, {fair:+l.fair, hit:l.result==="hit", clv: prev?.clv ?? l.clv, sport:l.sport, played:true}); } }
+  const all = [...seen.values()];
+  const buckets = [[.5,.54,"50–54%"],[.54,.57,"54–57%"],[.57,.6,"57–60%"],[.6,1.01,"60% and up"]].map(([lo,hi,label])=>{
+    const r = all.filter(x => x.fair >= lo && x.fair < hi); const hits = r.filter(x=>x.hit).length;
+    return {label, n:r.length, hit: r.length ? hits/r.length : null, exp: r.length ? r.reduce((s,x)=>s+x.fair,0)/r.length : null}; });
+  const clvs = all.map(x => x.clv).filter(x => x !== "" && x != null && isFinite(+x)).map(Number);
+  const n = all.length, hits = all.filter(x=>x.hit).length, exp = n ? all.reduce((s,x)=>s+x.fair,0) : 0;
+  const v = all.reduce((s,x)=>s+x.fair*(1-x.fair),0);
+  return {n, hits, exp, z: v>0 ? (hits-exp)/Math.sqrt(v) : null, buckets, clvN: clvs.length,
+          clv: clvs.length ? clvs.reduce((a,b)=>a+b,0)/clvs.length : null, beat: clvs.length ? clvs.filter(x=>x>0).length/clvs.length : null};
+}
+function betTitle(b){ return b.kind === "pp" ? b.entry : (b.label || "Sportsbook bet"); }
+function betSport(b){ if(b.kind!=="pp") return b.sport || "Other"; const s = [...new Set(b.legs.map(l => (l.sport||"").toUpperCase()).filter(Boolean))]; return s.length===1 ? s[0] : s.length ? "Mixed" : "Other"; }
+
+/* ============================== storage ============================== */
+const LS = "edgefinder.v1";
+function lsLoad(){ try { return JSON.parse(localStorage.getItem(LS) || "null"); } catch(e){ return null; } }
+function lsSave(){ try { localStorage.setItem(LS, JSON.stringify({settings:S.settings, bets:S.bets, board:S.board, histDocs:S.histDocs})); } catch(e){} }
+const mine = () => "data/users/" + S.uid;
+function noSave(){ toast(S.uid ? "You can't save here yet. Ask the app owner to invite you as an Editor." : "Sign in to Claude to save your own bets."); throw {code:"no_save"}; }
+const store = {
+  async saveBet(b){ const body = clone(b); delete body.id;
+    if(S.db){ if(!S.canSave) noSave(); await S.db.doc(mine()+"/bet_"+b.id).set(body); } else { const i = S.bets.findIndex(x=>x.id===b.id); if(i>=0) S.bets[i]=b; else S.bets.push(b); lsSave(); renderAll(); } },
+  async delBet(id){ if(S.db){ if(!S.canSave) noSave(); await S.db.doc(mine()+"/bet_"+id).delete(); } else { S.bets = S.bets.filter(b=>b.id!==id); lsSave(); renderAll(); } },
+  async saveSettings(){ if(S.db){ if(!S.canSave){ renderAll(); return; } await S.db.doc(mine()+"/settings").set(clone(S.settings)); } else { lsSave(); renderAll(); } },
+  async saveBoard(board){ if(S.db){ await S.db.doc("meta/board").set(board); } else { S.board = board; lsSave(); renderAll(); } },
+  async saveHistDay(date, legs){ if(S.db){ await S.db.doc("history/"+date).set({legs}); } else { S.histDocs[date] = {legs}; rebuildHist(); lsSave(); renderAll(); } },
+};
+function rebuildHist(){ S.histLegs = []; S.histIdx = new Map();
+  for(const [date, doc] of Object.entries(S.histDocs)) for(const l of (doc.legs||[])){ const x = {...l, date}; S.histLegs.push(x); S.histIdx.set(date+"|"+l.k, x); } }
+function dbError(e){ console.warn(e); if(e && e.code === "no_save") return;
+  if(e && e.code === "quota_exceeded") toast("Storage is full. Delete old bets or history to save more.");
+  else if(e && e.code === "invalid_argument" && S.db){ S.canSave = false; renderAccess(); toast("This account can't save here. Ask the app owner to invite you as an Editor."); } }
+
+function applySettings(data){ S.settings = data ? {...clone(DEFAULTS), ...data, payouts: {...PAYOUTS, ...(data.payouts||{})}} : clone(DEFAULTS); }
+function renderAccess(){
+  const owner = S.isOwner;
+  $("#tab-people").hidden = !owner;
+  $("#drop").hidden = S.mode === "db" ? !owner : false;
+  $("#picksLead").textContent = S.mode !== "db"
+    ? "Picks load automatically from your daily run. Log the entries you actually play; they're graded automatically as results come in."
+    : owner
+    ? "Load the app data file from your daily report, then log the entries you actually play. Logged entries are graded automatically when you load the next day's file."
+    : "The app owner loads each day's picks. Log the entries you actually play; they're graded automatically as results come in.";
+  const who = S.meName ? S.meName + " · " : "";
+  $("#syncNote").textContent = S.mode !== "db" ? "Bets saved on this device · back up in Settings"
+    : !S.uid ? "Not signed in · sign in to Claude to save your own bets"
+    : !S.canSave ? who + "View only · ask the app owner to invite you as an Editor"
+    : who + (owner ? "Owner · " : "") + "your bets are private to you";
+}
+async function boot(){
+  let db = null, user = null;
+  try { [db, user] = window.claude ? await Promise.all([window.claude.use("db"), window.claude.use("user")]) : [null, null]; } catch(e){ db = null; }
+  if(!db){ const saved = lsLoad(); if(saved){ S.settings = {...clone(DEFAULTS), ...saved.settings}; S.bets = saved.bets||[]; S.board = saved.board||null; S.histDocs = saved.histDocs||{}; rebuildHist(); }
+    S.mode = "local"; renderAccess(); renderAll(); autoLoad(); return; }
+  S.db = db; S.mode = "db"; S.user = user;
+  const me = user ? await user.me() : null;
+  S.uid = me && me.id || null; S.meName = me && me.name || ""; S.isOwner = user ? await user.isOwner() : false;
+  if(!S.uid) S.canSave = false;
+  renderAccess();
+  db.doc("meta/board").onSnapshot(s => { S.board = s.exists ? s.data() : null; renderAll(); if(S.settingsLoaded) adoptBoardTables(); }, dbError);
+  db.collection("history").onSnapshot(q => { S.histDocs = {}; q.docs.forEach(d => S.histDocs[d.id] = d.data()); rebuildHist(); if(S.canSave) autoGrade(); renderAll(); }, dbError);
+  if(!S.uid){ renderAll(); return; }
+  // Your own bets and settings live under data/users/<you>, private to you.
+  if(S.isOwner){
+    // One-time move of the owner's original shared settings and bets into the private area.
+    try {
+      const mineSettings = await db.doc(mine()+"/settings").get();
+      if(!mineSettings.exists){
+        const old = await db.doc("settings/main").get();
+        if(old.exists) await db.doc(mine()+"/settings").set(clone(old.data()));
+        const oldBets = await db.collection("bets").get();
+        for(const d of oldBets.docs) await db.doc(mine()+"/bet_"+d.id).set(clone(d.data()));
+      }
+    } catch(e){ console.warn("move to private storage", e); }
+  }
+  db.collection(mine()).onSnapshot(q => {
+    const set = q.docs.find(d => d.id === "settings"); applySettings(set ? set.data() : null);
+    const first = !S.settingsLoaded; S.settingsLoaded = true; if(first) setTimeout(adoptBoardTables);
+    S.bets = q.docs.filter(d => d.id.startsWith("bet_")).map(d => ({...clone(d.data()), id: d.id.slice(4)}));
+    renderAll(); if(S.canSave && S.histLegs.length) autoGrade();
+  }, dbError);
+  // Check in so the owner's People tab lists you. A refusal means this account can't save here.
+  try { const ref = db.doc("members/"+S.uid); const cur = await ref.get();
+    await ref.set({firstSeen: (cur.exists && cur.data().firstSeen) || new Date().toISOString(), lastSeen: new Date().toISOString()});
+  } catch(e){ if(e && e.code === "invalid_argument"){ S.canSave = false; renderAccess(); renderAll(); } else console.warn(e); }
+  if(S.isOwner) db.collection("members").onSnapshot(q => { S.members = q.docs.map(d => ({id: d.id, ...d.data()})); if(S.tab === "people") renderPeople(); }, dbError);
+}
+
+/* ============================== import ============================== */
+function parseCSV(text){
+  const rows = []; let row = [], f = "", q = false;
+  for(let i=0;i<text.length;i++){ const c = text[i];
+    if(q){ if(c === '"'){ if(text[i+1] === '"'){ f += '"'; i++; } else q = false; } else f += c; }
+    else if(c === '"') q = true; else if(c === ","){ row.push(f); f = ""; }
+    else if(c === "\n" || c === "\r"){ if(c === "\r" && text[i+1] === "\n") i++; row.push(f); rows.push(row); row = []; f = ""; }
+    else f += c; }
+  if(f || row.length){ row.push(f); rows.push(row); }
+  const head = rows.shift() || []; return rows.filter(r => r.length > 1).map(r => Object.fromEntries(head.map((h,i)=>[h.trim(), r[i] ?? ""])));
+}
+function compactHist(h){ return {k: legKey({player:h.player, market:h.market, line:h.line, side:h.side}), sport:h.sport, player:h.player, market:h.market,
+  stat:h.stat, line:+h.line, side:h.side, fair:+h.pick_fair, clv: h.clv === "" || h.clv == null ? null : +h.clv, result:h.result||"", actual:h.actual||"",
+  injury:h.injury||"", pp:h.pp_line_now||"" }; }
+async function importHistory(rows){
+  const byDay = {}; for(const h of rows){ if(!h.date || !h.player) continue; (byDay[h.date] ||= []).push(compactHist(h)); }
+  let n = 0;
+  for(const [date, legs] of Object.entries(byDay)){
+    const map = new Map((S.histDocs[date]?.legs || []).map(l => [l.k, l])); for(const l of legs){ map.set(l.k, l); n++; }
+    await store.saveHistDay(date, [...map.values()]);
+  }
+  return n;
+}
+async function importText(text, label, quiet){
+  const note = $("#importNote"); text = text.trim(); if(!text){ note.textContent = "Nothing to load yet."; return; }
+  if(S.mode === "db" && !S.isOwner){ note.textContent = "Only the app owner can load picks."; return; }
+  try {
+    if(text[0] === "{"){
+      const d = JSON.parse(text);
+      if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
+      if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
+      const board = {generated_at:d.generated_at, entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,150),
+        alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
+      await store.saveBoard(board);
+      const n = await importHistory(d.history || []);
+      if(d.payouts){ const p = {}; for(const [k,v] of Object.entries(d.payouts)) p[k] = {n:v.n, pay:Object.fromEntries(Object.entries(v.pay).map(([h,m])=>[h,+m]))};
+        if(JSON.stringify(p) !== JSON.stringify(S.settings.payouts)){ S.settings.payouts = {...S.settings.payouts, ...p}; await store.saveSettings(); } }
+      const g = await autoGrade();
+      note.textContent = `Loaded ${board.plays.length} plays and ${n} history legs from the ${timeOf(d.generated_at)} run.` + (g ? ` Graded ${g} of your entries.` : "");
+    } else {
+      const rows = parseCSV(text);
+      if(!rows.length || !("pick_fair" in rows[0])) throw new Error("This CSV isn't picks.csv from your daily report.");
+      const n = await importHistory(rows); const g = await autoGrade();
+      note.textContent = `Loaded ${n} history legs from ${label || "picks.csv"}.` + (g ? ` Graded ${g} of your entries.` : "");
+    }
+    if(!quiet){ toast("Data loaded"); $("#pasteIn").value = ""; }
+  } catch(e){ note.textContent = e.message && !/JSON/.test(e.name) ? e.message : "Couldn't read that data. Check that it's the whole file."; }
+}
+let autoLoading = false;
+async function autoLoad(){
+  if(S.mode === "db" || autoLoading || location.protocol === "file:") return;
+  autoLoading = true;
+  try {
+    const r = await fetch("index.json?t=" + Date.now(), {cache: "no-store"});
+    if(r.ok){ const text = await r.text(); const d = JSON.parse(text);
+      if(d.app === "edge-finder" && d.generated_at !== (S.board && S.board.generated_at)) await importText(text, "your site", true);
+      else { const g = await autoGrade(); if(g) renderAll(); } }
+  } catch(e){ console.warn("auto-load", e); }
+  autoLoading = false;
+}
+document.addEventListener("visibilitychange", () => { if(document.visibilityState === "visible") autoLoad(); });
+setInterval(autoLoad, 15*60e3);
+async function autoGrade(){
+  let changed = 0;
+  for(const b of S.bets){
+    if(b.kind !== "pp" || b.status === "settled") continue;
+    let touched = false, graded = false;
+    for(const l of b.legs){
+      if(GRADED.includes(l.result) || !l.market) continue;
+      const h = S.histIdx.get((l.start ? dayOf(l.start) : b.date) + "|" + legKey(l));
+      if(h && GRADED.includes(h.result)){ l.result = h.result; l.actual = h.actual; if(h.clv != null) l.clv = h.clv; l.auto = true; touched = true; graded = true; }
+      else if(h){
+        if(h.clv != null && l.clv !== h.clv){ l.clv = h.clv; touched = true; }
+        if((h.injury||"") !== (l.injury||"")){ l.injury = h.injury||""; touched = true; }
+        if((h.pp||"") !== (l.ppLineNow||"")){ l.ppLineNow = h.pp||""; touched = true; }
+      }
+    }
+    if(touched){ finalize(b); if(graded) changed++; try { await store.saveBet(b); } catch(e){ dbError(e); } }
+  }
+  return changed;
+}
+async function restoreBackup(d){
+  if(d.settings){ S.settings = {...clone(DEFAULTS), ...d.settings}; await store.saveSettings(); }
+  for(const b of d.bets || []){ if(!b.id) b.id = uid(); await store.saveBet(b); }
+}
+
+/* ============================== logging bets ============================== */
+async function logEntry(b){
+  b.id = b.id || uid(); b.placedAt = new Date().toISOString(); b.date = today(); b.status = "open";
+  finalize(b);
+  try { await store.saveBet(b); toast(`Logged ${betTitle(b)} for ${money(b.stake)}`); } catch(e){ dbError(e); toast("Couldn't save that entry. Try again."); }
+}
+
+/* ============================== rendering ============================== */
+function ago(iso){ const m = Math.round((Date.now() - new Date(iso))/6e4); if(!isFinite(m)) return "";
+  if(m < 1) return "just now"; if(m < 60) return m + " min ago"; const h = Math.round(m/60); if(h < 24) return h + " hr ago";
+  const d = Math.round(h/24); return d + (d === 1 ? " day ago" : " days ago"); }
+function renderDataNote(){
+  const el = $("#dataNote"), B = S.board;
+  if(!B || !B.generated_at){ el.textContent = "No picks loaded yet"; el.classList.remove("stale"); return; }
+  const old = (Date.now() - new Date(B.generated_at)) > 18*36e5;
+  el.textContent = `Picks updated ${timeOf(B.generated_at)} (${ago(B.generated_at)})${old ? " · load the latest file" : ""}`;
+  el.classList.toggle("stale", old);
+}
+setInterval(renderDataNote, 60000);
+function renderAll(){
+  const A = analyze();
+  renderDataNote();
+  $("#hdrBank").textContent = money(A.bank); $("#hdrRisk").textContent = money(A.risk);
+  if(S.tab === "dash") renderDash(A);
+  if(S.tab === "picks") renderBoard();
+  if(S.tab === "bets") renderBets();
+  if(S.tab === "settings") renderSettings();
+  if(S.tab === "calc") { renderCalcOut(); renderBookOut(); }
+  if(S.tab === "people") renderPeople();
+}
+const icon = {
+  warn: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  stop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>',
+  ok: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>',
+};
+function renderDash(A){
+  const el = $("#view-dash"); const st = S.settings, L = limitState(A), LS2 = legStats();
+  const alerts = [];
+  if(L.weekStopHit) alerts.push(["bad", icon.stop, `Weekly stop-loss reached: you're down ${money(-A.weekPL)} over the last 7 days. Take a break until next week.`]);
+  else if(L.dayStopHit) alerts.push(["bad", icon.stop, `Daily stop-loss reached: down ${money(-A.todayPL)} today. No more entries today.`]);
+  if(A.todayStaked > L.dayCap + 0.005) alerts.push(["warn", icon.warn, `You've staked ${money(A.todayStaked)} today, over your ${money(L.dayCap)} daily limit.`]);
+  if(A.bank > 0 && A.maxDD > 0.2*st.startBankroll) alerts.push(["warn", icon.warn, `Your biggest drop from a peak is ${money(A.maxDD)}, more than 20% of your starting bankroll. Consider smaller stakes.`]);
+  for(const w of watchLegs()) alerts.unshift([injuryLevel(w.l.injury) >= 2 ? "bad" : "warn", icon.warn,
+    `${w.l.player} ${w.l.side} ${w.l.line} ${w.l.stat||""} in your ${w.b.entry} (${timeOf(w.l.start)}): ${w.why.join(", ")}. Check it in PrizePicks before lock.`]);
+  const bigBets = A.open.filter(b => b.stake > L.maxStake*1.5); if(bigBets.length) alerts.push(["warn", icon.warn, `${bigBets.length} open ${bigBets.length>1?"entries are":"entry is"} well over your per-entry limit.`]);
+  if(!alerts.length && A.n) alerts.push(["good", icon.ok, `Within your limits. ${money(Math.max(L.dayLeft,0))} of today's ${money(L.dayCap)} budget left.`]);
+
+  if(!S.bets.length){
+    el.innerHTML = `<div><h2>Dashboard</h2><p class="lead">Your results, your real edge, and your limits in one place.</p></div>
+      <div class="panel empty"><h3>No entries logged yet</h3>
+      <ol>${S.mode !== "db" || !S.isOwner ? `<li>Open <b>Today's picks</b> to see the latest plays.</li>` : `<li>On <b>Today's picks</b>, load <span class="num">index.json</span> from your daily report (there's a download link under the track record).</li>`}
+      <li>Log the entries you actually play, with your stake.</li>
+      <li>${S.mode !== "db" || !S.isOwner ? "Finished games grade themselves as results come in." : "Load the next day's file and finished games grade themselves."} Or grade legs by hand in the <b>Bet log</b>.</li></ol>
+      <p class="muted small" style="margin:0">Once a few entries settle, this page shows profit against expected profit and how likely your edge is real.</p>
+      <div class="row" style="justify-content:center"><button class="btn primary" data-go="picks">${S.mode !== "db" || !S.isOwner ? "See today's picks" : "Load today's picks"}</button><button class="btn" data-go="calc">Open the EV calculator</button></div></div>
+      ${legPanel(LS2)}`;
+    return;
+  }
+  const verdict = edgeVerdict(A);
+  el.innerHTML = `
+    <div><h2>Dashboard</h2><p class="lead">${A.n} settled ${A.n===1?"entry":"entries"}, ${A.open.length} open. Expected profit uses the fair odds at the moment you logged each entry.</p></div>
+    <div class="alerts">${alerts.map(([k,i,t])=>`<div class="alert ${k}">${i}<span>${esc(t)}</span></div>`).join("")}</div>
+    <div class="kpis">
+      ${kpi("Bankroll", money(A.bank), `Started at ${money(st.startBankroll)}`)}
+      ${kpi("Profit", `<span class="${cls(A.cum)}">${money(A.cum,true)}</span>`, `on ${money(A.staked)} staked`)}
+      ${kpi("ROI", `<span class="${cls(A.roi)}">${pct(A.roi,1,true)}</span>`, `Expected ${pct(A.eroi,1,true)}`)}
+      ${kpi("Expected profit", `<span class="${cls(A.cumE)}">${money(A.cumE,true)}</span>`, `Luck so far ${money(A.cum-A.cumE,true)}`)}
+      ${kpi("Open EV", `<span class="${cls(A.openEV)}">${money(A.openEV,true)}</span>`, `${money(A.risk)} at risk`)}
+      ${kpi("Leg CLV", LS2.clv==null ? "–" : `<span class="${cls(LS2.clv)}">${(LS2.clv>0?"+":"")+(LS2.clv*100).toFixed(2)} pts</span>`, LS2.beat==null ? "No closing prices yet" : `Beat the close ${pct(LS2.beat,0)}`)}
+    </div>
+    <div class="panel"><div class="row" style="justify-content:space-between;align-items:baseline"><h3>Profit vs expected</h3>
+      <div class="legend"><span><i style="border-color:var(--s-actual)"></i>Actual profit</span><span><i style="border-color:var(--s-exp);border-top-style:dashed"></i>Expected profit</span></div></div>
+      <div class="chart" id="pChart"></div></div>
+    <div class="grid2">
+      <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+        <h3>Edge or luck?</h3>
+        <div class="verdict">${esc(verdict.head)}</div>
+        <p class="muted" style="margin:0">${esc(verdict.body)}</p>
+        <div><div class="meter" aria-label="Results compared with expectation">${A.z==null?"":`<div class="track"></div><div class="mid"></div><div class="dot" style="left:${Math.max(2,Math.min(98,50+A.z/3*50))}%"></div>`}</div>
+        <div class="meter-l"><span>Unlucky</span><span>As expected</span><span>Lucky</span></div></div>
+        <div class="statgrid">
+          <div><span class="l">Chance edge is real</span><span class="v">${A.conf==null?"–":pct(A.conf,0)}</span></div>
+          <div><span class="l">Results vs expected</span><span class="v">${A.z==null?"–":(A.z>0?"+":"")+A.z.toFixed(2)+" SD"}</span></div>
+          <div><span class="l">Entries to confirm</span><span class="v">${A.need==null?"–":A.need.toLocaleString()}</span></div>
+          <div><span class="l">Biggest drop</span><span class="v">${money(A.maxDD)}</span></div>
+        </div>
+      </div>
+      ${limitsPanel(A, L)}
+    </div>
+    ${simPanel()}
+    ${breakdownPanel(A)}
+    ${legPanel(LS2)}`;
+  drawChart($("#pChart"), A.series);
+  renderSim();
+}
+
+/* ---------- bankroll simulator ---------- */
+S.simMult = 1;
+function simTemplates(){
+  return S.bets.slice().sort((a,b)=>(b.placedAt||"").localeCompare(a.placedAt||"")).slice(0,50).map(b => {
+    let outs;
+    if(b.kind === "pp"){ const fairs = b.legs.map(l=>+l.fair); if(!fairs.length || fairs.some(x=>!fin(x))) return null;
+      const es = entryStats(b.entry, fairs), t = payTable(b.entry); outs = es.d.map((p,k)=>({p, m:+(t.pay[k]||0)})); }
+    else { if(!fin(+b.fair)) return null; outs = [{p:+b.fair, m:americanToDec(b.odds)}, {p:1-b.fair, m:0}]; }
+    let c = 0; return {stake:b.stake, cum: outs.map(o => ({c: (c += o.p), m: o.m}))};
+  }).filter(Boolean);
+}
+function runSim(mult, N=100, runs=2000){
+  const T = simTemplates(); if(!T.length) return null;
+  const start = analyze().bank; if(!(start > 0)) return null;
+  let seed = 20261022; const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const cols = Array.from({length:N+1}, () => new Float64Array(runs));
+  let dd25 = 0, dd50 = 0, bust = 0, up = 0, sumEnd = 0;
+  for(let r=0; r<runs; r++){
+    let bank = start, peak = start, h25 = false, h50 = false, broke = false; cols[0][r] = bank;
+    for(let i=1; i<=N; i++){
+      const tpl = T[Math.floor(rnd()*T.length)], stake = tpl.stake*mult;
+      if(!broke && stake > bank){ broke = true; }
+      if(!broke){ const u = rnd(); const hit = tpl.cum.find(x => u <= x.c) || tpl.cum[tpl.cum.length-1]; bank += stake*(hit.m-1);
+        peak = Math.max(peak, bank); const dd = (peak-bank)/peak; if(dd >= .25) h25 = true; if(dd >= .5) h50 = true; }
+      cols[i][r] = bank;
+    }
+    if(h25) dd25++; if(h50) dd50++; if(broke) bust++; if(bank > start) up++; sumEnd += bank;
+  }
+  const p10 = [], p50 = [], p90 = [];
+  cols.forEach(c => { const a = Array.from(c).sort((x,y)=>x-y); p10.push(a[Math.floor(.1*runs)]); p50.push(a[Math.floor(.5*runs)]); p90.push(a[Math.floor(.9*runs)]); });
+  return {start, N, runs, p10, p50, p90, up: up/runs, dd25: dd25/runs, dd50: dd50/runs, bust: bust/runs, mean: sumEnd/runs, n: T.length,
+          avgStake: T.reduce((s,t)=>s+t.stake,0)/T.length*mult};
+}
+function simPanel(){
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:12px">
+    <div class="row" style="justify-content:space-between"><div><h3 style="margin:0">Your next 100 entries</h3>
+      <p class="muted small" style="margin:4px 0 0">2,000 simulated runs that replay your recent entries at their fair odds, starting from today's bankroll.</p></div>
+      <div class="seg" role="group" aria-label="Stake size" id="simMult">${[[.5,"Half stakes"],[1,"Your stakes"],[2,"Double stakes"]].map(([m,l])=>`<button aria-pressed="${S.simMult===m}" data-sim="${m}">${l}</button>`).join("")}</div></div>
+    <div id="simOut"></div></div>`;
+}
+function renderSim(){
+  const el = $("#simOut"); if(!el) return;
+  const key = JSON.stringify([S.simMult, analyze().bank, S.bets.map(b => [b.id, b.stake, b.status])]);
+  if(!S.simCache || S.simCache.key !== key) S.simCache = {key, R: runSim(S.simMult)};
+  const R = S.simCache.R;
+  if(!R){ el.innerHTML = `<p class="muted small" style="margin:0">Log a few entries with fair odds and the simulation appears here.</p>`; return; }
+  el.innerHTML = `<div class="statgrid">
+      <div><span class="l">Typical result</span><span class="v ${cls(R.p50[R.N]-R.start)}">${money(R.p50[R.N]-R.start,true)}</span></div>
+      <div><span class="l">Bad run (1 in 10)</span><span class="v ${cls(R.p10[R.N]-R.start)}">${money(R.p10[R.N]-R.start,true)}</span></div>
+      <div><span class="l">Good run (1 in 10)</span><span class="v ${cls(R.p90[R.N]-R.start)}">${money(R.p90[R.N]-R.start,true)}</span></div>
+      <div><span class="l">Finish ahead</span><span class="v">${pct(R.up,0)}</span></div>
+      <div><span class="l">Drop 25%+ from a peak</span><span class="v">${pct(R.dd25,0)}</span></div>
+      <div><span class="l">Drop 50%+ from a peak</span><span class="v">${pct(R.dd50,0)}</span></div>
+      <div><span class="l">Run out of money</span><span class="v">${pct(R.bust,0)}</span></div></div>
+    <div class="legend"><span><i style="border-color:var(--accent)"></i>Middle outcome</span><span><i style="border-color:var(--accent);opacity:.35;border-top-width:8px"></i>8 in 10 runs land in the shaded band</span></div>
+    <div class="chart" id="simChart"></div>
+    <p class="note" style="margin:0">Based on ${R.n} recent entries, about ${money(R.avgStake)} each. Assumes the fair odds are right; if your real edge is smaller, results shift down.</p>`;
+  drawFan($("#simChart"), R);
+}
+function drawFan(el, R){
+  const W=720, H=240, m={l:66, r:20, t:12, b:28}, N = R.N;
+  const vals = [...R.p10, ...R.p90, R.start]; const ticks = niceTicks(Math.min(...vals), Math.max(...vals));
+  const y0 = ticks[0], y1 = ticks[ticks.length-1];
+  const X = i => m.l + (W-m.l-m.r)*i/N, Y = v => m.t + (H-m.t-m.b)*(1-(v-y0)/(y1-y0));
+  const band = R.p90.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).concat(R.p10.map((v,i)=>[i,v]).reverse().map(([i,v])=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`)).join(" ");
+  const mid = R.p50.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Simulated bankroll over the next ${N} entries">
+    ${ticks.map(t=>`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--grid)"/><text x="${m.l-8}" y="${Y(t)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">$${Math.round(t).toLocaleString()}</text>`).join("")}
+    <polygon points="${band}" fill="var(--accent)" fill-opacity=".18" stroke="none"/>
+    <line x1="${m.l}" x2="${W-m.r}" y1="${Y(R.start)}" y2="${Y(R.start)}" stroke="var(--muted)" stroke-dasharray="4 4"/>
+    <path d="${mid}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    <text x="${m.l}" y="${H-8}" font-size="11" fill="var(--muted)" font-family="IBM Plex Sans, sans-serif">Now</text>
+    <text x="${W-m.r}" y="${H-8}" font-size="11" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Sans, sans-serif">Entry ${N}</text>
+    <line class="cx" x1="0" x2="0" y1="${m.t}" y2="${H-m.b}" stroke="var(--muted)" visibility="hidden"/>
+    <rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent"/></svg><div class="tip" hidden></div>`;
+  const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), cx = el.querySelector(".cx");
+  const move = ev => { const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left)*W/r.width;
+    const i = Math.max(0, Math.min(N, Math.round((sx-m.l)/(W-m.l-m.r)*N)));
+    cx.setAttribute("x1", X(i)); cx.setAttribute("x2", X(i)); cx.setAttribute("visibility","visible");
+    tip.hidden = false; tip.innerHTML = `<b>${i ? "After entry "+i : "Now"}</b><br>Good run <span class="num">${money(R.p90[i])}</span><br>Middle <span class="num">${money(R.p50[i])}</span><br>Bad run <span class="num">${money(R.p10[i])}</span>`;
+    const px = X(i)*r.width/W; tip.style.left = Math.min(Math.max(px - tip.offsetWidth/2, 0), r.width - tip.offsetWidth) + "px"; tip.style.top = "0px"; };
+  svg.addEventListener("pointermove", move); svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerleave", () => { tip.hidden = true; cx.setAttribute("visibility","hidden"); });
+}
+function kpi(l, v, s){ return `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s}</span></div>`; }
+function edgeVerdict(A){
+  if(A.n < 5) return {head:"Too early to tell", body:`Only ${A.n} settled ${A.n===1?"entry":"entries"}. PrizePicks entries swing hard, so even a real edge needs hundreds of entries to show up clearly.`};
+  const c = A.conf, z = A.z;
+  let head = c >= .9 ? "Likely a real edge" : c >= .7 ? "Leaning positive" : c >= .4 ? "Can't tell yet" : c >= .15 ? "Leaning negative" : "Likely losing";
+  let body = `If your true edge were zero, a result this good or better would happen about ${pct(1-c,0)} of the time. `;
+  body += Math.abs(z) < 1 ? "Your profit is close to what the fair odds predicted, so the prices look trustworthy." :
+          z > 0 ? `You're ${money(A.cum-A.cumE)} ahead of expected, which is mostly luck; plan around the expected line, not the actual one.` :
+          `You're ${money(A.cumE-A.cum)} behind expected. That can be bad luck, but if it persists, the fair odds may be too optimistic.`;
+  if(A.need) body += ` At your average edge it takes about ${A.need.toLocaleString()} entries to confirm it with confidence.`;
+  return {head, body};
+}
+function limitsPanel(A, L){
+  const st = S.settings, base = Math.max(A.bank,0);
+  const rows = [
+    ["Staked today", A.todayStaked, L.dayCap, money(A.todayStaked)+" of "+money(L.dayCap)],
+    ["Today's loss vs stop", Math.max(-A.todayPL,0), st.dailyStop*base, (A.todayPL>=0?money(A.todayPL,true)+" today":money(-A.todayPL)+" down of "+money(st.dailyStop*base))],
+    ["7-day loss vs stop", Math.max(-A.weekPL,0), st.weeklyStop*base, (A.weekPL>=0?money(A.weekPL,true)+" this week":money(-A.weekPL)+" down of "+money(st.weeklyStop*base))],
+  ];
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:12px"><h3>Limits</h3>
+    ${rows.map(([l,v,cap,txt])=>{ const f = cap>0 ? Math.min(v/cap,1) : 0; return `<div style="display:flex;flex-direction:column;gap:4px">
+      <div class="row" style="justify-content:space-between"><span class="small">${l}</span><span class="num small">${txt}</span></div>
+      <div class="bar ${v>=cap&&cap>0?"over":""}"><span style="width:${(f*100).toFixed(1)}%"></span></div></div>`; }).join("")}
+    <p class="note" style="margin:0">Max per entry ${money(L.maxStake)} (${pct(st.maxPct,1)}). Suggested stakes use ${st.kellyMult===0.25?"quarter":st.kellyMult===0.5?"half":"one-tenth"} Kelly, capped at that limit. <button class="btn" data-go="settings" style="min-height:36px;padding:4px 10px;margin-left:4px">Change limits</button></p></div>`;
+}
+function breakdownPanel(A){
+  const groups = (keyFn) => { const m = new Map(); for(const b of A.settled){ const k = keyFn(b); const g = m.get(k) || {k, n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); m.set(k,g);} return [...m.values()].sort((a,b)=>b.staked-a.staked); };
+  const table = (title, rows) => `<div class="scroll"><table><thead><tr><th>${title}</th><th class="r">Entries</th><th class="r">Staked</th><th class="r">Profit</th><th class="r">ROI</th><th class="r">Expected ROI</th></tr></thead><tbody>
+    ${rows.map(g=>`<tr><td>${esc(g.k)}</td><td class="r num">${g.n}</td><td class="r num">${money(g.staked)}</td><td class="r num ${cls(g.profit)}">${money(g.profit,true)}</td><td class="r num ${cls(g.profit)}">${pct(g.profit/g.staked,1,true)}</td><td class="r num">${pct(g.exp/g.staked,1,true)}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">Nothing settled yet.</td></tr>`}</tbody></table></div>`;
+  return `<div class="grid2"><div class="panel"><h3>By entry type</h3>${table("Entry", groups(betTitle))}</div><div class="panel"><h3>By sport</h3>${table("Sport", groups(betSport))}</div></div>`;
+}
+function legPanel(LS2){
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>Are the fair odds right?</h3>
+    <p class="muted small" style="margin:0">Every graded leg from your bets and your daily report history. If the fair odds are accurate, each row's hit rate lands near its expected rate.${LS2.n?` Across ${LS2.n.toLocaleString()} legs: ${LS2.hits.toLocaleString()} hits against ${LS2.exp.toFixed(0)} expected.`:""}</p>
+    <div class="scroll"><table><thead><tr><th>Fair % when picked</th><th class="r">Legs</th><th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Difference</th></tr></thead><tbody>
+    ${LS2.buckets.map(b=>`<tr><td>${b.label}</td><td class="r num">${b.n}</td><td class="r num">${pct(b.hit)}</td><td class="r num">${pct(b.exp)}</td><td class="r num ${b.n?cls(b.hit-b.exp):""}">${b.n?pct(b.hit-b.exp,1,true):"–"}</td></tr>`).join("")}
+    </tbody></table></div>
+    ${LS2.n ? "" : `<p class="note" style="margin:0">Load <span class="num">index.json</span> or <span class="num">picks.csv</span> to fill this in from your report's history.</p>`}</div>`;
+}
+function niceTicks(lo, hi, count=4){
+  if(lo === hi){ lo -= 1; hi += 1; }
+  const span = hi - lo, step0 = span / count, mag = 10 ** Math.floor(Math.log10(step0)), err = step0/mag;
+  const step = (err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1) * mag;
+  const t0 = Math.floor(lo/step)*step, t1 = Math.ceil(hi/step)*step, ticks = [];
+  for(let v=t0; v<=t1+step/2; v+=step) ticks.push(Math.round(v*100)/100);
+  return ticks;
+}
+function drawChart(el, pts){
+  if(!el) return;
+  if(pts.length < 2){ el.innerHTML = `<p class="muted small" style="margin:12px 0">The chart appears after your first entry settles.</p>`; return; }
+  const W=720, H=260, m={l:58, r:84, t:14, b:30};
+  const vals = pts.flatMap(p => [p.a, p.e]); const ticks = niceTicks(Math.min(0,...vals), Math.max(0,...vals));
+  const y0 = ticks[0], y1 = ticks[ticks.length-1];
+  const X = i => m.l + (W-m.l-m.r) * i/(pts.length-1), Y = v => m.t + (H-m.t-m.b) * (1 - (v-y0)/(y1-y0));
+  const path = k => pts.map((p,i)=>`${i?"L":"M"}${X(i).toFixed(1)},${Y(p[k]).toFixed(1)}`).join("");
+  const last = pts[pts.length-1]; let la = Y(last.a), le = Y(last.e); if(Math.abs(la-le) < 16){ if(la<le){ la-=8; le+=8;} else { la+=8; le-=8; } }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative actual profit compared with expected profit across settled entries">
+    ${ticks.map(t=>`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--grid)" stroke-width="1"/><text x="${m.l-8}" y="${Y(t)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">${t<0?"−":""}$${Math.abs(t).toLocaleString()}</text>`).join("")}
+    <line x1="${m.l}" x2="${W-m.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>
+    <path d="${path("e")}" fill="none" stroke="var(--s-exp)" stroke-width="2" stroke-dasharray="6 5" stroke-linejoin="round"/>
+    <path d="${path("a")}" fill="none" stroke="var(--s-actual)" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="${X(pts.length-1)}" cy="${Y(last.a)}" r="4" fill="var(--s-actual)" stroke="var(--panel)" stroke-width="2"/>
+    <text x="${W-m.r+8}" y="${la+4}" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--ink)">Actual ${money(last.a,true)}</text>
+    <text x="${W-m.r+8}" y="${le+4}" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--muted)">Exp. ${money(last.e,true)}</text>
+    <text x="${m.l}" y="${H-8}" font-size="11" fill="var(--muted)" font-family="IBM Plex Sans, sans-serif">${esc(pts[1].label)}</text>
+    <text x="${W-m.r}" y="${H-8}" font-size="11" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Sans, sans-serif">${esc(last.label)} · entry ${pts.length-1}</text>
+    <line id="cx" x1="0" x2="0" y1="${m.t}" y2="${H-m.b}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>
+    <rect x="${m.l}" y="${m.t}" width="${W-m.l-m.r}" height="${H-m.t-m.b}" fill="transparent" id="hit"/></svg><div class="tip" hidden></div>`;
+  const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), cx = el.querySelector("#cx");
+  const move = ev => { const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(pts.length-1, Math.round((sx-m.l)/(W-m.l-m.r)*(pts.length-1)))); const p = pts[i];
+    cx.setAttribute("x1", X(i)); cx.setAttribute("x2", X(i)); cx.setAttribute("visibility","visible");
+    tip.hidden = false; tip.innerHTML = `<b>${i ? "After entry "+i : "Start"}</b>${p.name?` · ${esc(p.name)}`:""}<br><span style="color:var(--s-actual)">●</span> Actual <span class="num">${money(p.a,true)}</span><br><span style="color:var(--s-exp)">●</span> Expected <span class="num">${money(p.e,true)}</span><br><span class="muted">${esc(p.label)}</span>`;
+    const px = X(i) * r.width / W; tip.style.left = Math.min(Math.max(px - tip.offsetWidth/2, 0), r.width - tip.offsetWidth) + "px"; tip.style.top = "0px"; };
+  svg.addEventListener("pointermove", move); svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerleave", () => { tip.hidden = true; cx.setAttribute("visibility","hidden"); });
+}
+
+/* ---------- board ---------- */
+function slipKey(s){ return (S.board?.generated_at||"") + "|" + s.name + "|" + s.num; }
+function legLine(l){ return `<li><span class="side ${l.side}">${l.side}</span><span>${esc(l.player)}</span><span class="meta">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span>${l.exact===0?' · est. line':''}${l.sharp===false?' · no sharp':''}</span>${l.injury?`<span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}</li>`; }
+function renderBoard(){
+  const el = $("#boardOut"), B = S.board;
+  if(!B){ el.innerHTML = S.mode === "db" && !S.isOwner ? `<div class="panel empty"><h3>No picks yet</h3><p class="muted" style="margin:0">The app owner hasn't loaded today's picks. Check back later.</p></div>` : (S.mode !== "db" ? `<div class="panel empty"><h3>Loading today's picks…</h3><p class="muted" style="margin:0;max-width:56ch">They come from your site's latest run. If this doesn't fill in, check your connection and reopen the app.</p></div>` : `<div class="panel empty"><h3>No picks loaded</h3><p class="muted" style="margin:0;max-width:56ch">Open your daily report, click <b>Download app data (JSON)</b> under the track record, then choose that file above. Your daily GitHub run creates it each time it runs.</p></div>`); return; }
+  const logged = new Set(S.bets.map(b => b.sourceKey).filter(Boolean));
+  const card = (s, isPlay) => { const es = entryStats(s.name, s.legs.map(l=>+l.fair), s.dist); const sg = suggestStake(es.kelly); const k = slipKey(s); const done = logged.has(k);
+    return `<div class="card ${done?"logged":""}" data-slip="${esc(k)}"><div class="hd"><b>${esc(s.name)} <span class="muted">#${s.num}</span></b><span class="chip ${es.E>1?"good":"bad"}">${pct(es.E-1,1,true)} EV</span></div>
+      <ol class="legs">${s.legs.map(legLine).join("")}</ol>
+      <div class="statgrid small"><div><span class="l">Profit</span><span class="v">${pct(es.profit,0)}</span></div><div><span class="l">Stake back</span><span class="v">${pct(es.cash,0)}</span></div><div><span class="l">Kelly</span><span class="v">${pct(es.kelly,1)}</span></div></div>
+      ${s.corr?'<p class="note" style="margin:0">Same-game correlation included in the odds.</p>':""}
+      <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num stakeIn" inputmode="decimal" value="${sg.stake}"></label>
+      <button class="btn ${done?"":"primary"} logBtn" style="align-self:flex-end">${done?"Log again":"Log entry"}</button></div>
+      <div class="warnOut small" style="color:var(--warn)"></div>
+      ${done?'<span class="chip gold" style="align-self:flex-start">Logged</span>':""}</div>`; };
+  const sports = [...new Set(B.props.map(p=>p.sport))];
+  const sf = el.querySelector("#propSport")?.value || "";
+  const props = B.props.filter(p => !sf || p.sport === sf).slice(0, 60);
+  el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:baseline"><h3>Plays from the ${esc(timeOf(B.generated_at))} run</h3><span class="muted small">Break-even per leg on a ${esc(B.entry)}: <span class="num">${pct(B.breakeven,2)}</span></span></div>
+    ${B.notes?`<p class="note" style="margin:0">${esc(B.notes)}</p>`:""}
+    ${(Date.now() - new Date(B.generated_at)) > 18*36e5 ? `<div class="alert warn">${icon.warn}<span>These picks are from ${esc(timeOf(B.generated_at))}. Load the latest file before playing them.</span></div>` : ""}
+    ${B.loadedBy === "sync" ? `<p class="note" style="margin:0">Loaded automatically from your GitHub repo ${esc(timeOf(B.loadedAt))}.</p>` : ""}
+    ${B.tuning && B.tuning.applied ? `<p class="note" style="margin:0">Discounts tuned from ${B.tuning.n} of your graded legs: legs with no sharp book keep ${pct(B.tuning.no_sharp,0)} of their edge, estimated lines ${pct(B.tuning.est_only,0)}.</p>` : ""}
+    ${B.plays.length ? `<div class="cards">${B.plays.map(s=>card(s,true)).join("")}</div>` : `<div class="panel"><p style="margin:0">No positive plays in this run. Sitting out is the right call.</p></div>`}
+    <p class="note" style="margin:0">Suggested stakes use your current bankroll and limits, not the report's. Recheck each line in PrizePicks before entering; if a line moved, the EV here no longer applies.</p>
+    ${B.slips.length?`<details class="panel"><summary style="cursor:pointer;font-weight:600">Other slips (${B.slips.length})</summary><div class="cards" style="margin-top:12px">${B.slips.map(s=>card(s,false)).join("")}</div></details>`:""}
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Top props by edge</h3>
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px">Sport<select id="propSport"><option value="">All</option>${sports.map(s=>`<option ${s===sf?"selected":""} value="${esc(s)}">${esc(s.toUpperCase())}</option>`).join("")}</select></label></div>
+      <div class="scroll"><table><thead><tr><th>Prop</th><th>Pick</th><th class="r">Fair</th><th class="r">Edge</th><th class="r">Books</th></tr></thead><tbody>
+      ${props.map(p=>`<tr><td><b>${esc(p.player)}</b><div class="muted small">${esc(p.sport.toUpperCase())} · ${esc(p.stat)} ${+p.line} · ${esc(timeOf(p.start))}</div></td><td class="side ${p.side}">${p.side}</td><td class="r num">${pct(+p.fair)}</td><td class="r"><span class="chip ${p.edge>=0.01?"good":p.edge>=0?"warn":"bad"}">${pct(p.edge,1,true)}</span></td><td class="r num">${p.books}${p.sharp?"":" <span class='muted small'>no sharp</span>"}</td></tr>`).join("")}
+      </tbody></table></div></div>
+    ${(B.alts||[]).length ? `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">Goblins and demons</h3>
+      <p class="note" style="margin:0">Alternate lines, MORE only. Their payouts change with the entry, so add the payout PrizePicks shows you as a custom entry under Bankroll &amp; settings, then price it in the EV calculator. Compare each fair % with that entry's break-even.</p>
+      <div class="scroll"><table><thead><tr><th>Type</th><th>Prop</th><th class="r">Fair MORE</th><th class="r">Books</th></tr></thead><tbody>
+      ${B.alts.slice(0,40).map(a=>`<tr><td><span class="chip ${a.tier==="goblin"?"good":"warn"}">${esc(a.tier)}</span></td><td><b>${esc(a.player)}</b><div class="muted small">${esc(a.sport.toUpperCase())} · ${esc(a.stat)} ${+a.line} · ${esc(timeOf(a.start))}</div></td><td class="r num">${pct(+a.fair)}</td><td class="r num">${a.books}</td></tr>`).join("")}
+      </tbody></table></div></div>` : ""}`;
+  el.querySelectorAll("[data-slip]").forEach(c => {
+    const k = c.dataset.slip; const s = [...B.plays, ...B.slips].find(x => slipKey(x) === k); const inp = c.querySelector(".stakeIn"), w = c.querySelector(".warnOut"), btn = c.querySelector(".logBtn");
+    const upd = () => { const ws = stakeWarnings(num(inp.value)||0); w.textContent = ws.join(" "); btn.dataset.armed = ""; btn.textContent = c.classList.contains("logged") ? "Log again" : "Log entry"; };
+    inp.addEventListener("input", upd); upd();
+    btn.addEventListener("click", async () => {
+      const stake = num(inp.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
+      const ws = stakeWarnings(stake);
+      if(ws.length && !btn.dataset.armed){ btn.dataset.armed = "1"; btn.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
+      const es = entryStats(s.name, s.legs.map(l=>+l.fair), s.dist);
+      await logEntry({kind:"pp", entry:s.name, stake, E:es.E, V:es.V, cash:es.cash, source:"report", sourceKey:k,
+        legs: s.legs.map(l=>({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||""}))});
+    });
+  });
+  el.querySelector("#propSport")?.addEventListener("change", renderBoard);
+}
+
+/* ---------- bets ---------- */
+function renderBets(){
+  const el = $("#betList"); const f = S.betFilter;
+  const list = S.bets.filter(b => f === "all" || (f === "open" ? b.status !== "settled" : b.status === "settled"))
+    .sort((a,b)=> (b.placedAt||"").localeCompare(a.placedAt||""));
+  if(!list.length){ el.innerHTML = `<div class="panel empty"><h3>${f==="open"?"No open entries":f==="settled"?"Nothing settled yet":"No entries yet"}</h3><p class="muted" style="margin:0">Log entries from <b>Today's picks</b> or the <b>EV calculator</b>.</p></div>`; return; }
+  el.innerHTML = list.map(b => {
+    const ev = b.stake*(b.E-1); const graded = b.kind==="pp" ? b.legs.filter(l=>GRADED.includes(l.result)).length : (b.result?1:0); const total = b.kind==="pp" ? b.legs.length : 1;
+    const status = b.status==="settled" ? `<span class="chip ${b.profit>0?"good":b.profit<0?"bad":"plain"}">${money(b.profit,true)}</span>` : `<span class="chip plain">${graded}/${total} graded</span>`;
+    const legsHtml = b.kind==="pp" ? b.legs.map((l,i)=>`<div class="betleg"><div><span class="side ${l.side}">${l.side}</span> ${esc(l.player)} <span class="muted small">${esc(l.stat||"")} ${l.line??""} · fair ${pct(+l.fair)}${l.actual!==undefined&&l.actual!==""?` · actual ${esc(l.actual)}`:""}${l.clv!=null&&l.clv!==""?` · CLV ${(l.clv>0?"+":"")+(l.clv*100).toFixed(1)}`:""}${l.auto?" · auto-graded":""}</span>${!GRADED.includes(l.result)&&l.injury?` <span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${!GRADED.includes(l.result)&&l.ppLineNow?` <span class="chip warn">line now ${esc(l.ppLineNow)}</span>`:""}</div>
+        <div class="res" role="group" aria-label="Result for ${esc(l.player)}">${GRADED.map(r=>`<button class="${r}" aria-pressed="${l.result===r}" data-bet="${b.id}" data-leg="${i}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`).join("")
+      : `<div class="betleg"><div>${esc(b.label)} <span class="muted small">at ${b.odds>0?"+":""}${b.odds} · fair ${pct(b.fair)}</span></div><div class="res" role="group" aria-label="Result">${["win","loss","push"].map(r=>`<button class="${r}" aria-pressed="${b.result===r}" data-bet="${b.id}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`;
+    return `<details class="bet" ${S.openBet===b.id?"open":""} data-id="${b.id}"><summary><div><b>${esc(betTitle(b))}</b> <span class="muted small">${shortDate(b.date)} · ${esc(betSport(b))}</span><div class="small muted num">${money(b.stake)} stake · EV ${money(ev,true)} (${pct(b.E-1,1,true)})</div></div><div class="betside">${status}<button class="btn danger delquick" data-del="${b.id}" data-label="Delete" aria-label="Delete ${esc(betTitle(b))} from ${shortDate(b.date)}">Delete</button></div></summary>
+      <div class="body">${legsHtml}
+      <div class="row" style="justify-content:space-between"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Stake ($)<input class="num" style="width:110px" data-stake="${b.id}" value="${b.stake}" inputmode="decimal"></label>
+      <button class="btn danger" data-del="${b.id}">Delete entry</button></div></div></details>`;
+  }).join("");
+}
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button"); if(!t) return;
+  if(t.dataset.go){ setTab(t.dataset.go); return; }
+  if(t.dataset.sim){ S.simMult = +t.dataset.sim; $("#simMult").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b === t)); renderSim(); return; }
+  if(t.dataset.delEntry){ const k = t.dataset.delEntry;
+    if(!t.dataset.armed){ t.dataset.armed = "1"; t.textContent = "Tap again to remove"; return; }
+    delete S.settings.payouts[k]; await store.saveSettings().catch(dbError); buildCalc(); renderSettings(true); toast(`Removed ${k}`); return; }
+  if(t.dataset.r && t.dataset.bet){
+    const b = clone(S.bets.find(x=>x.id===t.dataset.bet)); if(!b) return; S.openBet = b.id;
+    if(t.dataset.leg !== undefined){ const l = b.legs[+t.dataset.leg]; l.result = l.result === t.dataset.r ? "" : t.dataset.r; l.auto = false; }
+    else b.result = b.result === t.dataset.r ? "" : t.dataset.r;
+    const was = b.status; finalize(b); try { await store.saveBet(b); if(b.status==="settled" && was!=="settled") toast(`Settled: ${money(b.profit,true)}`); } catch(err){ dbError(err); }
+    return;
+  }
+  if(t.dataset.del){
+    e.preventDefault();   // a Delete button inside an entry's header shouldn't also open or close it
+    if(t.dataset.armed){ try { await store.delBet(t.dataset.del); toast("Entry deleted"); } catch(err){ dbError(err); } return; }
+    t.dataset.armed = "1"; t.textContent = "Tap again to delete"; const label = t.dataset.label || "Delete entry";
+    setTimeout(()=>{ if(t.isConnected){ t.dataset.armed=""; t.textContent = label; } }, 4000); return;
+  }
+});
+document.addEventListener("change", async e => {
+  const i = e.target.closest("[data-stake]"); if(!i) return;
+  const b = clone(S.bets.find(x=>x.id===i.dataset.stake)); const v = num(i.value); if(!b || !(v>0)) return;
+  b.stake = v; S.openBet = b.id; finalize(b); if(b.status==="settled") b.profit = Math.round(b.stake*(b.ret-1)*100)/100; await store.saveBet(b).catch(dbError);
+});
+document.addEventListener("toggle", e => { const d = e.target; if(d.classList?.contains("bet") && d.open) S.openBet = d.dataset.id; }, true);
+
+/* ---------- calculator ---------- */
+const EXAMPLE_LEGS = [["Example leg 1","-128","+104","MORE"],["Example leg 2","-122","-102","MORE"],["Example leg 3","+100","-124","LESS"],["Example leg 4","-125","+101","MORE"],["Example leg 5","-118","-106","MORE"],["Example leg 6","-115","-109","MORE"]];
+function buildCalc(){
+  const sel = $("#cEntry"), cur = sel.value && S.settings.payouts[sel.value] ? sel.value : "5-Pick Flex";
+  sel.innerHTML = Object.keys(S.settings.payouts).map(k=>`<option ${k===cur?"selected":""}>${esc(k)}</option>`).join("");
+  syncCalcRows();
+}
+function syncCalcRows(){
+  const n = payTable($("#cEntry").value).n, box = $("#cLegs");
+  while(box.children.length < n){ const i = box.children.length; const ex = EXAMPLE_LEGS[i] || ["Leg "+(i+1),"","","MORE"];
+    const d = document.createElement("div"); d.className = "calc-leg"; d.innerHTML = `
+      <label class="f who">Leg ${i+1}<input id="cl-who-${i}" value="${esc(ex[0])}"></label>
+      <label class="f">Over odds<input class="num" id="cl-o-${i}" value="${ex[1]}" inputmode="numeric"></label>
+      <label class="f">Under odds<input class="num" id="cl-u-${i}" value="${ex[2]}" inputmode="numeric"></label>
+      <label class="f">Your pick<select id="cl-s-${i}"><option ${ex[3]==="MORE"?"selected":""}>MORE</option><option ${ex[3]==="LESS"?"selected":""}>LESS</option></select></label>
+      <label class="f">Fair % (optional)<input class="num" id="cl-f-${i}" inputmode="decimal" placeholder="auto"></label>
+      <div class="fair-out" id="cl-out-${i}">–</div>`; box.appendChild(d); }
+  while(box.children.length > n) box.lastChild.remove();
+  renderCalcOut();
+}
+function calcLegs(){
+  const n = payTable($("#cEntry").value).n, dv = $("#cDevig").value === "mult" ? devigMult : devigPower, out = [];
+  for(let i=0;i<n;i++){
+    const o = num($("#cl-o-"+i).value), u = num($("#cl-u-"+i).value), side = $("#cl-s-"+i).value, f = num($("#cl-f-"+i).value);
+    let p = NaN; if(fin(f) && f > 0 && f < 100) p = f/100;
+    else if(fin(o) && fin(u) && Math.abs(o) >= 100 && Math.abs(u) >= 100){ const po = dv(americanToProb(o), americanToProb(u)); p = side==="MORE" ? po : 1-po; }
+    $("#cl-out-"+i).textContent = fin(p) ? pct(p) : "–";
+    out.push({player: $("#cl-who-"+i).value.trim() || "Leg "+(i+1), side, fair: p});
+  }
+  return out;
+}
+function renderCalcOut(){
+  if(!$("#cEntry").value) return;
+  const name = $("#cEntry").value, legs = calcLegs(), el = $("#cOut"), be = breakeven(name);
+  if(legs.some(l => !fin(l.fair))){ el.innerHTML = `<h3>Result</h3><p class="muted">Enter over and under odds, or a fair %, for every leg.</p><p class="note">Break-even per leg on a ${esc(name)}: <span class="num">${pct(be,2)}</span></p>`; return; }
+  const es = entryStats(name, legs.map(l=>l.fair)), t = payTable(name), sg = suggestStake(es.kelly);
+  const keep = el.querySelector("#cStake")?.value;
+  el.innerHTML = `<h3>Result</h3>
+    <div class="row" style="align-items:baseline;gap:8px"><span class="bignum ${cls(es.E-1)}">${pct(es.E-1,1,true)}</span><span class="muted">expected return per entry</span></div>
+    <div class="statgrid" style="margin-top:12px"><div><span class="l">Chance of profit</span><span class="v">${pct(es.profit,1)}</span></div><div><span class="l">Stake back or more</span><span class="v">${pct(es.cash,1)}</span></div>
+      <div><span class="l">Break-even per leg</span><span class="v">${pct(be,2)}</span></div><div><span class="l">Avg leg fair</span><span class="v">${pct(legs.reduce((s,l)=>s+l.fair,0)/legs.length,2)}</span></div></div>
+    <div class="scroll" style="margin-top:12px"><table style="min-width:0"><thead><tr><th>Hits</th><th class="r">Chance</th><th class="r">Pays</th></tr></thead><tbody>
+      ${es.d.map((p,k)=>({p,k})).reverse().filter(x=>x.k>=t.n-3||t.pay[x.k]).map(x=>`<tr><td>${x.k} of ${t.n}</td><td class="r num">${pct(x.p,1)}</td><td class="r num">${t.pay[x.k]?t.pay[x.k]+"×":"0"}</td></tr>`).join("")}</tbody></table></div>
+    ${es.E > 1 ? `<p class="small" style="margin:12px 0 0">Suggested stake: <b class="num">${money(sg.stake)}</b> <span class="muted">(${pct(es.kelly,1)} full Kelly, scaled to your settings)</span></p>`
+      : `<p class="small neg" style="margin:12px 0 0">This entry loses money on average. Skip it or swap legs.</p>`}
+    <div class="row" style="margin-top:10px"><label class="f" style="flex:1">Stake ($)<input class="num" id="cStake" inputmode="decimal" value="${keep ?? (sg.stake||"")}"></label><button class="btn primary" id="cLog" style="align-self:flex-end">Log entry</button></div>
+    <div class="small" id="cWarn" style="color:var(--warn)"></div>`;
+  const stakeIn = el.querySelector("#cStake"), w = el.querySelector("#cWarn"), btn = el.querySelector("#cLog");
+  const upd = () => { w.textContent = stakeWarnings(num(stakeIn.value)||0).join(" "); btn.dataset.armed = ""; btn.textContent = "Log entry"; };
+  stakeIn.addEventListener("input", upd); upd();
+  btn.addEventListener("click", async () => { const stake = num(stakeIn.value); if(!(stake>0)){ w.textContent = "Enter a stake above $0."; return; }
+    const ws = stakeWarnings(stake); if(ws.length && !btn.dataset.armed){ btn.dataset.armed="1"; btn.textContent="Log anyway"; w.textContent = ws.join(" ")+" Tap again to log it anyway."; return; }
+    await logEntry({kind:"pp", entry:name, stake, E:es.E, V:es.V, cash:es.cash, source:"calculator", legs: legs.map(l=>({player:l.player, side:l.side, fair:l.fair, stat:"", line:"", result:""}))}); btn.dataset.armed=""; btn.textContent="Log entry"; });
+}
+function renderBookOut(){
+  const el = $("#bOut"); const odds = num($("#bOdds").value), a = num($("#bSharpA").value), b = num($("#bSharpB").value), f = num($("#bFair").value);
+  let p = NaN; if(fin(f) && f>0 && f<100) p = f/100; else if(fin(a) && fin(b) && Math.abs(a)>=100 && Math.abs(b)>=100) p = devigPower(americanToProb(a), americanToProb(b));
+  if(!fin(p) || !fin(odds) || Math.abs(odds) < 100){ el.innerHTML = `<h3>Result</h3><p class="muted">Enter your odds and the sharp odds for both sides, or a fair %.</p>`; return; }
+  const bs = bookStats(odds, p), sg = suggestStake(bs.kelly), keep = el.querySelector("#bStake")?.value;
+  el.innerHTML = `<h3>Result</h3>
+    <div class="row" style="align-items:baseline;gap:8px"><span class="bignum ${cls(bs.E-1)}">${pct(bs.E-1,1,true)}</span><span class="muted">expected return per bet</span></div>
+    <div class="statgrid" style="margin-top:12px"><div><span class="l">Fair win chance</span><span class="v">${pct(p,1)}</span></div><div><span class="l">Break-even</span><span class="v">${pct(1/bs.D,1)}</span></div><div><span class="l">Full Kelly</span><span class="v">${pct(bs.kelly,1)}</span></div></div>
+    ${bs.E>1?`<p class="small" style="margin:12px 0 0">Suggested stake: <b class="num">${money(sg.stake)}</b></p>`:`<p class="small neg" style="margin:12px 0 0">No edge at these odds.</p>`}
+    <div class="row" style="margin-top:10px"><label class="f" style="flex:1">Stake ($)<input class="num" id="bStake" inputmode="decimal" value="${keep ?? (sg.stake||"")}"></label><button class="btn primary" id="bLog" style="align-self:flex-end">Log bet</button></div>
+    <div class="small" id="bWarn" style="color:var(--warn)"></div>`;
+  const si = el.querySelector("#bStake"), w = el.querySelector("#bWarn"), btn = el.querySelector("#bLog");
+  const upd = () => { w.textContent = stakeWarnings(num(si.value)||0).join(" "); btn.dataset.armed=""; btn.textContent="Log bet"; }; si.addEventListener("input", upd); upd();
+  btn.addEventListener("click", async () => { const stake = num(si.value); if(!(stake>0)){ w.textContent="Enter a stake above $0."; return; }
+    const ws = stakeWarnings(stake); if(ws.length && !btn.dataset.armed){ btn.dataset.armed="1"; btn.textContent="Log anyway"; w.textContent = ws.join(" ")+" Tap again to log it anyway."; return; }
+    await logEntry({kind:"book", label: $("#bLabel").value.trim() || "Sportsbook bet", odds, fair:p, stake, E:bs.E, V:bs.V, cash:bs.cash, result:"", source:"calculator"}); });
+}
+["#cEntry"].forEach(s => $(s).addEventListener("change", syncCalcRows));
+$("#cDevig").addEventListener("change", renderCalcOut);
+$("#cLegs").addEventListener("input", renderCalcOut); $("#cLegs").addEventListener("change", renderCalcOut);
+["#bOdds","#bSharpA","#bSharpB","#bFair"].forEach(s => $(s).addEventListener("input", renderBookOut));
+$("#calcMode").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; S.calcMode = b.dataset.m;
+  $("#calcMode").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); $("#calcPP").hidden = S.calcMode !== "pp"; $("#calcBook").hidden = S.calcMode !== "book"; renderBookOut(); });
+
+/* ---------- settings ---------- */
+const SET_FIELDS = [["#sBank","startBankroll",1],["#sMax","maxPct",100],["#sDay","dayCapPct",100],["#sDStop","dailyStop",100],["#sWStop","weeklyStop",100]];
+function renderSettings(force){
+  const box = $("#view-settings"); if(!force && box.contains(document.activeElement) && document.activeElement.matches("input,select")) return;
+  const st = S.settings; for(const [sel,k,mul] of SET_FIELDS) $(sel).value = +(st[k]*mul).toFixed(2); $("#sKelly").value = String(st.kellyMult);
+  $("#payEdit").innerHTML = Object.entries(st.payouts).map(([k,v])=>`<div class="f" style="gap:4px"><label class="f" for="pay-${esc(k).replace(/\W/g,"_")}">${esc(k)}${v.custom?` <span class="muted">· ${esc(v.family||"custom")}</span>`:""}</label>
+    <input class="num" id="pay-${esc(k).replace(/\W/g,"_")}" data-pay="${esc(k)}" value="${Object.entries(v.pay).sort((a,b)=>b[0]-a[0]).map(([h,m])=>h+":"+m).join(", ")}">
+    ${v.custom?`<button class="btn danger" style="min-height:36px;padding:4px 10px;align-self:flex-start" data-del-entry="${esc(k)}">Remove</button>`:""}</div>`).join("");
+}
+$("#view-settings").addEventListener("change", async e => {
+  const t = e.target; const st = S.settings;
+  for(const [sel,k,mul] of SET_FIELDS) if(t.matches(sel)){ const v = num(t.value); if(fin(v) && v >= 0) st[k] = v/mul; }
+  if(t.matches("#sKelly")) st.kellyMult = +t.value;
+  if(t.closest("#addEntry")) return;
+  if(t.dataset.pay){ const pay = {}; for(const part of t.value.split(",")){ const [h,m] = part.split(":").map(s=>num(s)); if(fin(h) && fin(m)) pay[h] = m; }
+    if(Object.keys(pay).length) st.payouts[t.dataset.pay] = {...st.payouts[t.dataset.pay], pay}; }
+  try { await store.saveSettings(); toast("Settings saved"); } catch(err){ dbError(err); }
+  buildCalc();
+});
+function parsePay(text){ const pay = {}; for(const part of String(text).split(",")){ const [h,m] = part.split(":").map(x => num(x)); if(fin(h) && fin(m) && h >= 0) pay[h] = m; } return pay; }
+$("#neAdd").addEventListener("click", async () => {
+  const name = $("#neName").value.trim(), fam = $("#neFamily").value.trim(), n = Math.round(num($("#nePicks").value)), pay = parsePay($("#nePay").value), note = $("#neNote");
+  if(!name){ note.textContent = "Give the entry a name."; return; }
+  if(S.settings.payouts[name] && !S.settings.payouts[name].custom){ note.textContent = "That name is a built-in PrizePicks entry. Pick another name."; return; }
+  if(!(n >= 2 && n <= 12)){ note.textContent = "Number of picks must be between 2 and 12."; return; }
+  if(!Object.keys(pay).length || Object.keys(pay).some(h => +h > n)){ note.textContent = `Enter payouts like ${n}:6, with hits no higher than ${n}.`; return; }
+  S.settings.payouts[name] = {n, pay, family: fam || "Custom: " + name, custom: true};
+  await store.saveSettings().catch(dbError); note.textContent = ""; ["#neName","#neFamily","#nePicks","#nePay"].forEach(s => $(s).value = "");
+  buildCalc(); renderSettings(true); toast(`Added ${name}`);
+});
+$("#nePreset").addEventListener("click", async () => {
+  // Underdog's standard (all-must-hit) payouts as commonly listed; they change, so check them in the app.
+  [[2,3],[3,6],[4,10],[5,20]].forEach(([n,m]) => S.settings.payouts[`Underdog ${n}-Pick Standard`] = {n, pay:{[n]:m}, family:"Underdog Standard", custom:true});
+  await store.saveSettings().catch(dbError); buildCalc(); renderSettings(true);
+  $("#neNote").textContent = "Added. Check these payouts against the Underdog app and edit them above if they differ.";
+});
+async function saveFile(filename, data){
+  let dl = null; try { dl = window.claude ? await window.claude.use("downloads") : null; } catch(e){ dl = null; }
+  if(dl){ try { await dl.save({filename, data}); } catch(e){ if(e.code !== "declined") toast("Couldn't save the file."); } return; }
+  const type = filename.endsWith(".csv") ? "text/csv" : "application/json";
+  const url = URL.createObjectURL(new Blob([data], {type}));
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+$("#exportBtn").addEventListener("click", () => saveFile(`edge-finder-backup-${today()}.json`, JSON.stringify({app:"edge-finder-backup", exportedAt:new Date().toISOString(), settings:S.settings, bets:S.bets}, null, 1)));
+$("#exportCsv").addEventListener("click", () => {
+  const q = v => `"${String(v??"").replace(/"/g,'""')}"`;
+  const rows = [["date","entry","sport","stake","expected_return_pct","status","profit","legs"].join(",")].concat(
+    S.bets.sort((a,b)=>(a.placedAt||"").localeCompare(b.placedAt||"")).map(b => [b.date, betTitle(b), betSport(b), b.stake, ((b.E-1)*100).toFixed(2), b.status, b.profit??"",
+      b.kind==="pp" ? b.legs.map(l=>`${l.side} ${l.player} ${l.stat||""} ${l.line??""} (${l.result||"open"})`).join("; ") : `${b.odds} (${b.result||"open"})`].map(q).join(",")));
+  saveFile(`edge-finder-bets-${today()}.csv`, rows.join("\n"));
+});
+
+/* ---------- import wiring ---------- */
+$("#fileIn").addEventListener("change", async e => { const f = e.target.files[0]; if(f) await importText(await f.text(), f.name); e.target.value = ""; });
+$("#pasteBtn").addEventListener("click", () => importText($("#pasteIn").value));
+const drop = $("#drop");
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("on"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("on"));
+drop.addEventListener("drop", async e => { e.preventDefault(); drop.classList.remove("on"); const f = e.dataTransfer.files[0]; if(f) await importText(await f.text(), f.name); });
+
+/* ---------- people ---------- */
+async function renderPeople(){
+  const el = $("#peopleList"); if(!el) return;
+  const list = S.members.slice().sort((a,b) => (b.lastSeen||"").localeCompare(a.lastSeen||""));
+  if(!list.length){ el.innerHTML = `<p class="muted small" style="margin:0">Nobody else yet. People appear here after they open the app.</p>`; return; }
+  const ps = S.user ? await S.user.profiles(list.map(m => m.id)) : {};
+  el.innerHTML = `<div class="scroll"><table style="min-width:0"><thead><tr><th>Person</th><th class="r">Joined</th><th class="r">Last opened</th></tr></thead><tbody>${list.map(m => {
+    const p = ps[m.id] || {}; const you = m.id === S.uid;
+    return `<tr><td><span class="pname"></span>${you ? ' <span class="chip plain">you</span>' : ""}${p.guest ? ' <span class="chip plain">outside guest</span>' : ""}</td>
+      <td class="r num">${esc(shortDate(dayOf(m.firstSeen)))}</td><td class="r num">${esc(ago(m.lastSeen))}</td></tr>`; }).join("")}</tbody></table></div>`;
+  el.querySelectorAll(".pname").forEach((n, i) => { const p = ps[list[i].id] || {}; n.textContent = p.name || "Someone"; });
+}
+
+/* ---------- tabs ---------- */
+const TABS = ["dash","picks","bets","calc","settings","people"];
+function setTab(t){ if(!TABS.includes(t) || (t === "people" && !S.isOwner)) t = "dash"; S.tab = t;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  TABS.forEach(x => $("#view-"+x).hidden = x !== t); renderAll(); window.scrollTo(0,0); }
+$(".tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
+$("#betFilter").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; S.betFilter = b.dataset.f;
+  $("#betFilter").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderBets(); });
+
+buildCalc();
+setTab((location.hash || "").slice(1) || "dash");
+boot();
+</script>
+
+</body></html>
