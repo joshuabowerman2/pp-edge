@@ -1,0 +1,33 @@
+# Fly.io deploy: `fly launch --copy-config --no-deploy`, `fly volumes create edge_data --size 3`,
+# set secrets (see README), then `fly deploy`. One small machine (shared-cpu-1x, 512 MB) is enough.
+app = "edge-engine"
+primary_region = "dfw"
+
+[build]
+
+[env]
+  SPORTS = "nba nhl"
+  REPORT_TZ = "America/Chicago"
+  SECURE_COOKIES = "1"
+
+[[mounts]]
+  source = "edge_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"     # the engine must keep running to poll prices
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "20s"
+    interval = "30s"
+    method = "GET"
+    path = "/healthz"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

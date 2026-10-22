@@ -1,0 +1,144 @@
+"""The public track record: every pick, hash-verified, with calibration, CLV and the model's
+paper portfolio. Written as a static page and served by the web app."""
+import csv
+import io
+import os
+from datetime import datetime, timezone
+
+from . import backtest, tracking
+from .ui import calibration_chart, cls, esc, line_chart, page, pct, pts
+
+BUCKETS = [(.50, .54, "50–54%"), (.54, .57, "54–57%"), (.57, .60, "57–60%"), (.60, .65, "60–65%"), (.65, 1.01, "65%+")]
+
+
+def _summary(rows):
+    g = [r for r in rows if r["result"] in ("hit", "miss")]
+    c = [r["clv"] for r in rows if r["clv"] is not None and r["result"] != ""]
+    n = len(g)
+    hits = sum(r["result"] == "hit" for r in g)
+    exp = sum(r["fair"] for r in g)
+    var = sum(r["fair"] * (1 - r["fair"]) for r in g)
+    return {"n": n, "hits": hits, "hit": hits / n if n else None, "exp": exp / n if n else None,
+            "z": (hits - exp) / var ** 0.5 if var > 0 else None, "clv_n": len(c),
+            "clv": sum(c) / len(c) if c else None, "beat": sum(x > 0 for x in c) / len(c) if c else None}
+
+
+def data(conn):
+    rows = [dict(r) for r in conn.execute("SELECT * FROM picks ORDER BY seq")]
+    ok, n, bad = tracking.verify_chain(conn)
+    seq, head = tracking.chain_head(conn)
+    buckets = []
+    graded = [r for r in rows if r["result"] in ("hit", "miss")]
+    for lo, hi, label in BUCKETS:
+        b = [r for r in graded if lo <= r["fair"] < hi]
+        buckets.append({"label": label, "n": len(b), "hit": sum(r["result"] == "hit" for r in b) / len(b) if b else None,
+                        "exp": sum(r["fair"] for r in b) / len(b) if b else None})
+    groups = {}
+    for r in rows:
+        for key in (("Sport", r["sport"].upper()), ("App", r["app"]), ("Stat", r["stat"])):
+            groups.setdefault(key, []).append(r)
+    ents = [dict(e) for e in conn.execute("SELECT * FROM system_entries WHERE status='settled' ORDER BY settled_at")]
+    idx, curve, staked, profit = 100.0, [100.0], 0.0, 0.0
+    for e in ents:
+        idx *= 1 + e["stake_pct"] * (e["ret"] - 1)
+        curve.append(idx)
+        staked += e["stake_pct"]
+        profit += e["stake_pct"] * (e["ret"] - 1)
+    exp_profit = sum(e["stake_pct"] * (e["ev"] - 1) for e in ents)
+    return {"generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "chain": {"ok": ok, "count": n, "first_bad": bad, "head_seq": seq, "head_hash": head},
+            "all": _summary(rows), "training": _summary([r for r in rows if not r["holdout"]]),
+            "holdout": _summary([r for r in rows if r["holdout"]]), "buckets": buckets,
+            "groups": {f"{k[0]}|{k[1]}": _summary(v) for k, v in groups.items()},
+            "portfolio": {"entries": len(ents), "index": curve, "staked_pct": staked, "profit_pct": profit,
+                          "expected_profit_pct": exp_profit,
+                          "open": conn.execute("SELECT COUNT(*) c FROM system_entries WHERE status='open'").fetchone()["c"]},
+            "backtest": backtest.evaluate(conn, 1)}
+
+
+def csv_text(conn):
+    buf = io.StringIO()
+    cols = ["seq", "id", "created_at", "model_version", "sport", "game_id", "app", "player", "market", "stat", "line",
+            "side", "tier", "start", "fair_market", "fair_proj", "fair", "edge", "holdout", "close_fair", "clv", "result",
+            "actual", "prev_hash", "hash"]
+    w = csv.writer(buf)
+    w.writerow(cols)
+    for r in conn.execute(f"SELECT {', '.join(cols)} FROM picks ORDER BY seq"):
+        w.writerow([r[c] for c in cols])
+    return buf.getvalue()
+
+
+def _kpi(l, v, s):
+    return f'<div class="kpi"><span class="l">{l}</span><span class="v">{v}</span><span class="s">{s}</span></div>'
+
+
+def html(conn, nav=None):
+    d = data(conn)
+    a, h, t, p = d["all"], d["holdout"], d["training"], d["portfolio"]
+    ch = d["chain"]
+    integrity = (f'<div class="alert good"><b>Record verified.</b> All {ch["count"]:,} picks check out against the hash chain.</div>'
+                 if ch["ok"] else f'<div class="alert bad"><b>Record check failed</b> at pick {ch["first_bad"]}. '
+                 f'An earlier pick was changed or removed.</div>')
+    comp = "".join(f'<tr><td>{label}</td><td class="r num">{s["n"]:,}</td><td class="r num">{pct(s["hit"])}</td>'
+                   f'<td class="r num">{pct(s["exp"])}</td><td class="r num {cls((s["hit"] or 0) - (s["exp"] or 0)) if s["n"] else ""}">'
+                   f'{pct((s["hit"] - s["exp"]) if s["n"] else None, 1, True)}</td>'
+                   f'<td class="r num {cls(s["clv"])}">{pts(s["clv"])}</td><td class="r num">{pct(s["beat"], 0)}</td></tr>'
+                   for label, s in (("All picks", a), ("Training picks", t), ("Holdout picks", h)))
+    groups = sorted(d["groups"].items(), key=lambda kv: (kv[0].split("|")[0], -kv[1]["n"]))
+    grows = "".join(f'<tr><td class="muted small">{esc(k.split("|")[0])}</td><td>{esc(k.split("|")[1])}</td>'
+                    f'<td class="r num">{s["n"]:,}</td><td class="r num">{pct(s["hit"])}</td><td class="r num">{pct(s["exp"])}</td>'
+                    f'<td class="r num {cls(s["clv"])}">{pts(s["clv"])}</td></tr>' for k, s in groups if s["n"] or s["clv_n"])
+    bt = d["backtest"]
+    bt_html = ""
+    if bt["all"]["market"]:
+        rows = "".join(f'<tr><td>{esc(name)}</td><td class="r num">{m["n"]:,}</td><td class="r num">{m["log_loss"]:.4f}</td>'
+                       f'<td class="r num">{m["brier"]:.4f}</td></tr>'
+                       for name, m in (("Market price", bt["all"]["market"]), ("Projection", bt["with_projection"]["projection"]),
+                                       ("Final blended price", bt["all"]["final"])) if m)
+        bt_html = (f'<div class="panel"><h2>Holdout test</h2><p class="muted small" style="margin:0 0 8px">One in five picks is set aside '
+                   f'by its hash and never used to fit the models. Lower log loss and Brier score mean better probabilities. '
+                   f'{esc(bt.get("verdict", "").capitalize())}.</p><div class="scroll"><table><thead><tr><th>Price</th><th class="r">Legs</th>'
+                   f'<th class="r">Log loss</th><th class="r">Brier</th></tr></thead><tbody>{rows}</tbody></table></div></div>')
+    body = f"""
+<div><h1>Track record</h1><p class="lead">Every pick the model makes is logged the moment it's made, before the game,
+and never edited afterward. Each pick's hash includes the one before it, so changing or deleting any old pick breaks
+every hash after it. Anyone can download the full log and check it.</p></div>
+{integrity}
+<div class="kpis">
+{_kpi("Picks logged", f'{ch["count"]:,}', f'{a["n"]:,} graded')}
+{_kpi("Hit rate", pct(a["hit"]), f'Expected {pct(a["exp"])}')}
+{_kpi("Closing line value", f'<span class="{cls(a["clv"])}">{pts(a["clv"])} pts</span>', f'Beat the close {pct(a["beat"], 0)}')}
+{_kpi("Model portfolio", f'<span class="{cls(p["profit_pct"])}">{p["index"][-1] - 100:+.1f}%</span>', f'{p["entries"]} entries settled, {p["open"]} open')}
+</div>
+<div class="panel"><h2>Results by set</h2><div class="scroll"><table><thead><tr><th>Set</th><th class="r">Graded</th>
+<th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">CLV (pts)</th><th class="r">Beat close</th>
+</tr></thead><tbody>{comp}</tbody></table></div>
+<p class="muted small" style="margin:8px 0 0">Closing line value compares the sharp-market price when the pick was made with the
+last price before the game. It's the fastest honest test of an edge: consistently positive CLV means the market moved toward the
+picks.</p></div>
+<div class="grid2">
+<div class="panel"><h2>Calibration</h2><p class="muted small" style="margin:0 0 8px">Each dot is a group of picks by fair %.
+On the dashed line, picks hit exactly as often as predicted. Bars show the 95% range for that sample size.</p>
+{calibration_chart(d["buckets"])}</div>
+<div class="panel"><h2>Model portfolio</h2><p class="muted small" style="margin:0 0 8px">The entries the model recommended,
+at the stakes it recommended, starting from 100. Staked {pct(p["staked_pct"])} of bankroll in total; expected profit
+{pct(p["expected_profit_pct"], 1, True)}, actual {pct(p["profit_pct"], 1, True)}.</p>
+{line_chart(p["index"], lambda v: f"{v:.0f}", "Model portfolio value, start 100", "Now", baseline=100)}</div>
+</div>
+{bt_html}
+<div class="panel"><h2>By sport, app and stat</h2><div class="scroll"><table><thead><tr><th>Group</th><th></th><th class="r">Graded</th>
+<th class="r">Hit rate</th><th class="r">Expected</th><th class="r">CLV (pts)</th></tr></thead><tbody>{grows or '<tr><td colspan="6" class="muted">No picks yet.</td></tr>'}</tbody></table></div></div>
+<div class="panel"><h2>Check it yourself</h2><p class="small" style="margin:0 0 6px">Latest pick #{ch["head_seq"]:,}, chain hash:</p>
+<p class="hash">{esc(ch["head_hash"])}</p><p class="small" style="margin:6px 0 0"><a href="picks.csv">Download every pick (CSV)</a>.
+Each row's hash is SHA-256 of the previous hash plus that pick's fields.</p></div>"""
+    return page("Edge Engine Track Record", body, nav, "/results")
+
+
+def write(conn, cfg, path):
+    d = os.path.dirname(path)
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html(conn))
+    with open(os.path.join(d or ".", "picks.csv"), "w", encoding="utf-8", newline="") as f:
+        f.write(csv_text(conn))
