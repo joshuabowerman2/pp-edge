@@ -1,0 +1,37 @@
+name: Daily PrizePicks edge report
+
+on:
+  schedule:
+    - cron: "0 21 * * *"   # 4:00 PM Central in summer, 3:00 PM in winter (GitHub uses UTC)
+  workflow_dispatch:        # lets you run it on demand from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build report
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python prizepicks_edge.py --sports nba nhl --entry "5-Pick Flex" --out site/index --no-open
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
