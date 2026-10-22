@@ -180,7 +180,7 @@ hash-verified record before the game starts.</p>
     def results_page(self, req):
         t, cached = self._results_cache
         if time.time() - t > 300:
-            cached = results.html(self.conn(), self.nav(req))
+            cached = results.html(self.conn(), self.nav(req), self.cfg.tz)
             self._results_cache = (time.time(), cached)
         return Resp(cached)
 

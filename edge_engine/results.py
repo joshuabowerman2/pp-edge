@@ -4,6 +4,7 @@ import csv
 import io
 import os
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from . import backtest, tracking
 from .ui import calibration_chart, cls, esc, line_chart, page, pct, pts
@@ -72,7 +73,118 @@ def _kpi(l, v, s):
     return f'<div class="kpi"><span class="l">{l}</span><span class="v">{v}</span><span class="s">{s}</span></div>'
 
 
-def html(conn, nav=None):
+PICKS_SHOWN = 300
+RESULT_CHIP = {"hit": ("good", "Hit"), "miss": ("bad", "Miss"), "push": ("warn", "Push"), "void": ("warn", "Void"),
+               "unmatched": ("warn", "No stat"), "ungraded": ("warn", "Ungraded")}
+
+PICKS_CSS = """
+.pfilters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.pfilters button{appearance:none;font:600 .85rem var(--body);border:1px solid var(--line);background:var(--panel2);color:var(--muted);
+border-radius:99px;padding:8px 14px;min-height:40px;cursor:pointer}
+.pfilters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.pday{font:700 1.05rem/1.2 var(--display);margin:14px 0 4px;color:var(--muted)}
+.plist{list-style:none;margin:0;padding:0}
+.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.pick .who{font-weight:600;overflow-wrap:anywhere}.pick .what{font-size:.86rem}.pick .meta{font-size:.78rem;color:var(--muted)}
+.pick .right{grid-column:2;grid-row:1 / span 3;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.pick .fair{font:500 .95rem var(--mono)}
+.pempty{display:none;padding:12px 0}
+"""
+
+PICKS_JS = """<script>
+(function(){
+  var root=document.getElementById('picks');if(!root)return;
+  var btns=root.querySelectorAll('.pfilters button'),empty=root.querySelector('.pempty');
+  function apply(f){
+    var shown=0;
+    root.querySelectorAll('.pick').forEach(function(li){
+      var ok=f==='all'||li.dataset.state===f;li.hidden=!ok;if(ok)shown++;});
+    root.querySelectorAll('.pgroup').forEach(function(g){
+      g.hidden=!g.querySelector('.pick:not([hidden])');});
+    empty.style.display=shown?'none':'block';
+    btns.forEach(function(b){b.setAttribute('aria-pressed',b.dataset.f===f?'true':'false');});
+    try{localStorage.setItem('picksFilter',f);}catch(e){}
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);});});
+  var saved='all';try{saved=localStorage.getItem('picksFilter')||'all';}catch(e){}
+  apply(saved);
+})();
+</script>"""
+
+
+def _local(iso, tz, fmt):
+    try:
+        t = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return ""
+    return t.astimezone(tz).strftime(fmt).replace(" 0", " ").lstrip("0")
+
+
+def _p1(x):
+    """Points to one decimal, with no sign on values that round to zero."""
+    if x is None:
+        return "–"
+    v = round(x * 100, 1)
+    return "0.0" if v == 0 else f"{'+' if v > 0 else '−'}{abs(v):.1f}"
+
+
+def _c1(x):
+    return "" if x is None or round(x * 100, 1) == 0 else cls(x)
+
+
+def picks_html(conn, tz, limit=PICKS_SHOWN):
+    """Every logged pick, newest games first, grouped by day, with open/graded filters."""
+    rows = [dict(r) for r in conn.execute(
+        "SELECT seq, sport, app, player, stat, line, side, tier, home, away, start, fair, edge, clv, result, actual "
+        "FROM picks ORDER BY start DESC, seq DESC LIMIT ?", (limit,))]
+    total = conn.execute("SELECT COUNT(*) c FROM picks").fetchone()["c"]
+    if not rows:
+        return '<div class="panel"><h2>Picks</h2><p class="muted">No picks logged yet.</p></div>'
+    n_open = sum(not r["result"] for r in rows)
+    # newest day first, earliest game first within a day
+    def _day(r):
+        return _local(r["start"], tz, "%Y-%m-%d")
+    rows.sort(key=lambda r: (r["start"] or "", r["seq"]))
+    rows.sort(key=_day, reverse=True)
+    groups, order = {}, []
+    for r in rows:
+        day = _local(r["start"], tz, "%A, %b %d") or "Date unknown"
+        if day not in groups:
+            groups[day] = []
+            order.append(day)
+        state = "open" if not r["result"] else "graded"
+        if r["result"] in RESULT_CHIP:
+            c, label = RESULT_CHIP[r["result"]]
+            res = f'<span class="chip {c}">{label}{" · " + esc(r["actual"]) if r["actual"] not in (None, "") else ""}</span>'
+        else:
+            res = f'<span class="chip warn">{esc(r["result"])}</span>' if r["result"] else '<span class="muted small">Pending</span>'
+        tier = f' · {esc(r["tier"])}' if r["tier"] else ""
+        game = f'{esc(r["away"])} @ {esc(r["home"])}' if r["home"] or r["away"] else ""
+        when = _local(r["start"], tz, "%I:%M %p")
+        clv = f' · CLV <span class="{_c1(r["clv"])}">{_p1(r["clv"])}</span>' if r["clv"] is not None else ""
+        groups[day].append(
+            f'<li class="pick" data-state="{state}">'
+            f'<span class="who">{esc(r["player"])}</span>'
+            f'<span class="what"><span class="side {esc(r["side"])}">{esc(r["side"])}</span> {r["line"]:g} {esc(r["stat"])}</span>'
+            f'<span class="meta">{esc(r["sport"].upper())} · {esc(r["app"])}{tier} · {game}{" · " + when if when else ""}</span>'
+            f'<span class="right"><span class="fair">{pct(r["fair"])}</span>'
+            f'<span class="small {_c1(r["edge"])}">edge {_p1(r["edge"])}{clv}</span>{res}</span></li>')
+    body = "".join(f'<div class="pgroup"><h3 class="pday">{esc(day)}</h3><ul class="plist">{"".join(groups[day])}</ul></div>'
+                   for day in order)
+    more = (f'<p class="muted small" style="margin:10px 0 0">Showing the latest {len(rows):,} of {total:,} picks. '
+            f'The full record is in the CSV below.</p>' if total > len(rows) else "")
+    return (f'<style>{PICKS_CSS}</style><div class="panel" id="picks"><h2>Picks</h2>'
+            f'<p class="muted small" style="margin:0 0 10px">Fair % is the model\'s chance the pick hits. '
+            f'Edge is how far that sits above break-even. Times are {"Central" if str(tz) == "America/Chicago" else esc(str(tz))} time.</p>'
+            f'<div class="pfilters" role="group" aria-label="Filter picks">'
+            f'<button type="button" data-f="all" aria-pressed="true">All</button>'
+            f'<button type="button" data-f="open" aria-pressed="false">Open ({n_open})</button>'
+            f'<button type="button" data-f="graded" aria-pressed="false">Graded ({len(rows) - n_open})</button></div>'
+            f'{body}<p class="pempty muted">No picks in this view.</p>{more}</div>{PICKS_JS}')
+
+
+def html(conn, nav=None, tz=None):
+    tz = tz or ZoneInfo("America/Chicago")
     d = data(conn)
     a, h, t, p = d["all"], d["holdout"], d["training"], d["portfolio"]
     ch = d["chain"]
@@ -110,6 +222,7 @@ every hash after it. Anyone can download the full log and check it.</p></div>
 {_kpi("Closing line value", f'<span class="{cls(a["clv"])}">{pts(a["clv"])} pts</span>', f'Beat the close {pct(a["beat"], 0)}')}
 {_kpi("Model portfolio", f'<span class="{cls(p["profit_pct"])}">{p["index"][-1] - 100:+.1f}%</span>', f'{p["entries"]} entries settled, {p["open"]} open')}
 </div>
+{picks_html(conn, tz)}
 <div class="panel"><h2>Results by set</h2><div class="scroll"><table><thead><tr><th>Set</th><th class="r">Graded</th>
 <th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">CLV (pts)</th><th class="r">Beat close</th>
 </tr></thead><tbody>{comp}</tbody></table></div>
@@ -139,6 +252,6 @@ def write(conn, cfg, path):
     if d:
         os.makedirs(d, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        f.write(html(conn))
+        f.write(html(conn, tz=cfg.tz))
     with open(os.path.join(d or ".", "picks.csv"), "w", encoding="utf-8", newline="") as f:
         f.write(csv_text(conn))
