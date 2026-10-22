@@ -6,10 +6,11 @@ name: Edge Engine (scheduled mode)
 
 on:
   schedule:
-    - cron: "0 15 * * *"    # 10 AM Central
-    - cron: "0 21 * * *"    # 4 PM Central
-    - cron: "15 23 * * *"   # 6:15 PM Central, after lineup news
-    - cron: "0 9 * * *"     # 4 AM Central: grade, refit models
+    # One run a day, in time for prime-time games. GitHub schedules are in UTC and can start
+    # 10-20 minutes late, so the run is set for 5:30 PM Central to lock picks in before 6 PM tip-offs.
+    # Two entries cover daylight saving time; the "Check time" step skips the one that doesn't match the current clock.
+    - cron: "30 22 * * *"   # 5:30 PM Central in summer time (CDT)
+    - cron: "30 23 * * *"   # 5:30 PM Central in winter time (CST)
   workflow_dispatch:
 
 permissions:
@@ -28,12 +29,26 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - name: Check time
+        id: when
+        run: |
+          # Run the summer entry only during CDT and the winter entry only during CST, even if GitHub starts late.
+          ZONE="$(TZ=America/Chicago date +%Z)"
+          case "${{ github.event.schedule }}" in
+            "30 22 * * *") [ "$ZONE" = "CDT" ] || SKIP=1 ;;
+            "30 23 * * *") [ "$ZONE" = "CST" ] || SKIP=1 ;;
+          esac
+          if [ -n "$SKIP" ]; then echo "Daylight saving duplicate; skipping."; echo "skip=1" >> "$GITHUB_OUTPUT"; fi
       - uses: actions/checkout@v4
+        if: steps.when.outputs.skip != '1'
       - uses: actions/setup-python@v5
+        if: steps.when.outputs.skip != '1'
         with:
           python-version: "3.12"
       - run: pip install ".[fast]"
+        if: steps.when.outputs.skip != '1'
       - name: Run
+        if: steps.when.outputs.skip != '1'
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           NTFY_TOPIC: ${{ vars.NTFY_TOPIC }}
@@ -45,16 +60,14 @@ jobs:
           PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/results.html
         run: |
           edge import-csv history/picks.csv   # keeps the old script's picks as a labeled legacy set (safe to repeat)
-          if [ "${{ github.event.schedule }}" = "0 9 * * *" ]; then
-            edge grade && edge fit && edge backtest || true
-            edge results --out site/results.html && edge export --out site/index.json
-          else
-            edge once --export site/index.json --results site/results.html
-          fi
+          # Grade yesterday's games and refit the models first (box scores are free; no Odds API credits).
+          edge grade && edge fit && edge backtest || true
+          edge once --export site/index.json --results site/results.html
           mkdir -p data && cp site/index.json data/latest.json
           if [ -d assets ]; then cp assets/* site/; fi
           cp site/results.html site/index.html
       - name: Save database
+        if: steps.when.outputs.skip != '1'
         run: |
           git config user.name "edge-engine bot"
           git config user.email "actions@users.noreply.github.com"
@@ -62,8 +75,11 @@ jobs:
           git diff --cached --quiet || git commit -m "Engine run $(date -u +%FT%TZ)"
           git push
       - uses: actions/configure-pages@v5
+        if: steps.when.outputs.skip != '1'
       - uses: actions/upload-pages-artifact@v3
+        if: steps.when.outputs.skip != '1'
         with:
           path: site
       - id: deploy
+        if: steps.when.outputs.skip != '1'
         uses: actions/deploy-pages@v4
