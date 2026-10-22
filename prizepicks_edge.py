@@ -183,6 +183,90 @@ def build_rows(pp_lines, quotes, method, be, min_books):
     rows.sort(key=lambda r: r["edge"], reverse=True)
     return rows
 
+# -------------------------------------------------------------- flex slips ---
+FLEX = ["3-Pick Flex", "4-Pick Flex", "5-Pick Flex", "6-Pick Flex"]
+
+def build_slips(rows, pool_size=18, per_size=5, max_per_game=2, max_reuse=2):
+    """Best Flex slips by expected return, for each size.
+    Rules: one leg per player, at most `max_per_game` legs from one game
+    (legs in the same game move together, which hurts a Flex), each leg used
+    in at most `max_reuse` slips, and slips of one size share at most half their legs."""
+    from itertools import combinations
+    pool = sorted([r for r in rows if r["fair"] > 0.5], key=lambda r: r["fair"], reverse=True)[:pool_size]
+    out = {}
+    for name in FLEX:
+        n, pay = ENTRIES[name]
+        if len(pool) < n:
+            continue
+        cands = []
+        for combo in combinations(range(len(pool)), n):
+            legs = [pool[i] for i in combo]
+            if len({norm_name(l["player"]) for l in legs}) < n:
+                continue
+            games = {}
+            for l in legs:
+                games[l["game"]] = games.get(l["game"], 0) + 1
+            if max(games.values()) > max_per_game:
+                continue
+            ps = [l["fair"] for l in legs]
+            cands.append((slip_multiplier(ps, pay), combo, hit_dist(ps)))
+        cands.sort(key=lambda c: c[0], reverse=True)
+        chosen, used = [], {}
+        for m, combo, dist in cands:
+            if any(used.get(i, 0) >= max_reuse for i in combo):
+                continue
+            if any(len(set(combo) & set(c[1])) > n // 2 for c in chosen):
+                continue
+            chosen.append((m, combo, dist))
+            for i in combo:
+                used[i] = used.get(i, 0) + 1
+            if len(chosen) == per_size:
+                break
+        out[name] = [{"mult": m, "legs": [pool[i] for i in combo], "dist": dist, "pay": pay, "n": n}
+                     for m, combo, dist in chosen]
+    return out
+
+def slips_text(slips):
+    lines = []
+    for name, ss in slips.items():
+        for k, s in enumerate(ss, 1):
+            lines.append(f"{name} #{k}: expected return {(s['mult'] - 1) * 100:+.1f}%, "
+                         f"all hit {s['dist'][s['n']] * 100:.1f}%")
+            for l in s["legs"]:
+                lines.append(f"    {l['side']:<4} {l['player']} {l['stat']} {l['line']:g}  ({l['fair'] * 100:.1f}%)")
+    return "\n".join(lines)
+
+def slips_html(slips):
+    if not any(slips.values()):
+        return "<p class='meta'>Not enough playable legs for a Flex slip this run.</p>"
+    best = max(((s["mult"], name) for name, ss in slips.items() for s in ss), default=(0, ""))
+    head = (f"<p class='slip'>Best Flex size today: <b>{best[1]}</b> at "
+            f"<b class='{'pos' if best[0] >= 1 else 'neg'}'>{(best[0] - 1) * 100:+.1f}%</b> expected return. "
+            "Only play slips marked positive. A flat stake of about 1% of your bankroll per slip keeps a bad week survivable.</p>")
+    sections = []
+    for name, ss in slips.items():
+        if not ss:
+            continue
+        cards = []
+        for k, s in enumerate(ss, 1):
+            pos = s["mult"] >= 1
+            n = s["n"]
+            paid = [h for h in sorted(s["pay"], reverse=True) if s["pay"][h] > 0]
+            odds = " · ".join(f"{h}/{n} hit {s['dist'][h] * 100:.0f}% ({s['pay'][h]:g}x)" for h in paid)
+            back = sum(s["dist"][h] for h in s["pay"] if s["pay"][h] >= 1)
+            legs = "".join(
+                f"<li><span class='side {l['side']}'>{l['side']}</span> {html.escape(l['player'])} "
+                f"<span class='muted'>{html.escape(l['stat'])} {l['line']:g} · {l['fair'] * 100:.1f}%</span></li>"
+                for l in s["legs"])
+            cards.append(
+                f"<div class='card{'' if pos else ' dim'}'><div class='ch'><b>{name} #{k}</b>"
+                f"<span class='chip {'good' if pos else 'bad'}'>{(s['mult'] - 1) * 100:+.1f}%</span></div>"
+                f"<ol>{legs}</ol><p class='muted small'>{odds}<br>Stake back or more: {back * 100:.0f}% of the time</p></div>")
+        n_pos = sum(1 for s in ss if s["mult"] >= 1)
+        sections.append(f"<h3>{name} <span class='muted small'>{n_pos} of {len(ss)} positive</span></h3>"
+                        "<div class='cards'>" + "".join(cards) + "</div>")
+    return head + "".join(sections)
+
 # ------------------------------------------------------------------- output ---
 def local_time(iso):
     try:
@@ -198,15 +282,9 @@ def write_csv(rows, path):
             w.writerow([r["sport"], r["player"], r["stat"], r["line"], r["side"], round(r["fair"] * 100, 2),
                         round(r["edge"] * 100, 2), r["books"], r["game"], r["quotes"]])
 
-def write_html(rows, path, entry, be, n, pay, min_edge, notes):
+def write_html(rows, path, entry, be, n, pay, min_edge, notes, slips):
     good = [r for r in rows if r["edge"] >= min_edge]
-    top = good[:n]
-    slip = ""
-    if len(top) == n:
-        m = slip_multiplier([r["fair"] for r in top], pay)
-        slip = (f"<p class='slip'>Top {n} green picks as a {entry}: expected return "
-                f"<b class='{'pos' if m >= 1 else 'neg'}'>{(m - 1) * 100:+.1f}%</b>, "
-                f"about ${m * 10:.2f} back per $10 on average over many entries.</p>")
+    slip = slips_html(slips)
     def chip(e):
         c = "good" if e >= min_edge else "warn" if e >= 0 else "bad"
         return f"<span class='chip {c}'>{e * 100:+.1f}</span>"
@@ -230,14 +308,21 @@ th{{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--m
 small{{display:block;color:var(--muted)}}.side{{font-weight:700}}.MORE{{color:var(--good)}}.LESS{{color:var(--accent)}}
 .chip{{font:600 .8rem ui-monospace,monospace;padding:2px 8px;border-radius:99px}}.good{{background:var(--gbg);color:var(--good)}}.warn{{background:var(--wbg);color:var(--warn)}}.bad{{background:var(--bbg);color:var(--bad)}}
 .odds{{font:.78rem ui-monospace,monospace;color:var(--muted);max-width:340px}}.foot{{color:var(--muted);font-size:.82rem;margin-top:16px}}
+h2{{font:700 1.4rem/1.1 "Arial Narrow",system-ui;margin:24px 0 10px}}.muted{{color:var(--muted)}}.small{{font-size:.82rem;margin:8px 0 0}}
+.cards{{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:12px}}
+h3{{font:700 1.15rem/1.1 "Arial Narrow",system-ui;margin:20px 0 0}}h3 .small{{font:400 .82rem system-ui;margin-left:6px}}
+.card{{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;min-width:0}}.card.dim{{opacity:.6}}
+.ch{{display:flex;justify-content:space-between;align-items:center;gap:8px}}.card ol{{margin:8px 0 0;padding-left:20px}}.card li{{margin:3px 0}}
 </style></head><body><div class="wrap">
 <h1>PrizePicks Edge Report</h1>
-<p class="meta">Updated {stamp} · {entry} · break-even {be * 100:.2f}% per leg · {len(rows)} matched props, {len(good)} at +{min_edge * 100:g} edge or better</p>
-{slip}
+<p class="meta">Updated {stamp} · {len(rows)} matched props · {entry} break-even {be * 100:.2f}% per leg, {len(good)} legs at +{min_edge * 100:g} edge or better</p>
 {f'<p class="meta">{html.escape(notes)}</p>' if notes else ''}
+<h2>Flex plays</h2>
+{slip}
+<h2>All props</h2>
 <div class="scroll"><table><thead><tr><th>Sport</th><th>Prop</th><th>Pick</th><th class="r">Books</th><th class="r">Fair</th><th class="r">Edge</th><th>Book odds (over/under)</th></tr></thead>
 <tbody>{trs or "<tr><td colspan=7>No PrizePicks lines matched sportsbook lines this run. Props often post later in the day.</td></tr>"}</tbody></table></div>
-<p class="foot">Fair % is the vig-free win chance implied by sportsbook prices. It is an estimate, and positive-edge slips still lose often. Lines move after this report runs, so recheck the line in the app before entering. Problem gambling help: 1-800-GAMBLER.</p>
+<p class="foot">Fair % is the vig-free win chance implied by sportsbook prices. It is an estimate, and positive-edge slips still lose often. Lines move after this report runs, so recheck each line in the app before entering; if a line changed or a Less isn't offered, swap in the next leg from the list. Slips allow at most two legs from one game, because legs in the same game tend to win or lose together. Problem gambling help: 1-800-GAMBLER.</p>
 </div></body></html>"""
     with open(path, "w", encoding="utf-8") as f:
         f.write(page)
@@ -254,6 +339,7 @@ def main():
     ap.add_argument("--all-markets", action="store_true", help="more stat types (uses more credits)")
     ap.add_argument("--key", default=os.environ.get("ODDS_API_KEY"))
     ap.add_argument("--out", default="edge_report")
+    ap.add_argument("--slips", type=int, default=5, help="Flex slips to build for each size (3, 4, 5, 6 pick)")
     ap.add_argument("--no-open", action="store_true")
     a = ap.parse_args()
 
@@ -298,7 +384,10 @@ def main():
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
     write_csv(rows, a.out + ".csv")
-    write_html(rows, a.out + ".html", a.entry, be, n, pay, min_edge, " ".join(notes))
+    slips = build_slips(rows, per_size=a.slips)
+    if any(slips.values()):
+        print("\nFLEX PLAYS\n" + slips_text(slips))
+    write_html(rows, a.out + ".html", a.entry, be, n, pay, min_edge, " ".join(notes), slips)
     print(f"\nSaved {a.out}.html and {a.out}.csv")
     for note in notes: print(note)
     if not a.no_open:
