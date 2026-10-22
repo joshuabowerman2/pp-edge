@@ -2,6 +2,7 @@
 paper portfolio. Written as a static page and served by the web app."""
 import csv
 import io
+import json
 import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -183,6 +184,104 @@ def picks_html(conn, tz, limit=PICKS_SHOWN):
             f'{body}<p class="pempty muted">No picks in this view.</p>{more}</div>{PICKS_JS}')
 
 
+LEG_MARK = {"hit": ("pos", "✓"), "miss": ("neg", "✗"), "push": ("muted", "–"), "void": ("muted", "–")}
+
+FLEX_CSS = """
+.fsizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin:0 0 6px}
+.fsize{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.fsize b{font:700 1.1rem/1.1 var(--display)}.fsize .v{font:500 1.25rem var(--mono)}.fsize .s{font-size:.78rem;color:var(--muted)}
+.fslips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:12px}
+.fslip{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.fslip .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fslip ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:.88rem}
+.fslip .mk{font-weight:700;margin-left:4px}
+"""
+
+
+def flex_data(conn):
+    """Record for each Flex size, at a flat 1 unit per slip."""
+    out = {}
+    for e in conn.execute("SELECT * FROM flex_slips ORDER BY seq"):
+        s = out.setdefault(e["entry"], {"entry": e["entry"], "n": e["n"], "slips": 0, "open": 0, "settled": 0,
+                                        "cashed": 0, "returned": 0.0, "expected": 0.0, "won": 0, "hits": 0})
+        s["slips"] += 1
+        if e["status"] == "open":
+            s["open"] += 1
+        elif e["status"] == "settled":
+            s["settled"] += 1
+            s["returned"] += e["ret"]
+            s["expected"] += e["ev"]
+            s["cashed"] += e["ret"] >= 1
+            s["won"] += e["ret"] > 1
+            s["hits"] += e["hits"] or 0
+    for s in out.values():
+        k = s["settled"]
+        s["profit"] = s["returned"] - k
+        s["exp_profit"] = s["expected"] - k
+        s["roi"] = s["profit"] / k if k else None
+        s["cash_rate"] = s["cashed"] / k if k else None
+        s["leg_rate"] = s["hits"] / (k * s["n"]) if k else None
+    return sorted(out.values(), key=lambda s: s["n"])
+
+
+def flex_html(conn, tz, days=14):
+    sizes = flex_data(conn)
+    if not sizes:
+        return ('<div class="panel"><h2>Flex plays</h2><p class="muted">Each day the engine locks in its best 3, 4, 5 and 6-pick '
+                'Flex slip and tracks how each size does. The first ones appear after the next run that finds a positive slip.</p></div>')
+    def units(x, settled):
+        return f"{x:+.2f}u" if settled else '<span class="muted" style="font-size:.9rem">No results yet</span>'
+
+    def exp_units(s):
+        return f"{s['exp_profit']:+.2f}u" if s["settled"] else "–"
+
+    cards = "".join(
+        f'<div class="fsize"><b>{esc(s["entry"])}</b>'
+        f'<span class="v {cls(s["profit"]) if s["settled"] else ""}">{units(s["profit"], s["settled"])}</span>'
+        f'<span class="s">{s["settled"]} settled · {s["open"]} open</span>'
+        f'<span class="s">Cashed {pct(s["cash_rate"], 0)} · ROI {pct(s["roi"], 1, True)}</span>'
+        f'<span class="s">Expected {exp_units(s)}</span></div>'
+        for s in sizes)
+    slips = [dict(e) for e in conn.execute("SELECT * FROM flex_slips ORDER BY day DESC, n, seq")]
+    shown_days = sorted({e["day"] for e in slips}, reverse=True)[:days]
+    ids = sorted({i for e in slips if e["day"] in shown_days for i in json.loads(e["pick_ids"])})
+    legs = {}
+    for i in range(0, len(ids), 500):
+        chunk = ids[i:i + 500]
+        for r in conn.execute(f"SELECT id, player, stat, line, side, fair, result, actual FROM picks "
+                              f"WHERE id IN ({','.join('?' * len(chunk))})", chunk):
+            legs[r["id"]] = dict(r)
+    blocks = []
+    for day in shown_days:
+        cards_d = []
+        for e in (x for x in slips if x["day"] == day):
+            lis = []
+            for pid in json.loads(e["pick_ids"]):
+                l = legs.get(pid)
+                if not l:
+                    continue
+                c, m = LEG_MARK.get(l["result"], ("muted", ""))
+                act = f' <span class="muted small">({l["actual"]:g})</span>' if l["actual"] is not None else ""
+                lis.append(f'<li><span class="side {esc(l["side"])}">{esc(l["side"])}</span> {esc(l["player"])} '
+                           f'<span class="muted">{l["line"]:g} {esc(l["stat"])}</span>{act}<span class="mk {c}">{m}</span></li>')
+            if e["status"] == "open":
+                chip = '<span class="chip warn">Open</span>'
+            elif e["status"] == "void":
+                chip = '<span class="chip warn">Void · refunded</span>'
+            else:
+                chip = (f'<span class="chip {"good" if e["ret"] >= 1 else "bad"}">{e["hits"]}/{e["n"]} · '
+                        f'{e["ret"]:g}x</span>')
+            cards_d.append(f'<div class="fslip"><div class="top"><b>{esc(e["entry"])}</b>{chip}</div><ol>{"".join(lis)}</ol>'
+                           f'<span class="muted small">Expected return {pct(e["ev"] - 1, 1, True)} · '
+                           f'stake back {pct(e["cash"], 0)} of the time</span></div>')
+        label = _local(day + "T12:00:00+00:00", tz, "%A, %b %d")
+        blocks.append(f'<h3 class="pday">{esc(label)}</h3><div class="fslips">{"".join(cards_d)}</div>')
+    return (f'<style>{FLEX_CSS}</style><div class="panel" id="flex"><h2>Flex plays</h2>'
+            f'<p class="muted small" style="margin:0 0 10px">Each day the engine locks in its best Flex slip of each size before '
+            f'the games and never changes it. Results count each slip as 1 unit, so you can see which size works best.</p>'
+            f'<div class="fsizes">{cards}</div>{"".join(blocks)}</div>')
+
+
 def html(conn, nav=None, tz=None):
     tz = tz or ZoneInfo("America/Chicago")
     d = data(conn)
@@ -222,6 +321,7 @@ every hash after it. Anyone can download the full log and check it.</p></div>
 {_kpi("Closing line value", f'<span class="{cls(a["clv"])}">{pts(a["clv"])} pts</span>', f'Beat the close {pct(a["beat"], 0)}')}
 {_kpi("Model portfolio", f'<span class="{cls(p["profit_pct"])}">{p["index"][-1] - 100:+.1f}%</span>', f'{p["entries"]} entries settled, {p["open"]} open')}
 </div>
+{flex_html(conn, tz)}
 {picks_html(conn, tz)}
 <div class="panel"><h2>Results by set</h2><div class="scroll"><table><thead><tr><th>Set</th><th class="r">Graded</th>
 <th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">CLV (pts)</th><th class="r">Beat close</th>

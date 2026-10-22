@@ -226,7 +226,8 @@ def build_board(conn, cfg, now, legs, apps=None):
             ids.append(pid)
         p["pick_ids"] = ids
         p["system_id"] = tracking.log_system_entry(conn, now, p["app"], p["entry"], ids, p["stake_pct"], p["ev"], p["sigma"])
-    board = {"generated_at": iso(now), "model_version": MODEL_VERSION,
+    flex = track_flex(conn, cfg, now, all_cands)
+    board = {"generated_at": iso(now), "model_version": MODEL_VERSION, "flex_logged": flex,
              "plays": [_entry_json(p, apps) for p in plays],
              "entries": [_entry_json(c, apps) for c in sorted(all_cands, key=lambda c: c["ev"], reverse=True)[:40]],
              "legs": [_leg_json(l) for l in sorted([l for l in legs if not l["tier"] and l["edge"] is not None],
@@ -237,6 +238,28 @@ def build_board(conn, cfg, now, legs, apps=None):
              "blend": {s: blend.params(conn, s) for s in cfg.sports}}
     meta_set(conn, "board", board)
     return board, plays
+
+
+def track_flex(conn, cfg, now, cands):
+    """Log the best positive Flex slip of each size, once per day, so each size builds its own record."""
+    best = {}
+    for c in cands:
+        if "Flex" not in c["entry"] or c["ev"] <= 1.0:
+            continue
+        k = (c["app"], c["entry"])
+        if k not in best or c["ev"] > best[k]["ev"]:
+            best[k] = c
+    logged = []
+    for (app, entry), c in sorted(best.items(), key=lambda kv: kv[1]["n"]):
+        ids = []
+        for l in c["legs"]:
+            pid = tracking.pick_id(l, cfg.tz)
+            if not conn.execute("SELECT 1 FROM picks WHERE id=?", (pid,)).fetchone():
+                tracking.log_pick(conn, l, now, MODEL_VERSION, cfg.tz, cfg.holdout_share)
+            ids.append(pid)
+        if tracking.log_flex_slip(conn, now, cfg.tz, app, entry, c["n"], ids, c["ev"], c["cash"], c["dist"]):
+            logged.append(entry)
+    return logged
 
 
 def _leg_json(l):

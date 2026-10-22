@@ -44,6 +44,13 @@ CREATE TABLE IF NOT EXISTS system_entries (
   stake_pct REAL, ev REAL, sigma REAL, prev_hash TEXT, hash TEXT,
   status TEXT DEFAULT 'open', ret REAL, settled_at TEXT);
 
+-- The day's best Flex slip of each size, logged once and tracked at a flat 1 unit each.
+CREATE TABLE IF NOT EXISTS flex_slips (
+  id TEXT PRIMARY KEY, seq INTEGER UNIQUE, created_at TEXT, day TEXT, app TEXT, entry TEXT, n INTEGER,
+  pick_ids TEXT, ev REAL, cash REAL, dist TEXT, prev_hash TEXT, hash TEXT,
+  status TEXT DEFAULT 'open', hits INTEGER, ret REAL, settled_at TEXT);
+CREATE INDEX IF NOT EXISTS flex_day ON flex_slips (day, app, entry);
+
 CREATE TABLE IF NOT EXISTS boxscores (
   sport TEXT, event_id TEXT, game_date TEXT, team TEXT, opp TEXT, player_key TEXT, player TEXT,
   minutes REAL, stats TEXT, PRIMARY KEY (sport, event_id, player_key));

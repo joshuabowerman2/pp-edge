@@ -185,6 +185,17 @@ class EndToEndTests(unittest.TestCase):
         engine.poll_games(self.conn, self.cfg, due, self.now + timedelta(minutes=2))
         self.assertEqual(self.conn.execute("SELECT COUNT(*) c FROM snapshots").fetchone()["c"], n_snap)
 
+        # Flex tracker: lock in a slip, only one per size per day
+        ids = [r["id"] for r in self.conn.execute("SELECT id FROM picks ORDER BY seq")]
+        self.assertGreaterEqual(len(ids), 2)
+        n_flex = len(ids[:3])
+        entry = f"{n_flex}-Pick Flex" if n_flex == 3 else "2-Pick Power"
+        self.assertTrue(tracking.log_flex_slip(self.conn, self.now, self.cfg.tz, "prizepicks", entry, n_flex,
+                                               ids[:3], 1.1, 0.6, [0.2] * (n_flex + 1)))
+        self.assertIsNone(tracking.log_flex_slip(self.conn, self.now, self.cfg.tz, "prizepicks", entry, n_flex,
+                                                 ids[:2], 1.2, 0.6, [0.2] * 3))
+        self.assertIsNotNone(engine.track_flex(self.conn, self.cfg, self.now, []))
+
         # game finishes: grade, settle model entries, results page, chain intact
         later = datetime.fromisoformat(self.start.replace("Z", "+00:00")) + timedelta(hours=5)
         self.fake.final = True
@@ -199,6 +210,10 @@ class EndToEndTests(unittest.TestCase):
         results.write(self.conn, self.cfg, os.path.join(site, "results.html"))
         html_ = open(os.path.join(site, "results.html")).read()
         self.assertIn("Record verified", html_)
+        f = self.conn.execute("SELECT * FROM flex_slips").fetchone()
+        self.assertIn(f["status"], ("settled", "void"))
+        self.assertIsNotNone(f["hits"])
+        self.assertIn("Flex plays", html_)
         from edge_engine.cli import verify_csv
         self.assertTrue(verify_csv(os.path.join(site, "picks.csv"))[0])
         self.assertIn("verdict", backtest.evaluate(self.conn, 0) | {"verdict": ""})

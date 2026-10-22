@@ -243,7 +243,48 @@ def log_system_entry(conn, now, app, entry, pick_ids, stake_pct, ev, sigma):
     return eid
 
 
+def log_flex_slip(conn, now, tz, app, entry, n, pick_ids, ev, cash, dist, per_day=1):
+    """Lock in a Flex slip for today if this size doesn't have its slips for the day yet. Never edited after."""
+    day = now.astimezone(tz).strftime("%Y-%m-%d")
+    if conn.execute("SELECT COUNT(*) c FROM flex_slips WHERE day=? AND app=? AND entry=?",
+                    (day, app, entry)).fetchone()["c"] >= per_day:
+        return None
+    sid = f"{day}|{app}|{entry}|{'+'.join(sorted(pick_ids))}"
+    if conn.execute("SELECT 1 FROM flex_slips WHERE id=?", (sid,)).fetchone():
+        return None
+    last = conn.execute("SELECT seq, hash FROM flex_slips ORDER BY seq DESC LIMIT 1").fetchone()
+    seq, prev = (last["seq"] + 1, last["hash"]) if last else (1, "genesis")
+    body = json.dumps({"id": sid, "t": iso(now), "ev": round(ev, 6)}, sort_keys=True)
+    h = hashlib.sha256((prev + body).encode()).hexdigest()
+    conn.execute("""INSERT INTO flex_slips(id,seq,created_at,day,app,entry,n,pick_ids,ev,cash,dist,prev_hash,hash)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                 (sid, seq, iso(now), day, app, entry, n, json.dumps(pick_ids), ev, cash,
+                  json.dumps([round(x, 5) for x in dist]), prev, h))
+    return sid
+
+
+def settle_flex_slips(conn, apps, now):
+    n = 0
+    for e in conn.execute("SELECT * FROM flex_slips WHERE status='open'").fetchall():
+        ids = json.loads(e["pick_ids"])
+        res = [r["result"] for r in conn.execute(
+            f"SELECT result FROM picks WHERE id IN ({','.join('?' * len(ids))})", ids)]
+        if len(res) != len(ids) or any(r == "" for r in res):
+            continue
+        hits = res.count("hit")
+        if any(r in ("unmatched", "ungraded") for r in res) or e["app"] not in apps:
+            conn.execute("UPDATE flex_slips SET status='void', hits=?, ret=1, settled_at=? WHERE id=?",
+                         (hits, iso(now), e["id"]))
+            continue
+        ret = entry_return(apps[e["app"]], e["entry"], res)
+        conn.execute("UPDATE flex_slips SET status='settled', hits=?, ret=?, settled_at=? WHERE id=?",
+                     (hits, ret, iso(now), e["id"]))
+        n += 1
+    return n
+
+
 def settle_system_entries(conn, apps, now):
+    settle_flex_slips(conn, apps, now)
     n = 0
     for e in conn.execute("SELECT * FROM system_entries WHERE status='open'").fetchall():
         ids = json.loads(e["pick_ids"])
