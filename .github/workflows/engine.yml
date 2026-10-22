@@ -1,0 +1,69 @@
+name: Edge Engine (scheduled mode)
+
+# Use this while you don't have a server. It runs a full pass on a schedule, keeps the database in
+# the repo, and publishes the results page and app data to GitHub Pages. Once the server is
+# running, disable this workflow (Actions tab > this workflow > Disable).
+
+on:
+  schedule:
+    - cron: "0 15 * * *"    # 10 AM Central
+    - cron: "0 21 * * *"    # 4 PM Central
+    - cron: "15 23 * * *"   # 6:15 PM Central, after lineup news
+    - cron: "0 9 * * *"     # 4 AM Central: grade, refit models
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: edge-engine
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[fast]"
+      - name: Run
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          NTFY_TOPIC: ${{ vars.NTFY_TOPIC }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          SPORTS: ${{ vars.SPORTS || 'nba nhl' }}
+          ALT_LINES: ${{ vars.ALT_LINES }}
+          BANKROLL: ${{ vars.BANKROLL }}
+          EDGE_DB: data/edge.db
+          PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/results.html
+        run: |
+          edge import-csv history/picks.csv   # keeps the old script's picks as a labeled legacy set (safe to repeat)
+          if [ "${{ github.event.schedule }}" = "0 9 * * *" ]; then
+            edge grade && edge fit && edge backtest || true
+            edge results --out site/results.html && edge export --out site/index.json
+          else
+            edge once --export site/index.json --results site/results.html
+          fi
+          mkdir -p data && cp site/index.json data/latest.json
+          if [ -d assets ]; then cp assets/* site/; fi
+          cp site/results.html site/index.html
+      - name: Save database
+        run: |
+          git config user.name "edge-engine bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/edge.db data/latest.json
+          git diff --cached --quiet || git commit -m "Engine run $(date -u +%FT%TZ)"
+          git push
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

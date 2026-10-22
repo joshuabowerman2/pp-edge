@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edge-engine"
+version = "3.0.0"
+description = "Prices pick'em props against sharp books and exchanges, logs a verifiable track record, and sizes entries."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+fast = ["numpy>=1.26"]
+
+[project.scripts]
+edge = "edge_engine.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["edge_engine*"]
