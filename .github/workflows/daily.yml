@@ -1,18 +1,25 @@
-name: Daily PrizePicks edge report
+name: PrizePicks edge report
 
 on:
   schedule:
-    - cron: "0 21 * * *"   # 4:00 PM Central in summer, 3:00 PM in winter (GitHub uses UTC)
-  workflow_dispatch:        # lets you run it on demand from the Actions tab
+    - cron: "0 21 * * *"    # Main run: 4 PM Central (3 PM in winter). All games in the next 24 hours.
+    - cron: "15 23 * * *"   # Pre-game run: 6:15 PM Central (5:15 PM in winter), after lineup news.
+    - cron: "45 16 * * 0"   # Sunday NFL early games: 11:45 AM Central (10:45 AM in winter).
+  workflow_dispatch:         # run on demand from the Actions tab
+
+# Settings live in Settings > Secrets and variables > Actions > Variables:
+#   SPORTS    e.g. "nba nhl nfl"     (default: nba nhl)
+#   BANKROLL  e.g. "500"             (optional: shows stakes in dollars)
+#   GOAL      "profit" or "consistency" (default: profit)
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: pp-edge
+  cancel-in-progress: false
 
 jobs:
   report:
@@ -25,10 +32,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install numpy
       - name: Build report
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
-        run: python prizepicks_edge.py --sports nba nhl --entry "5-Pick Flex" --out site/index --no-open
+          BANKROLL: ${{ vars.BANKROLL }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          SPORTS="${{ vars.SPORTS }}"; SPORTS="${SPORTS:-nba nhl}"
+          GOAL="${{ vars.GOAL }}"; GOAL="${GOAL:-profit}"
+          HOURS=24
+          if [ "$SCHEDULE" = "15 23 * * *" ]; then HOURS=5; fi
+          if [ "$SCHEDULE" = "45 16 * * 0" ]; then HOURS=5; SPORTS="nfl"; fi
+          python prizepicks_edge.py --sports $SPORTS --hours $HOURS --goal "$GOAL" --out site/index --no-open
+          cp history/picks.csv site/picks.csv
+      - name: Save pick history
+        run: |
+          git config user.name "pp-edge bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add history/picks.csv
+          git diff --cached --quiet || git commit -m "Update pick history"
+          git push
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
