@@ -311,7 +311,7 @@ def html(conn, nav=None, tz=None):
                    f'{esc(bt.get("verdict", "").capitalize())}.</p><div class="scroll"><table><thead><tr><th>Price</th><th class="r">Legs</th>'
                    f'<th class="r">Log loss</th><th class="r">Brier</th></tr></thead><tbody>{rows}</tbody></table></div></div>')
     body = f"""
-<div><h1>Track record</h1><p class="lead">Every pick the model makes is logged the moment it's made, before the game,
+<div><h1>Track record</h1><p class="muted small" style="margin:4px 0 0">Updated {esc(_local(d["generated_at"], tz, "%a %b %d, %I:%M %p"))} Central time</p><p class="lead">Every pick the model makes is logged the moment it's made, before the game,
 and never edited afterward. Each pick's hash includes the one before it, so changing or deleting any old pick breaks
 every hash after it. Anyone can download the full log and check it.</p></div>
 {integrity}
