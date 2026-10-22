@@ -1,0 +1,12 @@
+id,logged_at,date,sport,player,market,stat,line,side,pick_fair,close_fair,clv,in_play,home,away,start,result,actual,graded_at
+2026-10-22|nba|cameron johnson|player_rebounds|4|LESS,2026-10-22T03:52:37Z,2026-10-22,nba,Cameron Johnson,player_rebounds,Rebounds,4,LESS,0.5986,,,1,Oklahoma City Thunder,Denver Nuggets,2026-10-23T01:40:00Z,,,
+2026-10-22|nba|jaylen brown|player_assists|4|LESS,2026-10-22T03:52:37Z,2026-10-22,nba,Jaylen Brown,player_assists,Assists,4,LESS,0.5741,,,1,Philadelphia 76ers,Cleveland Cavaliers,2026-10-22T23:10:00Z,,,
+2026-10-22|nba|jalen williams|player_rebounds|5|LESS,2026-10-22T03:52:37Z,2026-10-22,nba,Jalen Williams,player_rebounds,Rebounds,5,LESS,0.5640,,,1,Oklahoma City Thunder,Denver Nuggets,2026-10-23T01:40:00Z,,,
+2026-10-22|nba|aaron gordon|player_rebounds|5|MORE,2026-10-22T03:52:37Z,2026-10-22,nba,Aaron Gordon,player_rebounds,Rebounds,5,MORE,0.5487,,,1,Oklahoma City Thunder,Denver Nuggets,2026-10-23T01:40:00Z,,,
+2026-10-22|nba|jaylon tyson|player_rebounds|4|MORE,2026-10-22T03:52:37Z,2026-10-22,nba,Jaylon Tyson,player_rebounds,Rebounds,4,MORE,0.5475,,,1,Philadelphia 76ers,Cleveland Cavaliers,2026-10-22T23:10:00Z,,,
+2026-10-22|nba|donovan mitchell|player_rebounds|4.5|LESS,2026-10-22T03:52:37Z,2026-10-22,nba,Donovan Mitchell,player_rebounds,Rebounds,4.5,LESS,0.5390,,,1,Philadelphia 76ers,Cleveland Cavaliers,2026-10-22T23:10:00Z,,,
+2026-10-22|nfl|efton chism|player_reception_yds|19.5|LESS,2026-10-22T03:52:37Z,2026-10-22,nfl,Efton Chism III,player_reception_yds,Receiving Yards,19.5,LESS,0.5386,,,1,Chicago Bears,New England Patriots,2026-10-23T00:15:00Z,,,
+2026-10-22|nba|ajay mitchell|player_points|10.5|MORE,2026-10-22T03:52:37Z,2026-10-22,nba,Ajay Mitchell,player_points,Points,10.5,MORE,0.5378,,,1,Oklahoma City Thunder,Denver Nuggets,2026-10-23T01:40:00Z,,,
+2026-10-22|nfl|hunter henry|player_reception_yds|35.5|LESS,2026-10-22T03:52:37Z,2026-10-22,nfl,Hunter Henry,player_reception_yds,Receiving Yards,35.5,LESS,0.5355,,,1,Chicago Bears,New England Patriots,2026-10-23T00:15:00Z,,,
+2026-10-22|nba|kentavious caldwell pope|player_points|6.5|LESS,2026-10-22T03:52:37Z,2026-10-22,nba,Kentavious Caldwell-Pope,player_points,Points,6.5,LESS,0.5337,,,1,Philadelphia 76ers,Cleveland Cavaliers,2026-10-22T23:10:00Z,,,
+2026-10-22|nfl|eli raridon|player_reception_yds|14.5|LESS,2026-10-22T03:52:37Z,2026-10-22,nfl,Eli Raridon,player_reception_yds,Receiving Yards,14.5,LESS,0.5331,,,1,Chicago Bears,New England Patriots,2026-10-23T00:15:00Z,,,
