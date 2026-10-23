@@ -11,6 +11,10 @@ on:
     # Two entries cover daylight saving time; the "Check time" step skips the one that doesn't match the current clock.
     - cron: "30 22 * * *"   # 5:30 PM Central in summer time (CDT)
     - cron: "30 23 * * *"   # 5:30 PM Central in winter time (CST)
+    # Backups at 6:15 PM Central. GitHub sometimes drops scheduled runs; these run only if
+    # no engine run has been saved since 5 PM Central today.
+    - cron: "15 23 * * *"   # 6:15 PM Central in summer time (CDT)
+    - cron: "15 0 * * *"    # 6:15 PM Central in winter time (CST)
   workflow_dispatch:
 
 permissions:
@@ -29,18 +33,30 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
       - name: Check time
         id: when
         run: |
-          # Run the summer entry only during CDT and the winter entry only during CST, even if GitHub starts late.
+          # Run the summer entries only during CDT and the winter entries only during CST, even if GitHub starts late.
           ZONE="$(TZ=America/Chicago date +%Z)"
           case "${{ github.event.schedule }}" in
-            "30 22 * * *") [ "$ZONE" = "CDT" ] || SKIP=1 ;;
-            "30 23 * * *") [ "$ZONE" = "CST" ] || SKIP=1 ;;
+            "30 22 * * *"|"15 23 * * *") [ "$ZONE" = "CDT" ] || SKIP=1 ;;
+            "30 23 * * *"|"15 0 * * *") [ "$ZONE" = "CST" ] || SKIP=1 ;;
           esac
-          if [ -n "$SKIP" ]; then echo "Daylight saving duplicate; skipping."; echo "skip=1" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@v4
-        if: steps.when.outputs.skip != '1'
+          if [ -n "$SKIP" ]; then echo "Daylight saving duplicate; skipping."; echo "skip=1" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # Backup entries: skip if an engine run was already saved since 5 PM Central today.
+          case "${{ github.event.schedule }}" in
+            "15 23 * * *"|"15 0 * * *")
+              git fetch -q --depth 50 origin "${{ github.event.repository.default_branch }}"
+              SINCE="$(TZ=America/Chicago date +%Y-%m-%d) 17:00 $(TZ=America/Chicago date +%z)"
+              if [ -n "$(git log FETCH_HEAD --since="$SINCE" --grep='^Engine run' --format=%h)" ]; then
+                echo "Today's 5:30 PM run already happened; backup not needed."; echo "skip=1" >> "$GITHUB_OUTPUT"
+              else
+                echo "No engine run since 5 PM Central; running the backup."
+              fi ;;
+          esac
       - uses: actions/setup-python@v5
         if: steps.when.outputs.skip != '1'
         with:
