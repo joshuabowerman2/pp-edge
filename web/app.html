@@ -287,6 +287,16 @@ input,select,textarea{background:var(--panel2)}
 .add{appearance:none;width:38px;height:38px;border-radius:9px;border:0;background:var(--accent);color:var(--on-accent);font:700 1.3rem/1 var(--body);cursor:pointer;flex:none}
 .add.on{background:var(--panel2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-size:1rem}
 .chip.own{background:var(--own-bg);color:var(--own)}.chip.sugg{background:var(--gold-bg);color:var(--gold)}
+dialog.sheet.wide{width:min(760px,calc(100% - 24px))}
+.pl-row{display:grid;grid-template-columns:minmax(120px,1.6fr) minmax(100px,1.2fr) 74px 86px 100px 70px;gap:6px;align-items:end}
+.pl-row input,.pl-row select{width:100%;min-width:0}
+@media (max-width:640px){.pl-row{grid-template-columns:1fr 1fr 1fr;padding-bottom:8px;border-bottom:1px solid var(--line)}}
+.rv-verdict{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2)}
+.rv-verdict .big{font:700 1.25rem var(--display);line-height:1.1}
+.rv-leg td{vertical-align:top}
+@media (max-width:640px){.rv-wrap{border:0;background:none}.rv-wrap table.rv-table{min-width:0}.rv-table thead{display:none}
+  .rv-table tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .rv-table td{border:0;padding:0}.rv-table td:nth-child(4){grid-row:1;grid-column:2}.rv-table td:nth-child(2),.rv-table td:nth-child(3){grid-column:1/-1}}.rv-take{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 .custom-leg{border-top:1px solid var(--line);padding-top:8px}.custom-leg summary{cursor:pointer;font-weight:600;font-size:.9rem}
 .cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}.cl-grid input,.cl-grid select{width:100%;min-width:0}
 .seg2{display:flex;gap:6px;flex-wrap:wrap}
@@ -451,9 +461,11 @@ footer{border-top:1px solid var(--line)}
         <button aria-pressed="true" data-f="open">Open</button><button aria-pressed="false" data-f="settled">Settled</button><button aria-pressed="false" data-f="all">All</button>
       </div>
     </div>
+    <div class="row" style="justify-content:space-between;align-items:center">
     <div class="seg2" role="group" aria-label="Whose entries" id="originFilter">
       <button aria-pressed="true" data-o="">Everything</button><button aria-pressed="false" data-o="suggested">Suggested</button><button aria-pressed="false" data-o="own">Your picks</button>
     </div>
+    <button class="btn sm" id="pastOpen">+ Add a past bet</button></div>
     <div id="betList" style="display:flex;flex-direction:column;gap:10px"></div>
   </section>
 
@@ -538,6 +550,8 @@ footer{border-top:1px solid var(--line)}
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="alertSheet" aria-labelledby="alName"><div class="sh"><h3 id="alName" style="margin:0">Alerts</h3><div class="row"><button class="btn sm" id="alRead">Mark all read</button><button class="btn sm" id="alClose">Close</button></div></div><div class="sb" id="alBody"></div></dialog>
 <dialog class="sheet" id="injSheet" aria-labelledby="injName"><div class="sh"><h3 id="injName" style="margin:0">Injury and lineup center</h3><button class="btn sm" id="injClose">Close</button></div><div class="sb" id="injBody"></div></dialog>
+<dialog class="sheet" id="pastSheet" aria-labelledby="pastName"><div class="sh"><h3 id="pastName" style="margin:0">Add a past bet</h3><button class="btn sm" id="pastClose">Close</button></div><div class="sb" id="pastBody"></div></dialog>
+<dialog class="sheet wide" id="revSheet" aria-labelledby="revName"><div class="sh"><h3 id="revName" style="margin:0">Bet review</h3><button class="btn sm" id="revClose">Close</button></div><div class="sb" id="revBody"></div></dialog>
 <dialog class="sheet" id="cmpSheet" aria-labelledby="cmpName"><div class="sh"><h3 id="cmpName" style="margin:0">Compare</h3><div class="row"><button class="btn sm" id="cmpAsk">Ask Claude</button><button class="btn sm" id="cmpClose">Close</button></div></div><div class="sb" id="cmpBody"></div></dialog>
 <dialog class="sheet" id="playerSheet" aria-labelledby="psName"><div class="sh"><h3 id="psName" style="margin:0"></h3><button class="btn sm" id="psClose">Close</button></div><div class="sb" id="psBody"></div></dialog>
 
@@ -654,7 +668,7 @@ function watchLegs(){
 function finalize(b){
   if(b.kind === "pp"){
     const done = b.legs.length && b.legs.every(l => GRADED.includes(l.result));
-    if(done){ b.ret = ppReturnMult(b.entry, b.legs, b.pay); }
+    if(done){ b.ret = b.paidOut != null && b.paidOut !== "" && fin(+b.paidOut) && b.stake > 0 ? +b.paidOut / b.stake : ppReturnMult(b.entry, b.legs, b.pay); }
     else { b.ret = null; }
   } else {
     const r = b.result;
@@ -2514,7 +2528,7 @@ function renderBets(){
         <div class="res" role="group" aria-label="Result for ${esc(l.player)}">${GRADED.map(r=>`<button class="${r}" aria-pressed="${l.result===r}" data-bet="${b.id}" data-leg="${i}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`).join("")
       : `<div class="betleg"><div>${esc(b.label)} <span class="muted small">at ${b.odds>0?"+":""}${b.odds} · fair ${pct(b.fair)}</span></div><div class="res" role="group" aria-label="Result">${["win","loss","push"].map(r=>`<button class="${r}" aria-pressed="${b.result===r}" data-bet="${b.id}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`;
     return `<details class="bet" ${S.openBet===b.id?"open":""} data-id="${b.id}"><summary><div><b>${esc(betTitle(b))}</b> ${originChip(b)} <span class="muted small">${shortDate(b.date)} · ${esc(betSport(b))}</span><div class="small muted num">${money(b.stake)} stake · EV ${money(ev,true)} (${pct(b.E-1,1,true)})</div></div><div class="betside">${status}<button class="btn danger delquick" data-del="${b.id}" data-label="Delete" aria-label="Delete ${esc(betTitle(b))} from ${shortDate(b.date)}">Delete</button></div></summary>
-      <div class="body">${legsHtml}
+      <div class="body">${b.kind==="pp" ? `<div class="row"><button class="btn sm" data-review="${b.id}">${b.status==="settled" ? "Review: what went right and wrong" : "Review this entry"}</button>${b.past ? '<span class="chip plain">Added afterwards</span>' : ""}</div>` : ""}${legsHtml}
       <div class="row" style="justify-content:space-between"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Stake ($)<input class="num" style="width:110px" data-stake="${b.id}" value="${b.stake}" inputmode="decimal"></label>
       <button class="btn danger" data-del="${b.id}">Delete entry</button></div></div></details>`;
   }).join("");
@@ -2546,6 +2560,187 @@ document.addEventListener("change", async e => {
   b.stake = v; S.openBet = b.id; finalize(b); if(b.status==="settled") b.profit = Math.round(b.stake*(b.ret-1)*100)/100; await store.saveBet(b).catch(dbError);
 });
 document.addEventListener("toggle", e => { const d = e.target; if(d.classList?.contains("bet") && d.open) S.openBet = d.dataset.id; }, true);
+
+/* ---------- past bets and reviews ---------- */
+function statIndex(){
+  // Stat label -> market key, from every leg the app knows about.
+  const m = new Map();
+  for(const l of [...S.histLegs, ...(S.board ? boardLegs(S.board) : [])]) if(l && l.stat && l.market && !m.has(String(l.stat).toLowerCase())) m.set(String(l.stat).toLowerCase(), {stat: l.stat, market: l.market});
+  return m;
+}
+function judgeLeg(actual, line, side){ actual = +actual; line = +line; if(!fin(actual) || !fin(line)) return ""; return actual === line ? "push" : (actual > line) === (side === "MORE") ? "hit" : "miss"; }
+const legDay = (b, l) => l.start ? dayOf(l.start) : b.date;
+function modelView(l, date){
+  // What the model logged for this player and stat that day (it logs the side it liked, at break-even or better).
+  if(!date || !l.player) return null;
+  const nn = normName(l.player), st = String(l.stat || "").toLowerCase();
+  const c = S.histLegs.filter(h => h.date === date && normName(h.player) === nn && (l.market ? h.market === l.market : String(h.stat).toLowerCase() === st));
+  if(!c.length) return null;
+  const h = c.reduce((a, x) => Math.abs(+x.line - +l.line) < Math.abs(+a.line - +l.line) ? x : a);
+  const sameLine = +h.line === +l.line, agree = h.side === l.side;
+  return {h, sameLine, agree, fair: sameLine && fin(+h.fair) ? (agree ? +h.fair : 1 - +h.fair) : null};
+}
+function pastLegRow(i, l){ l = l || {};
+  return `<div class="pl-row" data-pl="${i}">
+    <label class="f">Player<input data-k="player" autocomplete="off" value="${esc(l.player||"")}"></label>
+    <label class="f">Stat<input data-k="stat" list="pastStats" autocomplete="off" placeholder="Points" value="${esc(l.stat||"")}"></label>
+    <label class="f">Line<input data-k="line" class="num" inputmode="decimal" value="${esc(l.line??"")}"></label>
+    <label class="f">Pick<select data-k="side"><option ${l.side!=="LESS"?"selected":""}>MORE</option><option ${l.side==="LESS"?"selected":""}>LESS</option></select></label>
+    <label class="f">Result<select data-k="result"><option value="">Look it up</option>${[["hit","Hit"],["miss","Miss"],["push","Push"],["void","DNP / void"]].map(([v,t]) => `<option value="${v}" ${l.result===v?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label class="f">Actual<input data-k="actual" class="num" inputmode="decimal" placeholder="opt." value="${esc(l.actual??"")}"></label></div>`;
+}
+function openPastBet(){
+  const names = Object.keys(S.settings.payouts).filter(k => payTable(k) && payTable(k).n >= 2);
+  const st = S.past || {entry: names.includes("5-Pick Flex") ? "5-Pick Flex" : names[0], date: daysAgo(1)};
+  S.past = st;
+  const t = payTable(st.entry), stats = [...statIndex().values()].map(x => x.stat).sort();
+  $("#pastBody").innerHTML = `<p class="muted small" style="margin:0">Log an entry you already played. If you leave a result on <b>Look it up</b>, it's filled from the box scores the model graded that day when it can find them. Each leg is checked against what the model said that day, so the review can show where the bet went right or wrong.</p>
+    <div class="row"><label class="f">Date played<input type="date" id="pDate" max="${today()}" value="${esc(st.date)}"></label>
+      <label class="f">Entry type<select id="pEntry">${names.map(k => `<option ${k===st.entry?"selected":""}>${esc(k)}</option>`).join("")}</select></label>
+      <label class="f">Stake ($)<input id="pStake" class="num" inputmode="decimal" style="width:100px" value="${esc(st.stake||"")}"></label>
+      <label class="f">Paid out ($)<input id="pPaid" class="num" inputmode="decimal" style="width:110px" placeholder="optional" value="${esc(st.paid||"")}"></label></div>
+    <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pSugg" ${st.sugg?"checked":""}> This was one of the model's suggested plays</label>
+    <datalist id="pastStats">${stats.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
+    <div id="pLegs" style="display:flex;flex-direction:column;gap:8px">${Array.from({length: t.n}, (_, i) => pastLegRow(i, (st.legs||[])[i])).join("")}</div>
+    <p class="note" style="margin:0">Paid out: what PrizePicks actually paid, including your stake back. Leave it blank to use the payout table for ${esc(st.entry)}.</p>
+    <div class="row"><button class="btn primary" id="pSave">Add and review</button><span class="small" id="pMsg" style="color:var(--warn)"></span></div>`;
+  const keep = () => { st.date = $("#pDate").value; st.stake = $("#pStake").value; st.paid = $("#pPaid").value; st.sugg = $("#pSugg").checked;
+    st.legs = [...document.querySelectorAll("#pLegs .pl-row")].map(r => Object.fromEntries([...r.querySelectorAll("[data-k]")].map(x => [x.dataset.k, x.value]))); };
+  $("#pastBody").addEventListener("input", keep); $("#pastBody").addEventListener("change", keep);
+  $("#pEntry").addEventListener("change", e => { keep(); st.entry = e.target.value; openPastBet(); });
+  $("#pSave").addEventListener("click", savePastBet);
+  const d = $("#pastSheet"); if(!d.open){ if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+}
+async function savePastBet(){
+  const st = S.past, msg = $("#pMsg"), t = payTable(st.entry), idx = statIndex();
+  const stake = num(st.stake), date = st.date;
+  if(!date || date > today()){ msg.textContent = "Pick the date you played it."; return; }
+  if(!(stake > 0)){ msg.textContent = "Enter the stake."; return; }
+  const rows = (st.legs || []).slice(0, t.n);
+  if(rows.length < t.n || rows.some(r => !r.player?.trim() || !r.stat?.trim() || !fin(num(r.line)))){ msg.textContent = `Fill in player, stat and line for all ${t.n} legs.`; return; }
+  if(new Set(rows.map(r => normName(r.player))).size < rows.length){ msg.textContent = "Each leg needs a different player."; return; }
+  const legs = [], missing = [];
+  for(const r of rows){
+    const ref = idx.get(r.stat.trim().toLowerCase());
+    const l = {player: r.player.trim(), stat: ref ? ref.stat : r.stat.trim(), market: ref ? ref.market : "", line: num(r.line), side: r.side, result: r.result || "", actual: r.actual === "" ? "" : r.actual, past: true};
+    const mv = modelView(l, date);
+    if(mv){ l.sport = mv.h.sport; if(!l.market) l.market = mv.h.market; }
+    if(!l.result && l.actual !== "") l.result = judgeLeg(l.actual, l.line, l.side);
+    if(!l.result && mv && mv.h.actual !== "" && mv.h.actual != null){ l.actual = mv.h.actual; l.result = judgeLeg(mv.h.actual, l.line, l.side); l.auto = true; }
+    if(!l.result && mv && mv.h.result === "void"){ l.result = "void"; l.auto = true; }
+    if(!l.result) missing.push(l.player);
+    if(mv && mv.fair != null){ l.fair = mv.fair; } else { l.fair = 0.5; l.assumed = true; }
+    if(mv && mv.agree && mv.sameLine && mv.h.clv != null) l.clv = mv.h.clv;
+    legs.push(l);
+  }
+  if(missing.length && !$("#pSave").dataset.armed){ $("#pSave").dataset.armed = "1"; $("#pSave").textContent = "Add it open";
+    msg.textContent = `No result found for ${missing.join(", ")}. Pick Hit or Miss for ${missing.length === 1 ? "it" : "them"}, or add it open and grade it in the Bet log.`; return; }
+  const es = entryStats(st.entry, legs.map(l => l.fair));
+  const b = {kind: "pp", entry: st.entry, stake, E: es.E, V: es.V, cash: es.cash, source: "past", origin: st.sugg ? "suggested" : "own", past: true,
+    legs, id: uid(), placedAt: date + "T18:00:00Z", date, settledAt: date + "T23:59:00Z", addedAt: new Date().toISOString()};
+  const paid = num(st.paid); if(fin(paid) && paid >= 0) b.paidOut = paid;
+  finalize(b);
+  try { await store.saveBet(b); } catch(e){ dbError(e); msg.textContent = "Couldn't save it. Try again."; return; }
+  S.past = {entry: st.entry, date: st.date};
+  $("#pastSheet").close?.();
+  toast(`Added ${st.entry} from ${shortDate(date)}`);
+  openReview(b.id);
+}
+function reviewHTML(b){
+  const t = payTable(b.entry) || {n: b.legs.length, pay: {}}, be = breakeven(b.entry);
+  const rows = b.legs.map(l => ({l, mv: modelView(l, legDay(b, l)), date: legDay(b, l)}));
+  const fairOf = r => r.l.assumed ? null : +r.l.fair;
+  const settled = b.status === "settled", plusEV = b.E > 1, won = settled && b.profit > 0;
+  const priced = rows.filter(r => fairOf(r) != null).length;
+  // Per leg: what happened and how it lined up with the model.
+  const legRows = rows.map(r => { const l = r.l, mv = r.mv, f = fairOf(r), a = l.actual !== "" && l.actual != null && fin(+l.actual) ? +l.actual : null;
+    const margin = a == null ? null : Math.abs(a - +l.line);
+    const close = margin != null && margin <= Math.max(1, 0.1 * +l.line);
+    let model = "Not priced by the model that day", tag;
+    if(mv){ model = mv.sameLine ? (mv.agree ? `Agreed: ${pct(mv.fair)}` + (mv.fair < be ? ", under break-even" : "") : `Took ${mv.h.side}: ${pct(+mv.h.fair)} (you ${pct(mv.fair)})`)
+        : `Had ${mv.h.side} ${+mv.h.line} at ${pct(+mv.h.fair)}`; }
+    const against = mv && !mv.agree, agreed = mv && mv.agree;
+    if(l.result === "hit") tag = against ? ["good", "Beat the model"] : agreed ? ["good", "Right call"] : ["good", "Hit"];
+    else if(l.result === "miss") tag = against ? ["bad", "Model was against it"] : f != null && f < be ? ["warn", "Weak leg"] : close ? ["warn", "Close miss"] : agreed ? ["warn", "Good pick, missed"] : ["bad", "Missed"];
+    else if(l.result === "push" || l.result === "void") tag = ["plain", l.result === "push" ? "Push" : "DNP"];
+    else tag = ["plain", "Not graded"];
+    const what = a == null ? (l.result ? l.result[0].toUpperCase() + l.result.slice(1) : "–") : `${a}${margin ? ` · ${l.result === "hit" ? "cleared by" : "missed by"} ${+margin.toFixed(1)}` : ""}`;
+    const clv = l.clv != null && l.clv !== "" && fin(+l.clv) ? `<div class="small ${cls(+l.clv)}">Line moved ${+l.clv > 0 ? "your way" : "against you"} ${(Math.abs(+l.clv)*100).toFixed(1)} pts</div>` : "";
+    return {r, tag, close, against, agreed, f, html: `<tr class="rv-leg"><td><span class="side ${l.side}">${l.side}</span> <b>${esc(l.player)}</b><div class="small muted">${esc(l.stat||"")} ${l.line ?? ""}</div></td>
+      <td class="num">${esc(what)}</td><td class="small">${esc(model)}${clv}</td><td><span class="chip ${tag[0]}">${tag[1]}</span></td></tr>`}; });
+
+  // Verdict: the decision (was it +EV when placed) vs the outcome.
+  let head, body, tone;
+  if(!settled){ tone = plusEV ? "good" : "warn"; head = plusEV ? "A +EV entry, still open" : "A −EV entry, still open"; body = "The review fills in as legs are graded."; }
+  else if(priced === 0){ tone = won ? "good" : "bad"; head = won ? "Won, but the model can't judge it" : "Lost, and the model can't judge it"; body = "None of these props were priced by the model that day, so there's no fair price to judge the picks against. The leg results below still show how close each one was."; }
+  else if(plusEV && won){ tone = "good"; head = "Good bet, and it paid"; body = `It was worth ${pct(b.E-1,1,true)} on average when placed, and it came in.`; }
+  else if(plusEV){ tone = "warn"; head = "Good bet, bad luck"; body = `It was worth ${pct(b.E-1,1,true)} on average when placed. A +EV entry like this still loses ${pct(1 - (b.cash ?? 0), 0)} of the time, so the decision was sound even though it lost.`; }
+  else if(won){ tone = "warn"; head = "Got lucky"; body = `It paid, but it was worth ${pct(b.E-1,1,true)} on average when placed. Repeating entries like this loses money over time.`; }
+  else { tone = "bad"; head = "Bad bet, lost"; body = `It was worth ${pct(b.E-1,1,true)} on average when placed, so a loss is the likely result. The legs below show where the value leaked.`; }
+  if(priced && priced < rows.length) body += ` ${rows.length - priced} of ${rows.length} legs weren't priced by the model, so they're counted as coin flips.`;
+
+  // Takeaways.
+  const tk = [];
+  const ag = legRows.filter(x => x.against), agH = ag.filter(x => x.r.l.result === "hit").length, agM = ag.filter(x => x.r.l.result === "miss").length;
+  if(ag.length) tk.push(agM && !agH ? [`bad`, `You went against the model on ${ag.length === 1 ? ag[0].r.l.player : ag.length + " legs"} and ${ag.length === 1 ? "it" : "they"} missed. That's the clearest place this bet went wrong.`]
+    : agH && !agM ? [`good`, `You went against the model on ${ag.length === 1 ? ag[0].r.l.player : ag.length + " legs"} and won ${ag.length === 1 ? "it" : "them all"}, though on paper ${ag.length === 1 ? "it was" : "they were"} the weakest ${ag.length === 1 ? "pick" : "picks"}. One result doesn't prove an edge, so see if it holds up over more bets.`]
+    : [`warn`, `You went against the model on ${ag.length} legs: ${agH} hit, ${agM} missed.`]);
+  // Legs under break-even when picked (including ones counted as coin flips) are what drag an entry's value down.
+  const weak = legRows.filter(x => (x.f ?? 0.5) < be);
+  if(weak.length){ const strong = legRows.filter(x => !weak.includes(x));
+    const fix = strong.length ? entryStats(b.entry, b.legs.map(l => +l.fair).map((p, i) => weak.some(w => w.r.l === b.legs[i]) ? be + 0.02 : p)).E : null;
+    tk.push([b.E > 1 ? "warn" : "bad", `${b.E > 1 ? "Value leaks" : "What made it −EV"}: ${weak.map(x => `${esc(x.r.l.player)} (${x.f == null ? "unpriced, counted 50%" : pct(x.f)})`).join(", ")} ${weak.length === 1 ? "was" : "were"} under the ${pct(be,1)} break-even when picked, win or lose.`
+      + (fix != null ? ` With model-backed legs just over break-even in ${weak.length === 1 ? "that spot" : "those spots"}, the entry would have been worth about ${pct(fix-1,1,true)}.` : "")]); }
+  const unp = legRows.filter(x => !x.r.mv);
+  if(unp.length) tk.push(["plain", `${unp.length === 1 ? unp[0].r.l.player + " wasn't" : unp.length + " legs weren't"} on the model's list that day, which usually means the books didn't price ${unp.length === 1 ? "it" : "them"} better than break-even.`]);
+  const closeM = legRows.filter(x => x.r.l.result === "miss" && x.close && !x.against);
+  if(closeM.length) tk.push(["plain", `${closeM.map(x => x.r.l.player).join(", ")} missed by a hair. That's variance, not a mistake.`]);
+  const right = legRows.filter(x => x.r.l.result === "hit" && x.agreed);
+  if(right.length) tk.push(["good", `Where you went right: ${right.map(x => x.r.l.player).join(", ")} ${right.length === 1 ? "was a pick" : "were picks"} the model backed, and ${right.length === 1 ? "it" : "they"} hit.`]);
+  const clvs = rows.map(r => r.l.clv).filter(x => x != null && x !== "" && fin(+x)).map(Number);
+  if(clvs.length){ const c = clvs.reduce((a, x) => a + x, 0) / clvs.length;
+    tk.push([c > 0 ? "good" : "warn", c > 0 ? `The books moved toward your legs before the games (+${(c*100).toFixed(1)} pts on average). Beating the closing line is the best sign of a real edge, win or lose.` : `The books moved against your legs before the games (${(c*100).toFixed(1)} pts on average). Entering later, after lineup news, may help.`]); }
+  const bankPct = b.stake / Math.max(S.settings.startBankroll, 1);
+  if(bankPct > S.settings.maxPct + 0.001) tk.push(["warn", `The stake was ${pct(bankPct,1)} of your starting bankroll, over your ${pct(S.settings.maxPct,1)} per-entry limit. Oversized stakes make losing streaks hurt a lot more.`]);
+
+  // Entry type: same legs, other entries of the same size.
+  const live = b.legs.filter(l => l.result === "hit" || l.result === "miss"), hits = live.filter(l => l.result === "hit").length;
+  const alts = Object.keys(S.settings.payouts).filter(k => payTable(k) && payTable(k).n === b.legs.length && appOf(k) === appOf(b.entry));
+  const ps = b.legs.map(l => +l.fair);
+  const altRows = settled && live.length === b.legs.length ? alts.map(k => ({k, paid: b.stake * +(payTable(k).pay[hits] || 0), E: entryStats(k, ps).E})) : [];
+  if(altRows.length > 1){ const mine = altRows.find(x => x.k === b.entry), best = altRows.reduce((a, x) => x.paid > a.paid ? x : a), bestE = altRows.reduce((a, x) => x.E > a.E ? x : a);
+    if(mine && best.k !== b.entry && best.paid > mine.paid + 0.005) tk.push([bestE.k === b.entry ? "plain" : "warn", `With ${hits} of ${b.legs.length} hitting, a ${best.k} would have paid ${money(best.paid)}.${bestE.k === b.entry ? ` Your ${b.entry} was still the better choice beforehand (${pct(mine.E-1,1,true)} vs ${pct(best.E-1,1,true)}), so this one's hindsight.` : ` It was also the better choice beforehand (${pct(best.E-1,1,true)} vs ${pct(mine.E-1,1,true)}).`}`]);
+    else if(mine && altRows.some(x => x.paid + 0.005 < mine.paid)){ const worst = altRows.reduce((a, x) => x.paid < a.paid ? x : a); tk.push(["good", `Entry type: a ${worst.k} would have paid ${money(worst.paid)} here, so the ${b.entry} was the right call.`]); } }
+
+  // What the model's own best legs did that day.
+  const days = [...new Set(rows.map(r => r.date))];
+  if(days.length === 1){ const seen = new Set();
+    const top = S.histLegs.filter(h => h.date === days[0] && (h.result === "hit" || h.result === "miss")).sort((a, x) => x.fair - a.fair)
+      .filter(h => { const k = normName(h.player); if(seen.has(k)) return false; seen.add(k); return true; }).slice(0, b.legs.length);
+    if(top.length === b.legs.length){ const th = top.filter(h => h.result === "hit").length, tp = b.stake * +(t.pay[th] || 0), te = entryStats(b.entry, top.map(h => +h.fair)).E;
+      tk.push([tp > (b.profit ?? 0) + b.stake + 0.005 ? "warn" : "plain", `The model's ${top.length} best legs that day (${top.map(h => esc(h.player)).join(", ")}) went ${th} for ${top.length}. As a ${esc(b.entry)} at your stake that paid ${money(tp)}${settled ? ` against your ${money(b.stake + (b.profit ?? 0))}` : ""}, and it was worth ${pct(te-1,1,true)} beforehand vs ${pct(b.E-1,1,true)} for yours.`]); } }
+
+  return `<div class="rv-verdict"><div><div class="big ${tone === "good" ? "pos" : tone === "bad" ? "neg" : ""}" style="${tone === "warn" ? "color:var(--warn)" : ""}">${esc(head)}</div><p class="muted small" style="margin:6px 0 0">${esc(body)}</p></div></div>
+    <div class="statgrid"><div><span class="l">${esc(b.entry)} · ${esc(shortDate(b.date))}</span><span class="v">${money(b.stake)}</span></div>
+      <div><span class="l">Result</span><span class="v ${cls(b.profit)}">${settled ? money(b.profit, true) : "Open"}</span></div>
+      <div><span class="l">Value when placed</span><span class="v ${cls(b.E-1)}">${pct(b.E-1,1,true)}</span></div>
+      <div><span class="l">Legs hit</span><span class="v">${hits}/${live.length || b.legs.length}</span></div></div>
+    <div class="scroll rv-wrap"><table class="rv-table"><thead><tr><th>Leg</th><th>Actual</th><th>What the model said</th><th></th></tr></thead><tbody>${legRows.map(x => x.html).join("")}</tbody></table></div>
+    ${tk.length ? `<div><h3 style="margin:0 0 8px">Where it went right and wrong</h3><ul class="rv-take">${tk.map(([c, x]) => `<li class="${c === "good" ? "" : ""}"><span class="chip ${c}" style="margin-right:6px">${c === "good" ? "Right" : c === "bad" ? "Wrong" : c === "warn" ? "Watch" : "Note"}</span>${x}</li>`).join("")}</ul></div>` : ""}
+    ${altRows.length > 1 ? `<div class="scroll"><table><thead><tr><th>Same legs as</th><th class="r">Would have paid</th><th class="r">Value beforehand</th></tr></thead><tbody>${altRows.map(x => `<tr><td>${esc(x.k)}${x.k === b.entry ? ' <span class="chip plain">yours</span>' : ""}</td><td class="r num">${money(x.paid)}</td><td class="r num ${cls(x.E-1)}">${pct(x.E-1,1,true)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    <p class="note" style="margin:0">"What the model said" comes from the picks it logged that day at break-even or better. A prop it didn't log either wasn't priced or wasn't worth playing on either side. Judge bets by their value when placed; single results are mostly luck.</p>`;
+}
+function openReview(id){
+  const b = S.bets.find(x => x.id === id); if(!b) return;
+  $("#revName").textContent = `Review: ${betTitle(b)}, ${shortDate(b.date)}`;
+  $("#revBody").innerHTML = reviewHTML(b);
+  const d = $("#revSheet"); if(!d.open){ if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+}
+$("#pastOpen").addEventListener("click", openPastBet);
+$("#pastClose").addEventListener("click", () => $("#pastSheet").close?.());
+$("#revClose").addEventListener("click", () => $("#revSheet").close?.());
+for(const id of ["#pastSheet", "#revSheet"]) $(id).addEventListener("click", e => { if(e.target === e.currentTarget) e.currentTarget.close?.(); });
+document.addEventListener("click", e => { const t = e.target.closest("button[data-review]"); if(t) openReview(t.dataset.review); });
 
 /* ---------- calculator ---------- */
 const EXAMPLE_LEGS = [["Example leg 1","-128","+104","MORE"],["Example leg 2","-122","-102","MORE"],["Example leg 3","+100","-124","LESS"],["Example leg 4","-125","+101","MORE"],["Example leg 5","-118","-106","MORE"],["Example leg 6","-115","-109","MORE"]];
