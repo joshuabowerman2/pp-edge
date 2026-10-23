@@ -87,7 +87,12 @@ def scoreboard(sport, ymd):
                 score[c.get("homeAway")] = float(c.get("score"))
             except (TypeError, ValueError):
                 pass
+        season = ev.get("season") or {}
+        # ESPN season types: 1 preseason, 2 regular season, 3 postseason, 4 all-star/off-season.
+        stype = season.get("type")
+        exhibition = stype in (1, 4, "1", "4") or str(season.get("slug", "")).lower() in ("preseason", "off-season")
         out.append({"id": ev["id"], "home": teams.get("home", ""), "away": teams.get("away", ""),
+                    "exhibition": exhibition,
                     "date": ev.get("date", ""), "home_score": score.get("home"), "away_score": score.get("away"),
                     "final": bool(ev.get("status", {}).get("type", {}).get("completed"))})
     return out

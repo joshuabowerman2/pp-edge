@@ -173,7 +173,8 @@ def grade(conn, now, max_days=4):
                 print(f"   box score {gk}: {e}")
                 continue
             boxes[gk] = {r["player_key"]: r for r in rows}
-            store_box(conn, p["sport"], g["id"], day.strftime("%Y-%m-%d"), rows, p["home"], p["away"])
+            if not g.get("exhibition"):   # preseason games would skew projections
+                store_box(conn, p["sport"], g["id"], day.strftime("%Y-%m-%d"), rows, p["home"], p["away"])
         row = boxes[gk].get(p["player_key"])
         if row is None:
             result, actual = "unmatched", None
@@ -187,9 +188,40 @@ def grade(conn, now, max_days=4):
     return graded
 
 
+PURGE_KEY = "exhibition_purged_v1:"
+
+
+def purge_exhibitions(conn, sport):
+    """One-time cleanup: delete stored box scores from preseason/exhibition games, which were
+    stored before the scoreboard reported game type. Returns games removed (None if already done)."""
+    from .db import meta_get, meta_set
+    if meta_get(conn, PURGE_KEY + sport):
+        return None
+    dates = [r[0] for r in conn.execute("SELECT DISTINCT game_date FROM boxscores WHERE sport=?", (sport,))]
+    gone = 0
+    for ds in dates:
+        try:
+            games = mlb.schedule(ds) if sport == "mlb" else espn.scoreboard(sport, ds.replace("-", ""))
+        except Exception as e:
+            print(f"   purge {sport} {ds}: {e}")
+            return gone   # try again next run
+        for g in games:
+            if g.get("exhibition"):
+                if conn.execute("DELETE FROM boxscores WHERE sport=? AND event_id=?",
+                                (sport, str(g["id"]))).rowcount:
+                    gone += 1
+    meta_set(conn, PURGE_KEY + sport, True)
+    conn.commit()
+    return gone
+
+
 def backfill(conn, sport, days, now=None):
-    """Load past box scores so projections and correlations have history from day one."""
+    """Load past box scores so projections and correlations have history from day one.
+    Preseason and other exhibition games are skipped."""
     now = now or datetime.now(timezone.utc)
+    removed = purge_exhibitions(conn, sport)
+    if removed:
+        print(f"   {sport}: removed {removed} preseason games from stored box scores")
     n = 0
     for d in range(1, days + 1):
         day = (now - timedelta(days=d))
@@ -199,7 +231,7 @@ def backfill(conn, sport, days, now=None):
             print(f"   {sport} {day:%Y-%m-%d}: {e}")
             continue
         for g in games:
-            if not g["final"]:
+            if not g["final"] or g.get("exhibition"):
                 continue
             if conn.execute("SELECT 1 FROM boxscores WHERE sport=? AND event_id=? LIMIT 1", (sport, str(g["id"]))).fetchone():
                 continue

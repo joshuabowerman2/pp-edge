@@ -38,7 +38,7 @@ def entry_dist(legs, corr, sims=20000):
 
 
 def eligible(leg):
-    return not leg.get("tier") and injury_level(leg.get("injury")) < 2
+    return not leg.get("tier") and injury_level(leg.get("injury")) < 1   # no questionable/day-to-day legs
 
 
 def stacks(legs, app_cfg, corr, per_game=10, min_rho=0.05, top=12, max_use=2):

@@ -11,7 +11,7 @@ from .markets import dist_for, injury_level, stat_keys
 
 HALF_LIFE = 8          # games
 LOOKBACK = 40          # games
-MIN_GAMES = 4
+MIN_GAMES = 15         # regular-season games before a projection is used at all; until then, market only
 OPP_WINDOW = 15        # opponent games used for the defense factor
 OPP_SHRINK = 0.5       # keep half of the measured defense effect
 USAGE_SHARE = 0.7      # share of an absent player's production that goes to teammates

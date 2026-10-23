@@ -121,6 +121,45 @@ class ModelTests(unittest.TestCase):
         self.assertEqual(tracking.entry_return(apps["prizepicks"], "2-Pick Power", ["hit", "void"]), 1)
 
 
+class SafetyTests(unittest.TestCase):
+    """Guards added after a run where preseason box scores made projections claim 80-99% legs."""
+
+    def test_projection_cannot_overrule_market(self):
+        # A projection claiming certainty moves the price at most MAX_PROJ_SHIFT from the market.
+        for params in [blend.DEFAULT_PARAMS, (0.5, 1.5, 0.3)]:
+            for pm in (0.45, 0.5, 0.57):
+                for pp in (0.0, 1e-9, 0.5, 0.9999, 1.0):
+                    p = pricing.blend(pm, pp, params)
+                    self.assertLessEqual(abs(p - pm), pricing.MAX_PROJ_SHIFT + 1e-12)
+
+    def test_questionable_players_not_eligible(self):
+        from edge_engine import slips
+        self.assertFalse(slips.eligible({"tier": "", "injury": "Day-To-Day"}))
+        self.assertFalse(slips.eligible({"tier": "", "injury": "Questionable"}))
+        self.assertTrue(slips.eligible({"tier": "", "injury": ""}))
+
+    def test_preseason_box_scores_skipped_and_purged(self):
+        tmp = tempfile.mkdtemp()
+        conn = db.get(make_cfg(tmp).db_path)
+        from edge_engine.sources import espn
+        day = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+        conn.execute("INSERT INTO boxscores(sport,event_id,game_date,team,opp,player_key,player,minutes,stats,home) "
+                     "VALUES('nba','pre1',?,'celtics','knicks','ace guard','Ace Guard',15,'{\"points\": 4}',1)", (day,))
+        conn.commit()
+        games = [{"id": "pre1", "home": "Boston Celtics", "away": "New York Knicks", "final": True, "exhibition": True}]
+        orig_sb, orig_box = espn.scoreboard, espn.box
+        espn.scoreboard = lambda sport, ymd: games
+        espn.box = lambda sport, gid: self.fail("exhibition box score should not be fetched")
+        try:
+            tracking.backfill(conn, "nba", 2)
+        finally:
+            espn.scoreboard, espn.box = orig_sb, orig_box
+        self.assertEqual(conn.execute("SELECT COUNT(*) FROM boxscores").fetchone()[0], 0)
+
+    def test_projection_needs_real_sample(self):
+        self.assertGreaterEqual(projections.MIN_GAMES, 15)
+
+
 class PortfolioTests(unittest.TestCase):
     def test_caps_and_positive_growth(self):
         corr = correlation.Correlations()

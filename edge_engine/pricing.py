@@ -63,12 +63,21 @@ def market_fair(sport, market, line, quotes, min_books=2, method="power",
                 "quotes": ", ".join(f"{b} {pt:g} {o:+d}/{u:+d}" for b, pt, o, u in used)}
 
 
+# Guard rails on the projection. A stat model fed thin or odd data can claim 99.99%, and in a
+# logit blend that swamps the sportsbooks. Books are rarely wrong by more than a few points.
+PROJ_CLAMP = (0.25, 0.75)   # projection probability is limited to this range before blending
+MAX_PROJ_SHIFT = 0.05       # the blend may move the market price by at most 5 points either way
+
+
 def blend(p_market, p_proj, params):
-    """Logistic blend: logit(p) = c + a*logit(p_market) + b*logit(p_proj). Market only when no projection."""
+    """Logistic blend: logit(p) = c + a*logit(p_market) + b*logit(p_proj). Market only when no projection.
+    The result stays within MAX_PROJ_SHIFT of the market price."""
     if p_proj is None or params is None:
         return p_market
     a, b, c = params
-    return mathx.sigmoid(c + a * mathx.logit(p_market) + b * mathx.logit(p_proj))
+    p_proj = min(max(p_proj, PROJ_CLAMP[0]), PROJ_CLAMP[1])
+    p = mathx.sigmoid(c + a * mathx.logit(p_market) + b * mathx.logit(p_proj))
+    return min(max(p, p_market - MAX_PROJ_SHIFT), p_market + MAX_PROJ_SHIFT)
 
 
 def proj_over(proj, line, sport, market):

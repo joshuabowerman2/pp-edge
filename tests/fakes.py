@@ -28,8 +28,8 @@ class Fake:
                     outs += [{"name": "Over", "description": p, "price": -137, "point": l},
                              {"name": "Under", "description": p, "price": -137, "point": l}]
                 else:
-                    o = -150 + j * 9 + (3 if bk == "fanduel" else 0)
-                    u = 120 - j * 9
+                    o = -175 + j * 6 + (3 if bk == "fanduel" else 0)
+                    u = 140 - j * 6
                     outs += [{"name": "Over", "description": p, "price": o, "point": line},
                              {"name": "Under", "description": p, "price": u, "point": line}]
             mk = [{"key": "player_points", "outcomes": outs}]
