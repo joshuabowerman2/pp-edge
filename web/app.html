@@ -9,7 +9,7 @@
   --bg:#F2F4F1; --panel:#FFFFFF; --panel2:#F6F8F5; --line:#DCE1DA; --ink:#121A16; --muted:#56615A;
   --accent:#1F8A50; --on-accent:#FFFFFF; --gold:#8F6300; --gold-bg:#FBF1D6;
   --good:#1B7A47; --good-bg:#E2F3E8; --warn:#8A5A00; --warn-bg:#FCF0D4; --bad:#B3261E; --bad-bg:#FBE7E5;
-  --s-actual:#1F8A50; --s-exp:#3B6FD1; --grid:#E6EAE4; --focus:#3B6FD1;
+  --s-actual:#1F8A50; --s-exp:#3B6FD1; --grid:#E6EAE4; --focus:#3B6FD1; --own:#7B4FC9; --own-bg:#EFE7FA;
   --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
   --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
@@ -188,7 +188,7 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
   --bg:#0A1017; --panel:#0F1822; --panel2:#152131; --line:#1F2D3D; --ink:#E9EEF4; --muted:#8C99AA;
   --accent:#22D37E; --on-accent:#04170D; --gold:#E8B23A; --gold-bg:#2E240E;
   --good:#3DDC8E; --good-bg:#0F2E1E; --warn:#F0B85A; --warn-bg:#2F2410; --bad:#F2867B; --bad-bg:#371A18;
-  --s-actual:#22D37E; --s-exp:#6E9BF0; --s1:#22D37E; --s2:#6E9BF0; --grid:#1A2735; --focus:#7FA6F0; color-scheme:dark }
+  --s-actual:#22D37E; --s-exp:#6E9BF0; --s1:#22D37E; --s2:#6E9BF0; --grid:#1A2735; --focus:#7FA6F0; --own:#C39BFA; --own-bg:#2A1D3F; color-scheme:dark }
 html,body{background:var(--bg)}
 body{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
 body::before{background:var(--bg)}
@@ -286,6 +286,9 @@ input,select,textarea{background:var(--panel2)}
 .echip.good{background:var(--good-bg);color:var(--good)}.echip.warn{background:var(--warn-bg);color:var(--warn)}.echip.bad{background:var(--bad-bg);color:var(--bad)}
 .add{appearance:none;width:38px;height:38px;border-radius:9px;border:0;background:var(--accent);color:var(--on-accent);font:700 1.3rem/1 var(--body);cursor:pointer;flex:none}
 .add.on{background:var(--panel2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-size:1rem}
+.chip.own{background:var(--own-bg);color:var(--own)}.chip.sugg{background:var(--gold-bg);color:var(--gold)}
+.custom-leg{border-top:1px solid var(--line);padding-top:8px}.custom-leg summary{cursor:pointer;font-weight:600;font-size:.9rem}
+.cl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}.cl-grid input,.cl-grid select{width:100%;min-width:0}
 .seg2{display:flex;gap:6px;flex-wrap:wrap}
 .seg2 button{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);font:600 .82rem var(--body);border-radius:999px;padding:8px 14px;min-height:38px;cursor:pointer}
 .seg2 button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
@@ -436,7 +439,7 @@ footer{border-top:1px solid var(--line)}
 
   <!-- BUILD -->
   <section id="view-build" role="tabpanel" aria-labelledby="tab-build" hidden>
-    <div><h2>Build a lineup</h2><p class="lead">Pick legs from today's priced props, or start from one of the plays. Games that have started are left out, and Swap finds the best replacement for any leg.</p></div>
+    <div><h2>Build a lineup</h2><p class="lead">Make your own entry from any of today's props, or add a leg that isn't listed. Entries you build are tagged <b>Your pick</b> on Results so you can see how they do against the model's suggested plays. A lineup identical to a suggested play counts as suggested.</p></div>
     <div id="buildOut"></div>
   </section>
 
@@ -447,6 +450,9 @@ footer{border-top:1px solid var(--line)}
       <div class="seg" role="group" aria-label="Filter bets" id="betFilter">
         <button aria-pressed="true" data-f="open">Open</button><button aria-pressed="false" data-f="settled">Settled</button><button aria-pressed="false" data-f="all">All</button>
       </div>
+    </div>
+    <div class="seg2" role="group" aria-label="Whose entries" id="originFilter">
+      <button aria-pressed="true" data-o="">Everything</button><button aria-pressed="false" data-o="suggested">Suggested</button><button aria-pressed="false" data-o="own">Your picks</button>
     </div>
     <div id="betList" style="display:flex;flex-direction:column;gap:10px"></div>
   </section>
@@ -730,6 +736,13 @@ function legStats(){
           clv: clvs.length ? clvs.reduce((a,b)=>a+b,0)/clvs.length : null, beat: clvs.length ? clvs.filter(x=>x>0).length/clvs.length : null};
 }
 function betTitle(b){ return b.kind === "pp" ? b.entry : (b.label || "Sportsbook bet"); }
+/* Suggested = the model's own plays (or a builder lineup identical to one); own = anything you put together yourself. */
+function legSig(legs){ return legs.map(l => legKey(l)).sort().join("~"); }
+function matchesSuggestion(legs){ const B = S.board; if(!B || !legs.length) return false; const sig = legSig(legs);
+  return [...(B.plays||[]), ...(B.slips||[]), ...(B.stacks||[])].some(s => s.legs.length === legs.length && legSig(s.legs) === sig); }
+function betOrigin(b){ return b.origin || (b.source === "report" || b.source === "teams" ? "suggested" : "own"); }
+const ORIGIN_LABEL = {suggested: "Suggested", own: "Your pick"};
+function originChip(b){ const o = betOrigin(b); return `<span class="chip ${o === "own" ? "own" : "sugg"}">${ORIGIN_LABEL[o]}</span>`; }
 function betSport(b){ if(b.kind!=="pp") return b.sport || "Other"; const s = [...new Set(b.legs.map(l => (l.sport||"").toUpperCase()).filter(Boolean))]; return s.length===1 ? s[0] : s.length ? "Mixed" : "Other"; }
 
 /* ============================== storage ============================== */
@@ -898,6 +911,7 @@ async function restoreBackup(d){
 
 /* ============================== logging bets ============================== */
 async function logEntry(b){
+  if(!b.origin) b.origin = b.source === "report" || b.source === "teams" ? "suggested" : b.kind === "pp" && b.legs && matchesSuggestion(b.legs) ? "suggested" : "own";
   b.id = b.id || uid(); b.placedAt = new Date().toISOString(); b.date = today(); b.status = "open";
   if(b.kind === "pp"){ const t = payTable(b.entry); if(t && t.promo){ b.pay = clone(t.pay); b.promo = true; } }
   finalize(b);
@@ -1004,6 +1018,7 @@ function renderDash(A){
       </div>
       ${limitsPanel(A, L)}
     </div>
+    ${yoursVsSuggestedPanel(A)}
     ${simPanel()}
     ${perfPanel(A)}
     ${vsModelPanel(A)}
@@ -1011,6 +1026,7 @@ function renderDash(A){
     ${legPanel(LS2)}`;
   el.insertAdjacentHTML("afterbegin", dashSwitch());
   drawChart($("#pChart"), A.series);
+  drawVsChart(A);
   renderSim();
 }
 
@@ -1159,11 +1175,8 @@ function vsModelPanel(A){
   for(const b of A.settled){ if(b.kind !== "pp") continue; const g = mine.get(b.entry) || {n:0, staked:0, profit:0, exp:0};
     g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); mine.set(b.entry, g); }
   const names = [...new Set([...flex.map(f => f.entry), ...mine.keys()])].sort((a,b) => (payTable(a)?.n||0) - (payTable(b)?.n||0) || a.localeCompare(b));
-  const src = new Map();
-  for(const b of A.settled){ const k = b.source === "report" ? "Model's plays as suggested" : b.source === "builder" ? "Your own lineups (builder)" : "EV calculator";
-    const g = src.get(k) || {n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); src.set(k, g); }
   const roi = (p, s) => s ? pct(p/s, 1, true) : "–";
-  if(!names.length && !src.size) return "";
+  if(!names.length) return "";
   return `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">You vs the model</h3>
     <p class="muted small" style="margin:0">The model locks in its best Flex slip of each size every day and tracks it at 1 unit each. Compare its return with yours on the same entry types. Both swing a lot until there are dozens of entries.</p>
     <div class="scroll"><table><thead><tr><th>Entry</th><th class="r">Your entries</th><th class="r">Your ROI</th><th class="r">Model slips</th><th class="r">Model ROI</th></tr></thead><tbody>
@@ -1171,9 +1184,114 @@ function vsModelPanel(A){
       return `<tr><td>${esc(k)}</td><td class="r num">${m ? m.n : 0}</td><td class="r num ${m?cls(m.profit):""}">${m ? roi(m.profit, m.staked) : "–"}</td>
         <td class="r num">${f ? f.settled : 0}${f && f.open ? ` <span class="muted small">+${f.open} open</span>` : ""}</td><td class="r num ${f&&f.settled?cls(f.profit):""}">${f && f.settled ? pct(f.roi,1,true) : "–"}</td></tr>`; }).join("")}
     </tbody></table></div>
-    ${src.size ? `<div class="scroll"><table><thead><tr><th>Where your entries came from</th><th class="r">Entries</th><th class="r">ROI</th><th class="r">Expected ROI</th></tr></thead><tbody>
-      ${[...src.entries()].map(([k,g]) => `<tr><td>${esc(k)}</td><td class="r num">${g.n}</td><td class="r num ${cls(g.profit)}">${roi(g.profit, g.staked)}</td><td class="r num">${roi(g.exp, g.staked)}</td></tr>`).join("")}
-    </tbody></table></div>` : ""}</div>`;
+    </div>`;
+}
+/* ---------- your picks vs suggested ---------- */
+S.vsMetric = "profit";
+function originStats(bets){
+  const g = {n:0, staked:0, profit:0, exp:0, hits:0, legs:0, fair:0};
+  for(const b of bets){ g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1);
+    if(b.kind === "pp") for(const l of b.legs){ if(l.result !== "hit" && l.result !== "miss") continue; g.legs++; if(l.result === "hit") g.hits++; if(fin(+l.fair)) g.fair += +l.fair; } }
+  return g;
+}
+function vsSeries(A){
+  // One point per day with settled entries: each group's running totals.
+  const days = new Map();
+  for(const b of A.settled){ const d = dayOf(b.settledAt || b.placedAt); if(!days.has(d)) days.set(d, []); days.get(d).push(b); }
+  const run = {suggested: {staked:0, profit:0, n:0}, own: {staked:0, profit:0, n:0}};
+  const pts = [];
+  for(const d of [...days.keys()].sort()){
+    for(const b of days.get(d)){ const r = run[betOrigin(b)]; r.staked += b.stake; r.profit += b.profit; r.n++; }
+    const v = k => ({profit: run[k].n ? run[k].profit : null, roi: run[k].staked ? run[k].profit/run[k].staked : null, n: run[k].n});
+    pts.push({day: d, label: shortDate(d), s: v("suggested"), o: v("own")});
+  }
+  return pts;
+}
+function yoursVsSuggestedPanel(A){
+  const own = A.settled.filter(b => betOrigin(b) === "own"), sug = A.settled.filter(b => betOrigin(b) === "suggested");
+  const openOwn = A.open.filter(b => betOrigin(b) === "own").length, openSug = A.open.length - openOwn;
+  if(!own.length && !sug.length && !A.open.length) return "";
+  const go = originStats(own), gs = originStats(sug);
+  const roi = g => g.staked ? g.profit/g.staked : null, eroi = g => g.staked ? g.exp/g.staked : null, hit = g => g.legs ? g.hits/g.legs : null, efair = g => g.legs ? g.fair/g.legs : null;
+  const diff = (a, b) => a == null || b == null ? null : a - b;
+  let head;
+  if(!own.length || !sug.length) head = !own.length ? "None of your own picks have settled yet. Build one in My Picks to start the comparison." : "None of the suggested plays you logged have settled yet. Log one from Today's plays to start the comparison.";
+  else { const d = roi(go) - roi(gs);
+    head = `Your own picks are returning ${pct(roi(go),1,true)} per dollar staked, against ${pct(roi(gs),1,true)} for the suggested plays: ${Math.abs(d) < 0.0005 ? "even" : (d > 0 ? "ahead by " : "behind by ") + (Math.abs(d)*100).toFixed(1) + " points"}.`
+      + (own.length + sug.length < 60 ? " With this few entries most of the gap is luck; the expected ROI column shows which side should win over time." : ""); }
+  const row = (label, g, open) => `<tr><td>${label}</td><td class="r num">${g.n}${open ? ` <span class="muted small">+${open} open</span>` : ""}</td><td class="r num">${money(g.staked)}</td><td class="r num ${cls(g.profit)}">${g.n ? money(g.profit,true) : "–"}</td>
+    <td class="r num ${cls(roi(g))}">${pct(roi(g),1,true)}</td><td class="r num">${pct(eroi(g),1,true)}</td><td class="r num">${pct(hit(g))}${g.legs ? ` <span class="muted small">vs ${pct(efair(g))}</span>` : ""}</td></tr>`;
+  const dRoi = diff(roi(go), roi(gs)), dE = diff(eroi(go), eroi(gs)), dHit = diff(hit(go), hit(gs));
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="row" style="justify-content:space-between;align-items:baseline"><h3 style="margin:0">Your picks vs suggested plays</h3>
+      <div class="seg2" role="group" aria-label="Compare by">${[["profit","Profit"],["roi","ROI"]].map(([k,t]) => `<button aria-pressed="${S.vsMetric===k}" data-vsm="${k}">${t}</button>`).join("")}</div></div>
+    <p class="muted small" style="margin:0">${esc(head)}</p>
+    <div class="legend"><span><i style="border-color:var(--gold)"></i>Suggested plays</span><span><i style="border-color:var(--own)"></i>Your own picks</span></div>
+    <div class="chart" id="vsChart"></div>
+    <div><div class="small muted" style="margin:2px 0 4px">Gap: your picks minus suggested, ${S.vsMetric === "roi" ? "in ROI points" : "in profit"}. Up means you're ahead.</div><div class="chart" id="vsGap"></div></div>
+    <div class="scroll"><table><thead><tr><th></th><th class="r">Entries</th><th class="r">Staked</th><th class="r">Profit</th><th class="r">ROI</th><th class="r">Expected ROI</th><th class="r">Legs hit</th></tr></thead><tbody>
+      ${row(`<span class="chip sugg">Suggested</span>`, gs, openSug)}${row(`<span class="chip own">Your pick</span>`, go, openOwn)}
+      <tr><td class="muted">Difference</td><td></td><td></td><td class="r num ${own.length&&sug.length?cls(go.profit-gs.profit):""}">${own.length&&sug.length ? money(go.profit-gs.profit,true) : "–"}</td>
+        <td class="r num ${cls(dRoi)}">${dRoi == null ? "–" : (dRoi>0?"+":dRoi<0?"−":"") + Math.abs(dRoi*100).toFixed(1) + " pts"}</td>
+        <td class="r num">${dE == null ? "–" : (dE>0?"+":dE<0?"−":"") + Math.abs(dE*100).toFixed(1) + " pts"}</td>
+        <td class="r num ${cls(dHit)}">${dHit == null ? "–" : (dHit>0?"+":dHit<0?"−":"") + Math.abs(dHit*100).toFixed(1) + " pts"}</td></tr>
+    </tbody></table></div>
+    <p class="note" style="margin:0">Profit depends on how much you put on each side, so ROI is the fairer comparison. Suggested = a play logged from Today's plays or Team bets, or a lineup identical to one. Everything else is yours.</p></div>`;
+}
+document.addEventListener("click", e => { const b = e.target.closest("button[data-vsm]"); if(!b) return; S.vsMetric = b.dataset.vsm; renderAll(); });
+function drawVsChart(A){
+  const el = $("#vsChart"), gapEl = $("#vsGap"); if(!el) return;
+  const pts = vsSeries(A), roiMode = S.vsMetric === "roi", key = roiMode ? "roi" : "profit";
+  if(pts.length < 1 || !pts.some(p => p.s[key] != null || p.o[key] != null)){ el.innerHTML = `<p class="muted small" style="margin:12px 0">The chart appears once entries settle.</p>`; gapEl.innerHTML = ""; return; }
+  const P = [{day:"", label:"Start", s:{profit:0, roi:null, n:0}, o:{profit:0, roi:null, n:0}}, ...pts];
+  const fmt = v => roiMode ? pct(v,1,true) : money(v,true);
+  const tickFmt = t => roiMode ? `${t<0?"−":""}${Math.abs(Math.round(t*100))}%` : `${t<0?"−":""}$${Math.abs(t).toLocaleString()}`;
+  // Size to the screen so labels stay readable on a phone.
+  const W = Math.round(Math.max(320, Math.min(720, el.clientWidth || 720))), narrow = W < 520, H = narrow ? 220 : 240, m = {l: narrow ? 46 : 58, r: narrow ? 74 : 96, t:14, b:30};
+  const vals = P.flatMap(p => [p.s[key], p.o[key]]).filter(v => v != null);
+  let ticks = niceTicks(Math.min(0,...vals), Math.max(0,...vals)); if(roiMode) ticks = niceTicks(Math.min(0,...vals)*100, Math.max(0,...vals)*100).map(t => t/100);
+  const y0 = ticks[0], y1 = ticks[ticks.length-1], n = P.length;
+  const X = i => m.l + (W-m.l-m.r) * (n > 1 ? i/(n-1) : .5), Y = v => m.t + (H-m.t-m.b) * (1 - (v-y0)/(y1-y0 || 1));
+  const path = g => { let d = "", on = false; P.forEach((p,i) => { const v = p[g][key]; if(v == null){ on = false; return; } d += `${on?"L":"M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`; on = true; }); return d; };
+  const lastOf = g => { for(let i = n-1; i >= 0; i--) if(P[i][g][key] != null) return [i, P[i][g][key]]; return null; };
+  const ls = lastOf("s"), lo = lastOf("o");
+  let ys = ls && Y(ls[1]), yo = lo && Y(lo[1]); if(ls && lo && Math.abs(ys-yo) < 16){ if(ys<yo){ ys-=8; yo+=8; } else { ys+=8; yo-=8; } }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Running ${roiMode?"ROI":"profit"} of suggested plays compared with your own picks">
+    ${ticks.map(t=>`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--grid)" stroke-width="1"/><text x="${m.l-8}" y="${Y(t)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">${tickFmt(t)}</text>`).join("")}
+    <line x1="${m.l}" x2="${W-m.r}" y1="${Y(0)}" y2="${Y(0)}" stroke="var(--muted)" stroke-width="1"/>
+    <path d="${path("s")}" fill="none" stroke="var(--gold)" stroke-width="2.25" stroke-linejoin="round"/>
+    <path d="${path("o")}" fill="none" stroke="var(--own)" stroke-width="2.25" stroke-linejoin="round"/>
+    ${ls ? `<circle cx="${X(ls[0])}" cy="${Y(ls[1])}" r="4" fill="var(--gold)" stroke="var(--panel)" stroke-width="2"/><text x="${W-m.r+8}" y="${ys+4}" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--ink)">${narrow ? "" : "Sugg. "}${fmt(ls[1])}</text>` : ""}
+    ${lo ? `<circle cx="${X(lo[0])}" cy="${Y(lo[1])}" r="4" fill="var(--own)" stroke="var(--panel)" stroke-width="2"/><text x="${W-m.r+8}" y="${yo+4}" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="var(--ink)">${narrow ? "" : "Yours "}${fmt(lo[1])}</text>` : ""}
+    <text x="${m.l}" y="${H-8}" font-size="11" fill="var(--muted)" font-family="IBM Plex Sans, sans-serif">${esc(P[1] ? P[1].label : "")}</text>
+    <text x="${W-m.r}" y="${H-8}" font-size="11" fill="var(--muted)" text-anchor="end" font-family="IBM Plex Sans, sans-serif">${esc(P[n-1].label)}</text>
+    <line class="vx" x1="0" x2="0" y1="${m.t}" y2="${H-m.b}" stroke="var(--muted)" stroke-width="1" visibility="hidden"/></svg><div class="tip" hidden></div>`;
+
+  // Gap bars: own minus suggested, running, once both sides have something settled.
+  const G = P.map(p => (p.s[key] == null || p.o[key] == null || (!p.s.n || !p.o.n)) ? null : p.o[key] - p.s[key]);
+  const gv = G.filter(v => v != null);
+  if(!gv.length){ gapEl.innerHTML = `<p class="muted small" style="margin:4px 0">Shows up once both your picks and suggested plays have settled entries.</p>`; }
+  else {
+    const GH = 110, gm = {l:m.l, r:m.r, t:8, b:8};
+    let gt = roiMode ? niceTicks(Math.min(0,...gv)*100, Math.max(0,...gv)*100, 2).map(t => t/100) : niceTicks(Math.min(0,...gv), Math.max(0,...gv), 2);
+    const g0 = gt[0], g1 = gt[gt.length-1], GY = v => gm.t + (GH-gm.t-gm.b) * (1 - (v-g0)/(g1-g0 || 1));
+    const bw = Math.max(3, Math.min(26, (W-m.l-m.r)/Math.max(n,1)*0.6));
+    gapEl.innerHTML = `<svg viewBox="0 0 ${W} ${GH}" role="img" aria-label="Running gap between your own picks and suggested plays">
+      ${gt.map(t=>`<line x1="${gm.l}" x2="${W-gm.r}" y1="${GY(t)}" y2="${GY(t)}" stroke="var(--grid)" stroke-width="1"/><text x="${gm.l-8}" y="${GY(t)+4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="var(--muted)">${roiMode ? tickFmt(t).replace("%", narrow ? "" : " pts") : tickFmt(t)}</text>`).join("")}
+      <line x1="${gm.l}" x2="${W-gm.r}" y1="${GY(0)}" y2="${GY(0)}" stroke="var(--muted)" stroke-width="1"/>
+      ${G.map((v,i) => v == null ? "" : `<rect x="${(X(i)-bw/2).toFixed(1)}" y="${Math.min(GY(v),GY(0)).toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1,Math.abs(GY(v)-GY(0))).toFixed(1)}" rx="2" fill="${v >= 0 ? "var(--good)" : "var(--bad)"}"><title>${esc(P[i].label)}: ${roiMode ? (v>0?"+":v<0?"−":"") + Math.abs(v*100).toFixed(1) + " pts" : money(v,true)}</title></rect>`).join("")}
+      ${G[n-1] != null ? `<text x="${W-gm.r+8}" y="${GY(G[n-1])+4}" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="${G[n-1] >= 0 ? "var(--good)" : "var(--bad)"}">${narrow ? "" : G[n-1] >= 0 ? "Ahead " : "Behind "}${roiMode ? Math.abs(G[n-1]*100).toFixed(1) + " pts" : money(Math.abs(G[n-1]))}</text>` : ""}
+    </svg>`;
+  }
+
+  const svg = el.querySelector("svg"), tip = el.querySelector(".tip"), vx = el.querySelector(".vx");
+  const move = ev => { const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(n-1, Math.round((sx-m.l)/(W-m.l-m.r)*(n-1)))), p = P[i];
+    vx.setAttribute("x1", X(i)); vx.setAttribute("x2", X(i)); vx.setAttribute("visibility","visible");
+    tip.hidden = false; tip.innerHTML = `<b>${esc(p.label)}</b><br><span style="color:var(--gold)">●</span> Suggested <span class="num">${p.s[key]==null?"–":fmt(p.s[key])}</span> <span class="muted">(${p.s.n})</span><br><span style="color:var(--own)">●</span> Yours <span class="num">${p.o[key]==null?"–":fmt(p.o[key])}</span> <span class="muted">(${p.o.n})</span>${G[i]!=null?`<br><span class="muted">Gap</span> <span class="num ${cls(G[i])}">${roiMode ? (G[i]>0?"+":G[i]<0?"−":"") + Math.abs(G[i]*100).toFixed(1) + " pts" : money(G[i],true)}</span>`:""}`;
+    const px = X(i) * r.width / W; tip.style.left = Math.min(Math.max(px - tip.offsetWidth/2, 0), r.width - tip.offsetWidth) + "px"; tip.style.top = "0px"; };
+  svg.addEventListener("pointermove", move); svg.addEventListener("pointerdown", move);
+  svg.addEventListener("pointerleave", () => { tip.hidden = true; vx.setAttribute("visibility","hidden"); });
 }
 function breakdownPanel(A){
   const groups = (keyFn) => { const m = new Map(); for(const b of A.settled){ const k = keyFn(b); const g = m.get(k) || {k, n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); m.set(k,g);} return [...m.values()].sort((a,b)=>b.staked-a.staked); };
@@ -2084,7 +2202,7 @@ function otherLines(l){
   const me = l.app || "prizepicks", nn = normName(l.player), out = new Map();
   for(const x of legPool().values()){
     const a = x.app || "prizepicks";
-    if(a === me || x.market !== l.market || normName(x.player) !== nn || out.has(a)) continue;
+    if(x.custom || a === me || x.market !== l.market || normName(x.player) !== nn || out.has(a)) continue;
     out.set(a, x);
   }
   return [...out.values()];
@@ -2216,7 +2334,7 @@ function renderHome(){
     lb.addEventListener("click", async () => { const stake = num(si.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
       const ws = stakeWarnings(stake); if(ws.length && !lb.dataset.armed){ lb.dataset.armed = "1"; lb.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
       await logEntry({kind:"pp", entry:S.build.entry, stake, E:es.E, V:es.V, cash:es.cash, source:"builder",
-        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||""}))});
+        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||"", ...(l.custom ? {custom:true, assumed:!!l.assumed} : {})}))});
       S.build.legs = []; saveBuild(); renderAll(); });
   }
 }
@@ -2234,11 +2352,12 @@ const BK = "edgefinder.build";
 S.build = (() => { try { return JSON.parse(localStorage.getItem(BK) || "null") || {entry:"5-Pick Flex", legs:[]}; } catch(e){ return {entry:"5-Pick Flex", legs:[]}; } })();
 function saveBuild(){ try { localStorage.setItem(BK, JSON.stringify(S.build)); } catch(e){} }
 const appOf = name => /^Underdog/i.test(name) ? "underdog" : "prizepicks";
-const poolKey = l => (l.app || "prizepicks") + "|" + legKey(l);
+const poolKey = l => l.ckey || ((l.app || "prizepicks") + "|" + legKey(l));
 function legPool(){
   const B = S.board, m = new Map(); if(!B) return m;
   for(const l of [...(B.props||[]), ...(B.plays||[]).flatMap(s=>s.legs), ...(B.slips||[]).flatMap(s=>s.legs), ...(B.stacks||[]).flatMap(s=>s.legs)])
     if(l && !l.tier && fin(+l.fair) && !m.has(poolKey(l))) m.set(poolKey(l), l);
+  for(const l of Object.values(S.build.custom || {})) m.set(poolKey(l), l);
   return m;
 }
 function buildLegs(){ const pool = legPool(); return S.build.legs.map(k => pool.get(k)).filter(Boolean); }
@@ -2248,7 +2367,7 @@ function bestFor(slipLegs, n, app, skipKey){
   const games = {}; for(const l of slipLegs) if(poolKey(l) !== skipKey) games[l.game] = (games[l.game]||0) + 1;
   let best = null;
   for(const l of legPool().values()){
-    if((l.app||"prizepicks") !== app || !legOpen(l) || players.has(normName(l.player)) || (games[l.game]||0) >= 2) continue;
+    if(l.custom || (l.app||"prizepicks") !== app || !legOpen(l) || players.has(normName(l.player)) || (games[l.game]||0) >= 2) continue;
     if(+l.fair <= 0.5) continue;
     if(!best || +l.fair > +best.fair) best = l;
   }
@@ -2267,9 +2386,13 @@ function renderBuild(){
   const full = legs.length === t.n;
   const es = full ? entryStats(name, legs.map(l => +l.fair)) : null;
   const sg = es ? suggestStake(es.kelly) : null;
-  const sf = S.build.sport || "";
-  const avail = [...pool.values()].filter(l => (l.app||"prizepicks") === app && legOpen(l) && (!sf || l.sport === sf) && (+l.fair >= be || S.build.legs.includes(poolKey(l))))
+  const sf = S.build.sport || "", showAll = !!S.build.all, q = normName(S.build.q || "");
+  // Drop custom legs that are no longer in the slip.
+  for(const k of Object.keys(S.build.custom || {})) if(!S.build.legs.includes(k)) delete S.build.custom[k];
+  const avail = [...pool.values()].filter(l => !l.custom && (l.app||"prizepicks") === app && legOpen(l) && (!sf || l.sport === sf)
+      && (!q || normName(l.player).includes(q)) && (showAll || q || +l.fair >= be || S.build.legs.includes(poolKey(l))))
     .sort((a,b) => +b.fair - +a.fair);
+  const statOpts = [...new Set([...pool.values()].filter(l => !l.custom && l.stat).map(l => l.stat))].sort();
   const shown = S.build.more ? 60 : 12, moreLeft = Math.min(avail.length, 60) - shown;
   const inSlip = new Set(S.build.legs), players = new Set(legs.map(l => normName(l.player)));
   const sports = [...new Set([...pool.values()].map(l => l.sport))].sort();
@@ -2278,8 +2401,8 @@ function renderBuild(){
       <div class="row" style="justify-content:space-between"><label class="f">Entry type<select id="bEntry">${names.map(k=>`<option ${k===name?"selected":""}>${esc(k)}</option>`).join("")}</select></label>
         <span class="muted small">Break-even per leg <span class="num">${pct(be,2)}</span></span></div>
       <div>${slots.map((l,i) => l ? `<div class="build-slot"><div><span class="side ${l.side}">${l.side}</span> ${plink(l)} ${moveTag(l)} ${legOpen(l)?"":'<span class="chip warn">Started</span>'}
-          <div class="small muted">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span> · ${esc(timeOf(l.start))}</div></div>
-          <div class="acts"><button class="btn sm ${legOpen(l)?"":"primary"}" data-swap="${esc(poolKey(l))}">Swap</button><button class="btn sm danger" data-drop="${esc(poolKey(l))}" aria-label="Remove ${esc(l.player)}">✕</button></div></div>`
+          <div class="small muted">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span>${l.custom ? ` · <span class="chip own">Your leg${l.assumed ? ", 50% assumed" : ""}</span>` : ` · ${esc(timeOf(l.start))}`}</div></div>
+          <div class="acts">${l.custom ? "" : `<button class="btn sm ${legOpen(l)?"":"primary"}" data-swap="${esc(poolKey(l))}">Swap</button>`}<button class="btn sm danger" data-drop="${esc(poolKey(l))}" aria-label="Remove ${esc(l.player)}">✕</button></div></div>`
         : `<div class="build-slot empty"><span>Leg ${i+1}: tap Add on a prop below</span></div>`).join("")}</div>
       <div class="row"><button class="btn sm" id="bFill" ${full?"disabled":""}>Fill with best legs</button><button class="btn sm" id="bClear" ${legs.length?"":"disabled"}>Clear</button></div>
       ${es ? `<div class="statgrid"><div><span class="l">Expected return</span><span class="v ${cls(es.E-1)}">${pct(es.E-1,1,true)}</span></div>
@@ -2293,15 +2416,29 @@ function renderBuild(){
       : `<p class="muted small" style="margin:0">Add ${t.n - legs.length} more ${t.n - legs.length === 1 ? "leg" : "legs"} to see the expected return.</p>`}
     </div>
     <div class="panel" style="display:flex;flex-direction:column;gap:8px">
-      <div class="row" style="justify-content:space-between"><h3 style="margin:0">Props above break-even</h3>
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">${showAll || q ? "All of today's props" : "Props above break-even"}</h3>
         <label class="f" style="flex-direction:row;align-items:center;gap:8px">Sport<select id="bSport"><option value="">All</option>${sports.map(x=>`<option ${x===sf?"selected":""} value="${esc(x)}">${esc(x.toUpperCase())}</option>`).join("")}</select></label></div>
+      <div class="row" style="align-items:center"><input id="bSearch" type="search" placeholder="Find a player" aria-label="Find a player" value="${esc(S.build.q||"")}" style="flex:1;min-width:140px">
+        <label class="small" style="display:flex;align-items:center;gap:6px;white-space:nowrap"><input type="checkbox" id="bAll" ${showAll?"checked":""}> Show props below break-even</label></div>
       ${avail.length ? `<ul class="pool">${avail.slice(0, shown).map(l => { const k = poolKey(l), on = inSlip.has(k), dup = !on && players.has(normName(l.player));
           return `<li><div><span class="side ${l.side}">${l.side}</span> <span class="who">${plink(l)}</span> ${moveTag(l)}
             <div class="meta">${esc(l.sport.toUpperCase())} · ${esc(l.stat)} ${+l.line} · ${esc(timeOf(l.start))}</div></div>
             <div style="display:flex;align-items:center;gap:8px"><span class="chip ${+l.fair-be>=0.01?"good":+l.fair>=be?"warn":"plain"}">${pct(+l.fair)}</span>
             <button class="btn sm ${on?"":"primary"}" data-add="${esc(k)}" ${!on&&(full||dup)?"disabled":""}>${on?"Added":dup?"Same player":"Add"}</button></div></li>`; }).join("")}</ul>
         ${moreLeft > 0 ? `<button class="btn sm" id="bMore">Show ${moreLeft} more</button>` : ""}`
-        : `<p class="muted small" style="margin:0">No props above this entry's break-even right now.</p>`}
+        : `<p class="muted small" style="margin:0">${q ? "No open props match that name." : showAll ? "No open props right now." : "No props above this entry's break-even right now. Tick \"Show props below break-even\" to pick from everything."}</p>`}
+      <details class="custom-leg" ${S.build.customOpen?"open":""}><summary>Add a leg that isn't listed</summary>
+        <p class="note" style="margin:6px 0 8px">For a prop the model didn't price. If you leave fair % blank it's counted as a coin flip (50%), so the entry's expected return will be rough.</p>
+        <div class="cl-grid">
+          <label class="f">Player<input id="cPlayer" autocomplete="off"></label>
+          <label class="f">Sport<select id="cSport">${["nba","nfl","nhl","mlb","wnba","cfb"].map(x=>`<option value="${x}" ${x===(sf||legs[0]?.sport||"nba")?"selected":""}>${esc(SPORT_NAME[x]||x.toUpperCase())}</option>`).join("")}</select></label>
+          <label class="f">Stat<input id="cStat" list="cStats" autocomplete="off" placeholder="Points"><datalist id="cStats">${statOpts.map(x=>`<option value="${esc(x)}">`).join("")}</datalist></label>
+          <label class="f">Line<input id="cLine" class="num" inputmode="decimal" placeholder="24.5"></label>
+          <label class="f">Pick<select id="cSide"><option>MORE</option><option>LESS</option></select></label>
+          <label class="f">Fair % <span class="muted">(optional)</span><input id="cFair" class="num" inputmode="decimal" placeholder="50"></label>
+        </div>
+        <div class="row" style="margin-top:8px"><button class="btn sm primary" id="cAdd" ${full?"disabled":""}>${full?"Slip is full":"Add to slip"}</button><span class="small" id="cMsg" style="color:var(--warn)"></span></div>
+      </details>
     </div></div>`;
   $("#bEntry").addEventListener("change", e => { S.build.entry = e.target.value; saveBuild(); renderBuild(); });
   $("#bSport").addEventListener("change", e => { S.build.sport = e.target.value; S.build.more = false; saveBuild(); renderBuild(); });
@@ -2310,6 +2447,24 @@ function renderBuild(){
     if(cur.length < t.n) toast("Not enough open legs to fill every slot.");
     S.build.legs = cur.map(poolKey); saveBuild(); renderBuild(); });
   $("#bMore")?.addEventListener("click", () => { S.build.more = true; renderBuild(); });
+  $("#bAll").addEventListener("change", e => { S.build.all = e.target.checked; S.build.more = false; saveBuild(); renderBuild(); });
+  const bs = $("#bSearch"); let bsT;
+  bs.addEventListener("input", () => { clearTimeout(bsT); bsT = setTimeout(() => { S.build.q = bs.value; S.build.more = false; renderBuild();
+    const n = $("#bSearch"); if(n){ n.focus(); n.setSelectionRange(n.value.length, n.value.length); } }, 250); });
+  el.querySelector(".custom-leg").addEventListener("toggle", e => { S.build.customOpen = e.target.open; });
+  $("#cAdd")?.addEventListener("click", () => {
+    const msg = $("#cMsg"), player = $("#cPlayer").value.trim(), sport = $("#cSport").value, stat = $("#cStat").value.trim(),
+      line = num($("#cLine").value), side = $("#cSide").value, fv = $("#cFair").value.trim(), fairIn = num(fv);
+    if(!player || !stat || !fin(line)){ msg.textContent = "Enter a player, a stat and a line."; return; }
+    const fair = fv === "" ? 0.5 : fairIn > 1 ? fairIn/100 : fairIn;
+    if(!(fair > 0 && fair < 1)){ msg.textContent = "Fair % should be between 1 and 99."; return; }
+    if(buildLegs().some(l => normName(l.player) === normName(player))){ msg.textContent = `${player} is already in your slip.`; return; }
+    // Use the board's market key when the stat matches one, so finished games can grade it.
+    const ref = [...legPool().values()].find(l => !l.custom && l.sport === sport && String(l.stat).toLowerCase() === stat.toLowerCase());
+    const leg = {sport, player, stat: ref ? ref.stat : stat, market: ref ? ref.market : "", line, side, fair, app, game: "", start: "",
+      custom: true, assumed: fv === "", ckey: "custom|" + uid()};
+    S.build.custom = S.build.custom || {}; S.build.custom[leg.ckey] = leg; S.build.legs.push(leg.ckey); S.build.customOpen = true;
+    saveBuild(); renderBuild(); toast(`Added ${player} ${side} ${line} ${leg.stat}`); });
   $("#bClear")?.addEventListener("click", () => { S.build.legs = []; saveBuild(); renderBuild(); });
   const si = $("#bStakeIn"), lb = $("#bLogBtn"), w = $("#bWarnOut");
   if(si && lb){
@@ -2318,7 +2473,7 @@ function renderBuild(){
     lb.addEventListener("click", async () => { const stake = num(si.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
       const ws = stakeWarnings(stake); if(ws.length && !lb.dataset.armed){ lb.dataset.armed = "1"; lb.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
       await logEntry({kind:"pp", entry:name, stake, E:es.E, V:es.V, cash:es.cash, source:"builder",
-        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||""}))});
+        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||"", ...(l.custom ? {custom:true, assumed:!!l.assumed} : {})}))});
       lb.dataset.armed = ""; lb.textContent = "Logged"; });
   }
 }
@@ -2349,16 +2504,16 @@ document.addEventListener("click", e => {
 /* ---------- bets ---------- */
 function renderBets(){
   const el = $("#betList"); const f = S.betFilter;
-  const list = S.bets.filter(b => f === "all" || (f === "open" ? b.status !== "settled" : b.status === "settled"))
+  const list = S.bets.filter(b => (f === "all" || (f === "open" ? b.status !== "settled" : b.status === "settled")) && (!S.originFilter || betOrigin(b) === S.originFilter))
     .sort((a,b)=> (b.placedAt||"").localeCompare(a.placedAt||""));
-  if(!list.length){ el.innerHTML = `<div class="panel empty"><h3>${f==="open"?"No open entries":f==="settled"?"Nothing settled yet":"No entries yet"}</h3><p class="muted" style="margin:0">Log entries from <b>Today's picks</b> or the <b>EV calculator</b>.</p></div>`; return; }
+  if(!list.length){ el.innerHTML = `<div class="panel empty"><h3>${S.originFilter ? `No ${f==="all"?"":f+" "}${S.originFilter==="own"?"entries of your own":"suggested entries"}` : f==="open"?"No open entries":f==="settled"?"Nothing settled yet":"No entries yet"}</h3><p class="muted" style="margin:0">Log entries from <b>Today's picks</b> or the <b>EV calculator</b>.</p></div>`; return; }
   el.innerHTML = list.map(b => {
     const ev = b.stake*(b.E-1); const graded = b.kind==="pp" ? b.legs.filter(l=>GRADED.includes(l.result)).length : (b.result?1:0); const total = b.kind==="pp" ? b.legs.length : 1;
     const status = b.status==="settled" ? `<span class="chip ${b.profit>0?"good":b.profit<0?"bad":"plain"}">${money(b.profit,true)}</span>` : `<span class="chip plain">${graded}/${total} graded</span>`;
     const legsHtml = b.kind==="pp" ? b.legs.map((l,i)=>`<div class="betleg"><div><span class="side ${l.side}">${l.side}</span> ${esc(l.player)} <span class="muted small">${esc(l.stat||"")} ${l.line??""} · fair ${pct(+l.fair)}${l.actual!==undefined&&l.actual!==""?` · actual ${esc(l.actual)}`:""}${l.clv!=null&&l.clv!==""?` · CLV ${(l.clv>0?"+":"")+(l.clv*100).toFixed(1)}`:""}${l.auto?" · auto-graded":""}</span>${!GRADED.includes(l.result)&&l.injury?` <span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${!GRADED.includes(l.result)&&l.ppLineNow?` <span class="chip warn">line now ${esc(l.ppLineNow)}</span>`:""}</div>
         <div class="res" role="group" aria-label="Result for ${esc(l.player)}">${GRADED.map(r=>`<button class="${r}" aria-pressed="${l.result===r}" data-bet="${b.id}" data-leg="${i}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`).join("")
       : `<div class="betleg"><div>${esc(b.label)} <span class="muted small">at ${b.odds>0?"+":""}${b.odds} · fair ${pct(b.fair)}</span></div><div class="res" role="group" aria-label="Result">${["win","loss","push"].map(r=>`<button class="${r}" aria-pressed="${b.result===r}" data-bet="${b.id}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`;
-    return `<details class="bet" ${S.openBet===b.id?"open":""} data-id="${b.id}"><summary><div><b>${esc(betTitle(b))}</b> <span class="muted small">${shortDate(b.date)} · ${esc(betSport(b))}</span><div class="small muted num">${money(b.stake)} stake · EV ${money(ev,true)} (${pct(b.E-1,1,true)})</div></div><div class="betside">${status}<button class="btn danger delquick" data-del="${b.id}" data-label="Delete" aria-label="Delete ${esc(betTitle(b))} from ${shortDate(b.date)}">Delete</button></div></summary>
+    return `<details class="bet" ${S.openBet===b.id?"open":""} data-id="${b.id}"><summary><div><b>${esc(betTitle(b))}</b> ${originChip(b)} <span class="muted small">${shortDate(b.date)} · ${esc(betSport(b))}</span><div class="small muted num">${money(b.stake)} stake · EV ${money(ev,true)} (${pct(b.E-1,1,true)})</div></div><div class="betside">${status}<button class="btn danger delquick" data-del="${b.id}" data-label="Delete" aria-label="Delete ${esc(betTitle(b))} from ${shortDate(b.date)}">Delete</button></div></summary>
       <div class="body">${legsHtml}
       <div class="row" style="justify-content:space-between"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Stake ($)<input class="num" style="width:110px" data-stake="${b.id}" value="${b.stake}" inputmode="decimal"></label>
       <button class="btn danger" data-del="${b.id}">Delete entry</button></div></div></details>`;
@@ -2519,6 +2674,8 @@ function setTab(t){ if(!TABS.includes(t) || (t === "people" && !S.isOwner)) t = 
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
   TABS.forEach(x => $("#view-"+x).hidden = x !== t); renderAll(); window.scrollTo(0,0); }
 document.querySelectorAll(".tabs").forEach(n => n.addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); }));
+$("#originFilter").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; S.originFilter = b.dataset.o;
+  $("#originFilter").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderBets(); });
 $("#betFilter").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; S.betFilter = b.dataset.f;
   $("#betFilter").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderBets(); });
 
