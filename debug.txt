@@ -1,0 +1,8 @@
++ edge backfill --days 4
+nba: 15 games stored
+nhl: 22 games stored
++ python -
+boxscores: [('nba', 341, 15), ('nhl', 838, 22)]
++ python -
+scoreboard 10/21: 11 [{'id': '401909834', 'home': 'Orlando Magic', 'away': 'Atlanta Hawks', 'date': '2026-10-21T23:00Z', 'final': True}, {'id': '401909835', 'home': 'Washington Wizards', 'away': 'Milwaukee Bucks', 'date': '2026-10-21T23:00Z', 'final': True}]
+box rows: 26 [{'player_key': 'onyeka okongwu', 'player': 'Onyeka Okongwu', 'team': 'Atlanta Hawks', 'opp': 'Orlando Magic', 'minutes': 29.0, 'stats': {'minutes': 29.0, 'points': 8.0, 'fieldGoalsMade': 3.0, 'fieldGoalsAttempted': 8.0, 'threePointFieldGoalsMade': 0.0, 'threePointFieldGoalsAttempted': 4.0, 'freeThrowsMade': 2.0, 'freeThrowsAttempted': 2.0, 'rebounds': 5.0, 'assists': 7.0, 'turnovers': 2.0, 'steals': 0.0, 'blocks': 0.0, 'offensiveRebounds': 1.0, 'defensiveRebounds': 4.0, 'fouls': 2.0, 'plusMinus': 10.0}, 'dnp': False}, {'player_key': 'jalen johnson', 'player': 'Jalen Johnson', 'team': 'Atlanta Hawks', 'opp': 'Orlando Magic', 'minutes': 28.0, 'stats': {'minutes': 28.0, 'points': 20.0, 'fieldGoalsMade': 7.0, 'fieldGoalsAttempted': 19.0, 'threePointFieldGoalsMade': 0.0, 'threePointFieldGoalsAttempted': 4.0, 'freeThrowsMade': 6.0, 'freeThrowsAttempted': 7.0, 'rebounds': 14.0, 'assists': 6.0, 'turnovers': 2.0, 'steals': 0.0, 'blocks': 0.0, 'offensiveRebounds': 0.0, 'defensiveRebounds': 14.0, 'fouls': 5.0, 'plusMinus': 8.0}, 'dnp': False}]
