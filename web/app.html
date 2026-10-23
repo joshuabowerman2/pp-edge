@@ -223,7 +223,8 @@ input,select,textarea{background:var(--panel2)}
 .pc-game span:last-child{color:var(--muted);white-space:nowrap}
 .av{flex:none;width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;font:700 .8rem var(--body);color:#fff;background:hsl(var(--h) 45% 32%);border:2px solid hsl(var(--h) 55% 48%)}
 .av.big{width:58px;height:58px;font-size:1.05rem}
-.av.team{border-width:3px}.av.num{font:800 .95rem var(--display);letter-spacing:.02em}.av.big.num{font-size:1.5rem}
+.jer{flex:none;display:inline-block;width:40px;height:37px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))}
+.jer.big{width:66px;height:60px}.jer svg{width:100%;height:100%;display:block}
 .echip{display:inline-block;font:600 .78rem var(--mono);padding:4px 9px;border-radius:7px}
 .echip.good{background:var(--good-bg);color:var(--good)}.echip.warn{background:var(--warn-bg);color:var(--warn)}.echip.bad{background:var(--bad-bg);color:var(--bad)}
 .add{appearance:none;width:38px;height:38px;border-radius:9px;border:0;background:var(--accent);color:var(--on-accent);font:700 1.3rem/1 var(--body);cursor:pointer;flex:none}
@@ -1261,9 +1262,16 @@ function avatar(l, big){
   const c = okHex(l.color), label = l.jersey ? String(l.jersey) : initials(l.player);
   const title = l.jersey ? `#${l.jersey}${l.pos ? " " + l.pos : ""}` : "";
   if(!c) return `<span class="av${big?" big":""}" style="--h:${hue(l.team || l.player)}" aria-hidden="true">${esc(label)}</span>`;
-  let ring = okHex(l.alt) || "#ffffff"; if(ring.toLowerCase() === c.toLowerCase()) ring = "#ffffff";
+  let trim = okHex(l.alt) || "#ffffff"; if(trim.toLowerCase() === c.toLowerCase()) trim = "#ffffff";
   const ink = lum(c) > .45 ? "#0b1118" : "#ffffff";
-  return `<span class="av team${big?" big":""}${l.jersey?" num":""}" style="background:${c};border-color:${ring};color:${ink}" title="${esc(title)}" aria-hidden="true">${esc(label)}</span>`;
+  // A plain jersey shape in the team's two colors: a tank top for basketball, sleeves for everything else.
+  const tank = l.sport === "nba" || l.sport === "wnba";
+  const body = tank ? "M11 3h6q5 6 10 0h6q0 9 6 12v27H5V15q6-3 6-12z" : "M15 3h5q4 6 8 0h5l12 7-4 10-6-3v25H13V17l-6 3-4-10z";
+  const neck = tank ? "M17 3q5 6 10 0" : "M20 3q4 6 8 0";
+  const sz = label.length > 2 ? 10 : 15;
+  return `<span class="jer${big?" big":""}" title="${esc(title)}" aria-hidden="true"><svg viewBox="0 0 48 44"><path d="${body}" fill="${c}" stroke="${trim}" stroke-width="2.2" stroke-linejoin="round"/>`
+    + `<path d="${neck}" fill="none" stroke="${trim}" stroke-width="2.6" stroke-linecap="round"/>`
+    + `<text x="24" y="${tank ? 31 : 32}" text-anchor="middle" font-size="${sz}" font-weight="800" fill="${ink}" stroke="${trim}" stroke-width=".6" paint-order="stroke" font-family="Barlow Condensed, Arial Narrow, system-ui, sans-serif">${esc(label)}</text></svg></span>`;
 }
 const posTag = l => l.pos ? ` · ${esc(l.pos)}` : "";
 function teamName(t){ return t ? String(t).replace(/\b\w/g, c => c.toUpperCase()) : ""; }
