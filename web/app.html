@@ -2817,7 +2817,10 @@ async function savePastBet(){
   if(!(stake > 0)){ msg.textContent = "Enter the stake."; return; }
   const rows = (st.legs || []).slice(0, t.n);
   if(rows.length < t.n || rows.some(r => !r.player?.trim() || !r.stat?.trim() || !fin(num(r.line)))){ msg.textContent = `Fill in player, stat and line for all ${t.n} legs.`; return; }
-  if(new Set(rows.map(r => normName(r.player))).size < rows.length){ msg.textContent = "Each leg needs a different player."; return; }
+  // The same player twice is allowed (it's a record of what you played). Only an exact repeat is double-checked, since that's usually a typo.
+  const dupKey = r => normName(r.player) + "|" + String(r.stat).trim().toLowerCase() + "|" + num(r.line) + "|" + r.side;
+  if(new Set(rows.map(dupKey)).size < rows.length && !$("#pSave").dataset.dupOk){ $("#pSave").dataset.dupOk = "1";
+    msg.textContent = "Two legs are exactly the same (player, stat, line and pick). If that's really what you played, tap Add again."; return; }
   const pr = st.promo && st.promo.type ? st.promo : null;
   if(pr && (pr.type === "boost" || pr.type === "profit") && !(+pr.value > 0)){ msg.textContent = pr.type === "boost" ? "Enter the boosted payout." : "Enter the profit boost %."; return; }
   const legs = [], missing = [];
