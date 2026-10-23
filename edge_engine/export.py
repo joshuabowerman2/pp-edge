@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from .db import meta_get
 from .tracking import iso
-from . import research, results
+from . import projections, research, results, timeline
 from .tracking import moves_for, prop_key
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
@@ -62,6 +62,7 @@ def app_json(conn, cfg, now, days=60):
     _MOVES.update(moves_for(conn, all_legs))
     # Research for every player and stat on the board: projection, averages, matchup, games, book lines.
     research_data = research.build(conn, all_legs)
+    injuries = injury_report(conn, all_legs)
     cutoff = iso(now - timedelta(days=days))
     hist = []
     for p in conn.execute("SELECT * FROM picks WHERE created_at >= ? ORDER BY seq", (cutoff,)):
@@ -92,13 +93,61 @@ def app_json(conn, cfg, now, days=60):
             # The model's own record for each Flex size (1 unit per slip), for the app's you-vs-the-model view.
             "stacks": [_slip(e, False) for e in board.get("stacks", [])],
             "research": research_data,
+            "injuries": injuries,
+            "freshness": freshness(conn),
             "flex": [{k: s[k] for k in ("entry", "n", "slips", "open", "settled", "cashed", "profit", "exp_profit", "roi",
                                          "cash_rate")} for s in results.flex_data(conn)]}
+
+
+def injury_report(conn, legs):
+    """For each team on the board: who is listed on ESPN's injury report (confirmed status), and the model's
+    estimate of how absences shift teammates' projections (usage redistribution)."""
+    from .markets import injury_level
+    from .sources.http import canon_team
+    teams = {}
+    for l in legs:
+        if l.get("team"):
+            teams.setdefault((l["sport"], canon_team(l["team"])), []).append(l)
+    out = []
+    for (sport, team), tl in sorted(teams.items()):
+        listed = [{"player": r["player"], "status": r["status"], "level": injury_level(r["status"]), "updated": r["updated_at"]}
+                  for r in conn.execute("""SELECT i.player, i.status, i.updated_at FROM injuries i JOIN rosters r
+                                           ON r.sport=i.sport AND r.player_key=i.player_key WHERE i.sport=? AND r.team=?""",
+                                        (sport, team))]
+        listed = [x for x in listed if x["level"] >= 1]
+        absent = projections.absent_players(conn, sport, team)
+        impact, seen = [], set()
+        for l in tl:
+            k = (l.get("player_key"), l["market"])
+            if not l.get("player_key") or k in seen or l.get("tier"):
+                continue
+            seen.add(k)
+            bump = projections.usage_bump(conn, sport, team, l["player_key"], l["market"], absent) if absent else 0.0
+            if bump >= 0.1:
+                impact.append({"player": l["player"], "stat": l["stat"], "market": l["market"], "bump": round(bump, 2)})
+        if listed or impact:
+            out.append({"sport": sport, "team": team, "listed": sorted(listed, key=lambda x: -x["level"]),
+                        "impact": sorted(impact, key=lambda x: -x["bump"])})
+    return out
+
+
+def freshness(conn):
+    """When each data source was last refreshed, and which model versions made the picks."""
+    one = lambda q: (conn.execute(q).fetchone() or [None])[0]
+    return {"odds": one("SELECT MAX(last_polled) FROM games"), "injuries": one("SELECT MAX(updated_at) FROM injuries"),
+            "boxscores": one("SELECT MAX(game_date) FROM boxscores"), "rosters": one("SELECT MAX(updated_at) FROM rosters"),
+            "models": [dict(r) for r in conn.execute("SELECT model_version AS version, COUNT(*) AS picks FROM picks GROUP BY model_version")]}
 
 
 def write_app_json(conn, cfg, path, now):
     d = os.path.dirname(path)
     if d:
         os.makedirs(d, exist_ok=True)
+    data = app_json(conn, cfg, now)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(app_json(conn, cfg, now), f, separators=(",", ":"))
+        json.dump(data, f, separators=(",", ":"))
+    # Line history goes in its own file, loaded only when someone opens a player's page.
+    from .db import meta_get
+    board = meta_get(conn, "board") or {}
+    legs = [l for e in board.get("plays", []) + board.get("entries", []) + board.get("stacks", []) for l in e["legs"]] + board.get("legs", [])
+    timeline.write(conn, legs, os.path.join(d or ".", "timeline.json"))

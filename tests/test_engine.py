@@ -225,6 +225,13 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(r["home_n"] + r["away_n"] == r["n"])
         self.assertEqual(r["usage_label"], "Shot attempts")
         self.assertTrue(any(x["books"] for x in d2["research"].values()))
+        # line history file, injury report and data freshness
+        tl = json.load(open(os.path.join(site, "timeline.json")))
+        self.assertTrue(tl and any(v["books"] for v in tl.values()) and any(v["apps"] for v in tl.values()))
+        self.assertIn("injuries", d2)
+        self.assertTrue(d2["freshness"]["odds"] and d2["freshness"]["models"])
+        self.assertIn("Accuracy over time", html_)
+        self.assertIn("Model and data", html_)
         f = self.conn.execute("SELECT * FROM flex_slips").fetchone()
         self.assertIn(f["status"], ("settled", "void"))
         self.assertIsNotNone(f["hits"])

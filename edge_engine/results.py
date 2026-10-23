@@ -303,6 +303,45 @@ def daily(conn, tz, days=30):
     return rows
 
 
+def periods(conn, now=None):
+    """Accuracy over the last 7 days, 30 days and all time: every graded pick counts, misses included."""
+    from datetime import timedelta
+    now = now or datetime.now(timezone.utc)
+    out = []
+    for label, days in (("Last 7 days", 7), ("Last 30 days", 30), ("All time", None)):
+        q, args = "SELECT fair, clv, result FROM picks WHERE result IN ('hit','miss')", []
+        if days:
+            q += " AND start >= ?"
+            args.append((now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        rows = conn.execute(q, args).fetchall()
+        n = len(rows)
+        hits = sum(r["result"] == "hit" for r in rows)
+        brier = sum((r["fair"] - (r["result"] == "hit")) ** 2 for r in rows) / n if n else None
+        c = [r["clv"] for r in rows if r["clv"] is not None]
+        out.append({"label": label, "n": n, "hit": hits / n if n else None, "exp": sum(r["fair"] for r in rows) / n if n else None,
+                    "brier": brier, "clv": sum(c) / len(c) if c else None})
+    return out
+
+
+def _brier(g):
+    return "–" if g["brier"] is None else f"{g['brier']:.3f}"
+
+
+def freshness_html(conn, tz):
+    from .export import freshness
+    f = freshness(conn)
+    when = lambda x: esc(_local(x, tz, "%a %b %d, %I:%M %p")) if x and "T" in str(x) else esc(x or "not yet")
+    models = ", ".join(f'{esc(m["version"])} ({m["picks"]:,} picks)' for m in f["models"]) or "none yet"
+    return f"""<div class="panel"><h2>Model and data</h2><div class="scroll"><table style="min-width:0"><tbody>
+<tr><td>Model versions</td><td>{models}</td></tr>
+<tr><td>Sportsbook prices last checked</td><td>{when(f["odds"])}</td></tr>
+<tr><td>Injury report last checked</td><td>{when(f["injuries"])}</td></tr>
+<tr><td>Rosters last checked</td><td>{when(f["rosters"])}</td></tr>
+<tr><td>Box scores loaded through</td><td>{when(f["boxscores"])}</td></tr></tbody></table></div>
+<p class="muted small" style="margin:8px 0 0">Every pick is published before its game with the model version that made it. Wins and losses
+are both counted; nothing is removed after the fact.</p></div>"""
+
+
 def clv_curve(conn):
     """Running average CLV across finished picks, in start order."""
     vals, out = [], []
@@ -370,6 +409,15 @@ at the stakes it recommended, starting from 100. Staked {pct(p["staked_pct"])} o
 {line_chart(p["index"], lambda v: f"{v:.0f}", "Model portfolio value, start 100", "Now", baseline=100)}</div>
 </div>
 {bt_html}
+<div class="grid2">
+<div class="panel"><h2>Accuracy over time</h2><div class="scroll"><table style="min-width:0"><thead><tr><th>Period</th><th class="r">Graded</th>
+<th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Brier</th><th class="r">CLV</th></tr></thead><tbody>
+{"".join(f'<tr><td>{g["label"]}</td><td class="r num">{g["n"]:,}</td><td class="r num">{pct(g["hit"])}</td><td class="r num">{pct(g["exp"])}</td>'
+         f'<td class="r num">{_brier(g)}</td><td class="r num {cls(g["clv"])}">{pts(g["clv"], 1)}</td></tr>' for g in periods(conn))}
+</tbody></table></div><p class="muted small" style="margin:8px 0 0">Brier score: lower is better, and 0.250 is what a coin flip would score.
+Hit rate should land near expected if the probabilities are right.</p></div>
+{freshness_html(conn, tz)}
+</div>
 <div class="grid2">
 <div class="panel"><h2>Closing line value over time</h2><p class="muted small" style="margin:0 0 8px">Running average, in points, across
 every finished pick. Staying above zero means the sharp market keeps moving toward the picks after they're made.</p>

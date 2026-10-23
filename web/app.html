@@ -282,6 +282,22 @@ input[type=range]{accent-color:var(--accent);padding:0;min-height:30px;backgroun
 .cmp{width:100%;border-collapse:collapse;font-size:.84rem}.cmp th,.cmp td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
 .cmp th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
 .wtags{display:flex;flex-wrap:wrap;gap:6px}.wtags button{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:999px;padding:6px 10px;font:500 .8rem var(--body);cursor:pointer}
+.rgrid .risk,.risk{display:flex;flex-direction:row;align-items:center;gap:10px;font-size:.82rem;margin:8px 0 4px}
+.rgrid .rbar{display:block}
+.risk b{display:inline!important;font-size:.95rem!important;white-space:nowrap}
+.rbar{flex:1;min-width:60px;height:8px;border-radius:4px;background:linear-gradient(90deg,var(--good-bg),var(--warn-bg),var(--bad-bg));position:relative}
+.rbar i{position:absolute;top:-4px;width:4px;height:16px;border-radius:2px;background:var(--ink);transform:translateX(-50%)}
+.mini svg{width:120px;height:40px;display:block}
+.feed{display:flex;flex-direction:column;gap:2px}
+.feed button.fi{appearance:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);padding:10px 2px;cursor:pointer;font:inherit}
+.feed .fk{font:600 .66rem var(--body);text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
+.feed .ft{font-size:.88rem}
+.injteam{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.tag-conf{font:600 .66rem var(--body);text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:999px;background:var(--panel2);color:var(--muted)}
+.tag-conf.ok{background:var(--good-bg);color:var(--good)}.tag-conf.est{background:var(--warn-bg);color:var(--warn)}
+.cmpsearch{display:flex;flex-direction:column;gap:6px}
+.cmpsearch ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.cmpsearch li button{appearance:none;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);padding:8px 2px;font:inherit;cursor:pointer}
 .slipbar{display:none}
 a{color:var(--accent)}
 .tb-in .bk{flex-wrap:nowrap;margin-left:auto}.tb-title{flex:1 1 auto}.tb-title>div{min-width:0}
@@ -488,6 +504,7 @@ footer{border-top:1px solid var(--line)}
 <button class="slipbar" id="slipBar" hidden></button>
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="alertSheet" aria-labelledby="alName"><div class="sh"><h3 id="alName" style="margin:0">Alerts</h3><div class="row"><button class="btn sm" id="alRead">Mark all read</button><button class="btn sm" id="alClose">Close</button></div></div><div class="sb" id="alBody"></div></dialog>
+<dialog class="sheet" id="injSheet" aria-labelledby="injName"><div class="sh"><h3 id="injName" style="margin:0">Injury and lineup center</h3><button class="btn sm" id="injClose">Close</button></div><div class="sb" id="injBody"></div></dialog>
 <dialog class="sheet" id="cmpSheet" aria-labelledby="cmpName"><div class="sh"><h3 id="cmpName" style="margin:0">Compare</h3><div class="row"><button class="btn sm" id="cmpAsk">Ask Claude</button><button class="btn sm" id="cmpClose">Close</button></div></div><div class="sb" id="cmpBody"></div></dialog>
 <dialog class="sheet" id="playerSheet" aria-labelledby="psName"><div class="sh"><h3 id="psName" style="margin:0"></h3><button class="btn sm" id="psClose">Close</button></div><div class="sb" id="psBody"></div></dialog>
 
@@ -794,7 +811,7 @@ async function importText(text, label, quiet){
       const d = JSON.parse(text);
       if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
       if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
-      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], research:d.research||{},
+      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], research:d.research||{}, injuries:d.injuries||[], freshness:d.freshness||{},
         alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
       const prevBoard = S.board;
       await store.saveBoard(board);
@@ -1319,7 +1336,7 @@ function researchHTML(l){
       <div><span class="l">Last 10</span><b>${num1(r?.l10)}</b><span class="s">${n10 ? `${l.side} hit ${h10} of ${n10}` : "no games yet"}</span></div>
       <div><span class="l">Season</span><b>${num1(r?.avg)}</b><span class="s">${r?.n ? `${r.n} ${r.n === 1 ? "game" : "games"}` : "no games yet"}</span></div>
       <div><span class="l">Matchup</span><b>${r?.opp ? esc(teamName(r.opp)) : "–"}</b><span class="s">${r && r.opp && Math.abs(r.opp_factor - 1) >= 0.01 ? `allows ${pct(Math.abs(r.opp_factor - 1), 0)} ${r.opp_factor > 1 ? "more" : "less"} than avg` : r?.opp ? "about average" : "unknown"}</span></div>
-    </div>
+    </div>${rangeHTML(l, r)}
     <div><b class="small">What supports this</b><ul class="why">${explain(l, r).map(w => `<li>${w}</li>`).join("")}</ul></div>
     <p class="note" style="margin:0">${fm != null && fp != null ? `Books say ${pct(fm, 0)} and the projection ${pct(fp, 0)} for ${l.side}; the price blends them. ` : ""}These are estimates, not guarantees: even at ${pct(best, 0)}, a pick like this loses about ${Math.max(1, Math.round((1 - best) * 10))} times in 10.</p>
   </div>`;
@@ -1431,7 +1448,8 @@ function renderSheet(){
     ${sh.list.length > 1 ? `<div class="ptabs" role="group" aria-label="Props">${sh.list.map((x, i) => `<button aria-pressed="${i === sh.i}" data-psel="${i}">${esc(x.side)} ${+x.line} ${esc(x.stat)}</button>`).join("")}</div>` : ""}
     ${l ? `<div class="row" style="justify-content:space-between"><span><span class="side ${l.side}">${l.side}</span> <b>${+l.line} ${esc(l.stat)}</b> <span class="muted small">${esc(appName(l.app))} · ${esc(timeOf(l.start))}</span></span>
         <span class="row" style="gap:6px">${legOpen(l) ? `<button class="add ${S.build.legs.includes(poolKey(l)) ? "on" : ""}" data-add="${esc(poolKey(l))}" aria-label="Add to slip">${S.build.legs.includes(poolKey(l)) ? "✓" : "+"}</button>` : `<span class="chip warn">Started</span>`}</span></div>
-      ${researchHTML(l)}${trendsHTML(l)}${bestLinesHTML(l)}${whatChangedHTML(l)}
+      ${researchHTML(l)}${trendsHTML(l)}${timelineHTML(l)}${bestLinesHTML(l)}${whatChangedHTML(l)}
+      ${teamNews(l)}
       <div class="row"><button class="btn sm" data-cmp="${esc(poolKey(l))}">${(S.compare || []).includes(poolKey(l)) ? "✓ In compare" : "Add to compare"}</button>
         ${(S.compare || []).length >= 2 ? `<button class="btn sm primary" id="psOpenCmp">Open compare (${S.compare.length})</button>` : ""}
         <button class="btn sm" id="psAsk">Ask Claude about this</button></div>`
@@ -1443,8 +1461,188 @@ function renderSheet(){
   $("#psAsk")?.addEventListener("click", () => askClaude([l]));
   $("#psOpenCmp")?.addEventListener("click", () => openCompare(S.compare.map(k => legPool().get(k)).filter(Boolean)));
 }
+/* ---------- projection range and risk ---------- */
+function projRange(r){
+  if(!r || !r.proj || !fin(+r.proj.mu) || !fin(+r.proj.sd)) return null;
+  const mu = +r.proj.mu, sd = +r.proj.sd, lo = Math.max(0, mu - 1.28 * sd), hi = mu + 1.28 * sd;
+  const cv = sd / Math.max(mu, 0.5);
+  return {mu, sd, lo, hi, cv, risk: cv < 0.25 ? "Low" : cv < 0.45 ? "Medium" : "High"};
+}
+function rangeHTML(l, r){
+  const g = projRange(r);
+  if(!g) return `<p class="small muted" style="margin:0">Projection range and risk appear once the player has enough box scores.</p>`;
+  const pos = Math.min(100, Math.max(0, g.cv / 0.7 * 100));
+  return `<div class="rgrid"><div><span class="l">Likely range</span><b>${num1(g.lo)} to ${num1(g.hi)}</b><span class="s">about 8 in 10 games land here · line ${+l.line}</span></div>
+      <div><span class="l">Risk</span><div class="risk"><div class="rbar"><i style="left:${pos.toFixed(0)}%"></i></div><b>${g.risk}</b></div><span class="s">game-to-game swing ±${num1(g.sd)}</span></div></div>
+    <p class="note" style="margin:0">The range comes from the model's projection and this player's own game-to-game spread (${r.proj.n} games). It's an estimate; how well the model's chances have held up is on the track record.</p>`;
+}
+function miniBars(l, games){
+  const g = games.slice(0, 10).reverse(); if(!g.length) return `<span class="muted">no games</span>`;
+  const W = 120, H = 40, max = Math.max(+l.line * 1.4, ...g.map(x => +x.v), 1), bw = W / g.length, Y = v => H - 2 - (v / max) * (H - 4);
+  return `<div class="mini"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Last ${g.length} games against ${+l.line}">
+    <line x1="0" x2="${W}" y1="${Y(+l.line).toFixed(1)}" y2="${Y(+l.line).toFixed(1)}" stroke="var(--gold)" stroke-dasharray="3 3"/>
+    ${g.map((x, i) => { const hit = +x.v !== +l.line && ((+x.v > +l.line) === (l.side === "MORE")); const y = Y(+x.v);
+      return `<rect x="${(i * bw + bw * .15).toFixed(1)}" y="${y.toFixed(1)}" width="${(bw * .7).toFixed(1)}" height="${Math.max(1, H - 2 - y).toFixed(1)}" rx="1.5" fill="${hit ? "var(--good)" : +x.v === +l.line ? "var(--muted)" : "var(--bad)"}"/>`; }).join("")}</svg></div>`;
+}
+/* ---------- line movement timeline ---------- */
+S.timeline = null; S.tlFor = null; let tlLoading = null;
+function loadTimeline(){
+  const ver = (S.board && (S.board.exported_at || S.board.generated_at)) || "";
+  if(S.timeline && S.tlFor === ver) return Promise.resolve(S.timeline);
+  if(tlLoading) return tlLoading;
+  if(location.protocol === "file:" || S.mode === "db"){ S.timeline = {}; S.tlFor = ver; return Promise.resolve(S.timeline); }
+  tlLoading = fetch("timeline.json?v=" + encodeURIComponent(ver), {cache: "no-store"}).then(r => r.ok ? r.json() : {}).catch(() => ({}))
+    .then(d => { S.timeline = d || {}; S.tlFor = ver; tlLoading = null; return S.timeline; });
+  return tlLoading;
+}
+function impliedOf(o){ o = +o; if(!o) return 0; return o < 0 ? -o / (-o + 100) : 100 / (o + 100); }
+function lineChart(series, title){
+  // series: [{name, color, pts:[[t, y]]}] -> small multi-line chart over time
+  const all = series.flatMap(s => s.pts); if(all.length < 2 && !series.some(s => s.end && s.pts.length && s.end > s.pts[0][0])) return "";
+  const W = 340, H = 140, L = 34, R = 8, T = 10, Bm = 22;
+  const ends = series.map(s => s.end || 0), t0 = Math.min(...all.map(p => p[0])), t1 = Math.max(...all.map(p => p[0]), ...ends, t0 + 1);
+  let y0 = Math.min(...all.map(p => p[1])), y1 = Math.max(...all.map(p => p[1])); if(y1 - y0 < 1e-9){ y0 -= 1; y1 += 1; }
+  const X = t => L + (W - L - R) * (t - t0) / (t1 - t0), Y = v => T + (H - T - Bm) * (1 - (v - y0) / (y1 - y0));
+  const fmt = v => Math.abs(y1 - y0) < 2 ? v.toFixed(1) : v.toFixed(0);
+  const step = s => s.pts.map((p, i) => (i ? `H${X(p[0]).toFixed(1)}V${Y(p[1]).toFixed(1)}` : `M${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`)).join("") + `H${X(t1).toFixed(1)}`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}" style="width:100%;height:auto;display:block">
+    ${[y0, (y0 + y1) / 2, y1].map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--grid)"/><text x="${L - 4}" y="${(Y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--muted)">${fmt(v)}</text>`).join("")}
+    ${series.map(s => `<path d="${step(s)}" fill="none" stroke="${s.color}" stroke-width="${s.dash ? 2 : 3}"${s.dash ? ' stroke-dasharray="6 4"' : ""} stroke-linejoin="round"/>`).join("")}
+    <text x="${L}" y="${H - 6}" font-size="9" fill="var(--muted)">${esc(timeOf(new Date(t0).toISOString()))}</text>
+    <text x="${W - R}" y="${H - 6}" font-size="9" fill="var(--muted)" text-anchor="end">${esc(timeOf(new Date(t1).toISOString()))}</text></svg>
+    <div class="row small" style="gap:12px">${series.map(s => `<span><span style="display:inline-block;width:10px;height:3px;background:${s.color};vertical-align:middle;margin-right:4px"></span>${esc(s.name)}</span>`).join("")}</div>`;
+}
+const SERIES_COLORS = ["var(--accent)", "var(--s2)", "var(--gold)", "#c58af9", "#f2867b"];
+function timelineHTML(l){
+  if(!S.timeline || S.tlFor !== ((S.board && (S.board.exported_at || S.board.generated_at)) || "")){
+    loadTimeline().then(() => { if(S.sheet) renderSheet(); });
+    return `<div><h3 style="margin:0 0 6px">Line movement</h3><p class="small muted" style="margin:0">Loading the line history…</p></div>`;
+  }
+  const t = S.timeline[rKey(l)];
+  if(!t) return `<div><h3 style="margin:0 0 6px">Line movement</h3><p class="small muted" style="margin:0">No line history for this prop yet.</p></div>`;
+  const app = l.app || "prizepicks", mine = t.apps.filter(a => a.app === app).sort((a, b) => (a.first || "").localeCompare(b.first || ""));
+  const open = mine[0], cur = +l.line;
+  const openTxt = open ? (+open.line === cur ? `Opened at ${cur} on ${appName(app)} (${timeOf(open.first)}) and hasn't moved.`
+    : `Opened at ${open.line} on ${appName(app)} (${timeOf(open.first)}); now ${cur}.`) : `${appName(app)} line: ${cur}.`;
+  // Each book's main line over time (the posted line closest to this prop's line), and its first vs latest odds.
+  const byBook = {}; for(const r of t.books) (byBook[r.book] = byBook[r.book] || []).push(r);
+  const series = [], oddsRows = [];
+  Object.entries(byBook).slice(0, 5).forEach(([bk, rows], i) => {
+    const state = {}, pts = [];
+    const bal = x => { const a = impliedOf(x.over), b = impliedOf(x.under); return a && b ? Math.abs(a - b) : 9 + Math.abs(x.line - cur); };
+    for(const r of rows){ state[r.line] = r; const main = Object.values(state).reduce((m, x) => !m || bal(x) < bal(m) ? x : m, null);
+      const tt = new Date(r.ts).getTime(); if(!pts.length || pts[pts.length - 1][1] !== main.line) pts.push([tt, main.line]); }
+    series.push({name: bookName(bk), color: SERIES_COLORS[i % SERIES_COLORS.length], pts, end: new Date(rows[rows.length - 1].ts).getTime()});
+    const atLine = rows.filter(r => r.line === rows[rows.length - 1].line);
+    const first = rows[0], last = rows[rows.length - 1];
+    oddsRows.push(`<tr><td>${esc(bookName(bk))}</td><td class="num">${first.line} ${oddsTxt(first.over)}/${oddsTxt(first.under)}</td><td class="num">${last.line} ${oddsTxt(last.over)}/${oddsTxt(last.under)}</td><td class="small muted">${esc(timeOf(last.ts))}</td></tr>`);
+  });
+  if(mine.length){ const last = mine[mine.length - 1]; series.push({name: `${appName(app)} (dashed)`, color: "var(--ink)", dash: 1, pts: mine.map(a => [new Date(a.first).getTime(), +a.line]), end: new Date(last.last || last.first).getTime()}); }
+  const fair = t.fair.filter(f => f.app === app && +f.line === cur && f.side === l.side);
+  const events = [...mine.map(a => ({ts: a.first, text: `${appName(app)} posted ${a.line}${a.active ? "" : ` (pulled by ${timeOf(a.last)})`}`})),
+    ...t.books.map(r => ({ts: r.ts, text: `${bookName(r.book)} ${r.line} ${oddsTxt(r.over)}/${oddsTxt(r.under)}`})),
+    ...fair.map(f => ({ts: f.ts, text: `Fair ${l.side} ${pct(f.fair)}`}))].sort((a, b) => b.ts.localeCompare(a.ts)).slice(0, 24);
+  const polls = new Set(t.books.map(r => r.ts)).size;
+  return `<div style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0">Line movement</h3>
+    <p class="small" style="margin:0">${esc(openTxt)}</p>
+    ${lineChart(series, "Lines over time") || `<p class="small muted" style="margin:0">Only one price check so far (${polls} total), so there's no movement to chart yet. History builds with each run.</p>`}
+    ${fair.length >= 2 ? `<div><b class="small">Fair chance for ${l.side} over time</b>${lineChart([{name: "Fair %", color: "var(--accent)", pts: fair.map(f => [new Date(f.ts).getTime(), f.fair * 100])}], "Fair chance over time")}</div>` : ""}
+    ${oddsRows.length ? `<div class="scroll"><table class="lt"><thead><tr><th>Book</th><th>First seen</th><th>Latest</th><th>Updated</th></tr></thead><tbody>${oddsRows.join("")}</tbody></table></div>` : ""}
+    ${events.length ? `<details><summary class="small" style="cursor:pointer">Full history (${events.length} changes)</summary><ul class="why">${events.map(e => `<li><span class="muted">${esc(timeOf(e.ts))}</span> · ${esc(e.text)}</li>`).join("")}</ul></details>` : ""}
+    <p class="note" style="margin:0">Prices are saved each time the engine checks the books, so the timeline fills in as runs come in.</p></div>`;
+}
+/* ---------- injury and lineup center ---------- */
+function injuryPanel(){
+  const inj = (S.board && S.board.injuries) || [];
+  const out = inj.flatMap(t => t.listed.filter(x => x.level >= 3).map(x => ({...x, team: t.team})));
+  const followed = out.filter(x => S.watch.teams.includes(x.team));
+  const show = [...followed, ...out.filter(x => !followed.includes(x))].slice(0, 4);
+  return `<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Injuries and lineups</h3><button class="linkbtn" data-finj="">Open →</button></div>
+    ${show.length ? `<ul class="board">${show.map(x => `<li><span class="bicon">!</span><div><b>${esc(x.player)}</b><div class="small muted">${esc(teamName(x.team))} · ${esc(x.status)}</div></div></li>`).join("")}</ul>
+      <p class="small muted" style="margin:0">${out.length} ruled out across ${inj.length} teams on the board.</p>` : `<p class="small muted" style="margin:0">No players ruled out on teams playing.</p>`}</div>`;
+}
+function teamNews(l){
+  const t = l.team && ((S.board && S.board.injuries) || []).find(x => x.team === l.team && x.sport === l.sport);
+  if(!t) return "";
+  const out = t.listed.filter(x => x.level >= 2), mine = t.impact.filter(x => normName(x.player) === normName(l.player));
+  return `<div><h3 style="margin:0 0 6px">Team news</h3>${out.length ? `<p class="small" style="margin:0"><span class="tag-conf ok">Confirmed</span> ${esc(out.map(x => `${x.player} (${x.status})`).join(", "))}</p>` : ""}
+    ${mine.length ? `<p class="small" style="margin:6px 0 0"><span class="tag-conf est">Projection</span> ${esc(mine.map(x => `${x.stat}: +${x.bump}`).join(", "))} from teammates' absences.</p>` : ""}
+    <button class="linkbtn" data-finj="${esc(l.team)}">See the ${esc(teamName(l.team))} report →</button></div>`;
+}
+function openInjuries(team){
+  const inj = ((S.board && S.board.injuries) || []).slice().sort((a, b) => (S.watch.teams.includes(b.team) - S.watch.teams.includes(a.team)) || a.team.localeCompare(b.team));
+  const list = team ? inj.filter(t => t.team === team) : inj;
+  const fresh = S.board && S.board.freshness;
+  $("#injBody").innerHTML = `<p class="note" style="margin:0"><span class="tag-conf ok">Confirmed</span> statuses come from ESPN's injury report${fresh && fresh.injuries ? `, checked ${esc(timeOf(fresh.injuries))}` : ""}.
+      <span class="tag-conf est">Projection</span> impacts are the model's estimate of how a teammate's absence shifts usage, based on the absent players' recent production. Confirmed starters aren't available from this data source yet, and the app doesn't use unverified reports.</p>
+    ${team ? `<button class="linkbtn" data-finj="">Show all teams</button>` : ""}
+    ${list.length ? list.map(t => `<div class="injteam"><div class="row" style="justify-content:space-between"><b>${esc(teamName(t.team))}</b><span class="small muted">${esc((SPORT_NAME[t.sport] || t.sport).toUpperCase())}</span></div>
+      ${t.listed.length ? `<div><span class="tag-conf ok">Confirmed</span><ul class="why">${t.listed.map(x => `<li><b>${esc(x.player)}</b>: ${esc(x.status)}</li>`).join("")}</ul></div>` : `<p class="small muted" style="margin:0">Nobody listed.</p>`}
+      ${t.impact.length ? `<div><span class="tag-conf est">Projection</span><ul class="why">${t.impact.slice(0, 8).map(x => `<li>${esc(x.player)} ${esc(x.stat)}: <b>+${x.bump}</b> expected from redistributed usage</li>`).join("")}</ul></div>`
+        : t.listed.some(x => x.level >= 3) ? `<p class="small muted" style="margin:0">No usage estimate yet: it needs box scores for these players.</p>` : ""}
+    </div>`).join("") : `<p class="muted" style="margin:0">No injury news for teams on the board.</p>`}`;
+  const d = $("#injSheet"); if(!d.open){ if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+}
+$("#injClose").addEventListener("click", () => $("#injSheet").close?.());
+$("#injSheet").addEventListener("click", e => { if(e.target === e.currentTarget) e.currentTarget.close?.(); });
+document.addEventListener("click", e => { const b = e.target.closest("button[data-finj]"); if(!b || b.closest("#homeMain")) return; openInjuries(b.dataset.finj); });
+/* ---------- personalized feed ---------- */
+function feedHTML(all){
+  const B = S.board, fav = S.home.favSports || [], items = [], seen = new Set();
+  const sportOk = l => !fav.length || fav.includes(l.sport);
+  const add = (kind, l, text, extra) => { const k = kind + (l ? poolKey(l) : text); if(seen.has(k)) return; seen.add(k); items.push({kind, l, text, ...extra}); };
+  for(const l of buildLegs()) add("In your slip", l, `${l.player} ${l.side} ${+l.line} ${l.stat} · ${pct(+l.fair)}${legOpen(l) ? "" : " · started"}`);
+  const followed = all.filter(l => sportOk(l) && (S.favs.has(normName(l.player)) || (l.team && S.watch.teams.includes(l.team)) || S.watch.stats.includes(l.market))).sort((a, b) => b.edge - a.edge);
+  for(const l of followed.slice(0, 4)) add("You follow", l, `${l.player} ${l.side} ${+l.line} ${l.stat} · ${pct(+l.fair)} fair`);
+  const moves = all.filter(l => sportOk(l) && l.fair_open != null && Math.abs(+l.fair - +l.fair_open) >= 0.02).sort((a, b) => Math.abs(b.fair - b.fair_open) - Math.abs(a.fair - a.fair_open));
+  for(const l of moves.slice(0, 2)) add("Line move", l, `${l.player} ${l.stat}: ${pct(+l.fair_open)} → ${pct(+l.fair)} for ${l.side}`);
+  for(const t of ((B.injuries) || [])) if(S.watch.teams.includes(t.team)) for(const x of t.listed.filter(x => x.level >= 3).slice(0, 2)) add("Injury news", null, `${x.player} (${teamName(t.team)}) is ${x.status}`, {team: t.team});
+  const soon = all.filter(l => sportOk(l) && new Date(l.start) - Date.now() < 3 * 36e5).reduce((m, l) => (m[l.game] = m[l.game] || l, m), {});
+  for(const l of Object.values(soon).slice(0, 2)) add("Starting soon", l, `${l.game} · ${timeOf(l.start)}`);
+  const fresh = all.filter(l => sportOk(l) && l.opened_at && B.generated_at && new Date(B.generated_at) - new Date(l.opened_at) < 10 * 60e3);
+  if(fresh.length && fresh.length < all.length) add("New props", null, `${fresh.length} new ${fresh.length === 1 ? "prop" : "props"} since the last update`);
+  const sports = [...new Set(all.map(l => l.sport))].sort();
+  const personal = S.favs.size || S.watch.teams.length || S.watch.stats.length || S.build.legs.length;
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">For you</h3>
+      <div class="seg2" role="group" aria-label="Your sports">${sports.map(sp => `<button aria-pressed="${fav.includes(sp)}" data-fsport="${esc(sp)}">${esc(SPORT_NAME[sp] || sp.toUpperCase())}</button>`).join("")}</div></div>
+    ${items.length ? `<div class="feed">${items.slice(0, 8).map(it => `<button class="fi" ${it.l ? `data-fplayer="${esc((it.l.sport || "") + "|" + (it.l.player_key || ""))}" data-fname="${esc(it.l.player)}"` : it.team ? `data-finj="${esc(it.team)}"` : ""}>
+        ${it.l ? avatar(it.l) : `<span class="bicon">${it.kind === "Injury news" ? "!" : "+"}</span>`}<span><span class="fk">${esc(it.kind)}</span><div class="ft">${esc(it.text)}</div></span><span class="muted">›</span></button>`).join("")}</div>`
+      : `<p class="small muted" style="margin:0">Nothing here yet.</p>`}
+    ${personal ? "" : `<p class="small muted" style="margin:0">Pick your sports above, and follow players (★) or teams from a player's page to fill this with what you care about.</p>`}
+    <p class="note" style="margin:0">Your feed shows what changed and what's coming up. It doesn't predict which picks will win.</p></div>`;
+}
+/* ---------- shared slips ---------- */
+function shareSlip(){
+  const data = {e: S.build.entry, l: S.build.legs, g: S.board && S.board.generated_at};
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(data)))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const url = location.origin + location.pathname + "#slip=" + code;
+  const legs = buildLegs(), text = `My Edge Finder slip: ${legs.map(l => `${l.player} ${l.side} ${+l.line} ${l.stat}`).join("; ")}`;
+  if(navigator.share) navigator.share({title: "Edge Finder slip", text, url}).catch(() => {});
+  else navigator.clipboard?.writeText(url).then(() => toast("Link copied. Send it to a friend."), () => toast("Couldn't copy the link."));
+}
+(function readSharedSlip(){
+  const m = location.hash.match(/^#slip=([A-Za-z0-9_-]+)/); if(!m) return;
+  try { const b = m[1].replace(/-/g, "+").replace(/_/g, "/"); S.pendingSlip = JSON.parse(decodeURIComponent(escape(atob(b + "===".slice((b.length + 3) % 4))))); } catch(e){ S.pendingSlip = null; }
+  history.replaceState(null, "", location.pathname);
+})();
+function applySharedSlip(){
+  const sp = S.pendingSlip; if(!sp || !S.board) return; S.pendingSlip = null;
+  const pool = legPool(), keep = (sp.l || []).filter(k => pool.has(k) && legOpen(pool.get(k)));
+  if(!keep.length){ toast("That shared slip's picks aren't available any more."); return; }
+  S.build.legs = keep; if(sp.e && payTable(sp.e) && payTable(sp.e).n === keep.length) S.build.entry = sp.e; else autoEntry();
+  saveBuild(); renderAll();
+  toast(keep.length === (sp.l || []).length ? `Loaded a shared slip with ${keep.length} picks.` : `Loaded ${keep.length} of ${sp.l.length} shared picks; the rest have started or been pulled.`);
+}
 /* ---------- compare ---------- */
 S.compare = [];
+document.addEventListener("click", e => { const b = e.target.closest("button[data-cmpadd],button[data-cmpdrop]"); if(!b) return;
+  const pool = legPool(); let legs = (S.cmpLegs || []).slice();
+  if(b.dataset.cmpadd){ const x = pool.get(b.dataset.cmpadd); if(x) legs.push(x); }
+  else legs = legs.filter(x => poolKey(x) !== b.dataset.cmpdrop);
+  if(legs.length < 2){ S.cmpLegs = legs; $("#cmpBody").innerHTML = `<p class="muted" style="margin:0">Add at least two props.</p><div class="cmpsearch"><label class="f">Add a prop<input id="cmpQ2" placeholder="Type a player's name"></label><ul id="cmpHits"></ul></div>`;
+    const q = $("#cmpQ2"); q.addEventListener("input", () => { const t = normName(q.value); const hits = t.length < 2 ? [] : [...pool.values()].filter(x => legOpen(x) && normName(x.player).includes(t)).slice(0, 8);
+      $("#cmpHits").innerHTML = hits.map(x => `<li><button data-cmpadd="${esc(poolKey(x))}"><b>${esc(x.player)}</b> <span class="small muted">${esc(x.side)} ${+x.line} ${esc(x.stat)}</span></button></li>`).join(""); }); q.focus(); return; }
+  openCompare(legs); });
 function openCompare(legs){
   legs = legs.filter(Boolean); if(legs.length < 2){ toast("Pick at least two props to compare."); return; }
   S.cmpLegs = legs;
@@ -1454,15 +1652,23 @@ function openCompare(legs){
     ["Confidence", l => confChip(l)],
     ["Edge", l => `<span class="num ${cls(+l.edge)}">${pct(+l.edge, 1, true)}</span>`],
     ["Projection", l => { const r = research(l); return r && r.proj ? `${num1(r.proj.mu)} <span class="muted small">(${r.proj.n} games)</span>` : `<span class="muted">not yet</span>`; }],
+    ["Range", l => { const g = projRange(research(l)); return g ? `${num1(g.lo)}–${num1(g.hi)}<div class="small muted">${g.risk} volatility</div>` : `<span class="muted">not yet</span>`; }],
+    ["Minutes (last 10)", l => { const g = (research(l)?.games || []).slice(0, 10).filter(x => fin(x.min)); return g.length ? `${num1(g.reduce((a, x) => a + x.min, 0) / g.length)}<div class="small muted">${g.length} games</div>` : `<span class="muted">–</span>`; }],
+    ["Game log", l => miniBars(l, research(l)?.games || [])],
     ["Last 5 / 10", l => { const r = research(l), g = r ? r.games : [], [a, b] = hitCount(g.slice(0, 5), l), [c, d] = hitCount(g.slice(0, 10), l); return r && r.n ? `${num1(r.l5)} / ${num1(r.l10)}<div class="small muted">hit ${a}/${b} · ${c}/${d}</div>` : `<span class="muted">no games</span>`; }],
     ["Season", l => { const r = research(l); return r && r.n ? `${num1(r.avg)} <span class="muted small">(${r.n})</span>` : "–"; }],
-    ["Matchup", l => { const r = research(l); return r && r.opp ? `${esc(teamName(r.opp))}<div class="small muted">${pct(r.opp_factor - 1, 0, true)} vs avg</div>` : "–"; }],
+    ["Opponent allows", l => { const r = research(l); return r && r.opp ? `${esc(teamName(r.opp))}<div class="small muted">${pct(r.opp_factor - 1, 0, true)} of this stat vs avg</div>` : "–"; }],
     ["Best line", l => { const rows = lineRows(l); if(!rows.length) return "–"; const more = l.side === "MORE"; const b = rows.reduce((m, x) => !m || (more ? x.line < m.line : x.line > m.line) ? x : m, null); return `${b.line} <span class="small muted">${esc(b.who)}</span>`; }],
     ["Injury", l => l.injury ? esc(l.injury) : `<span class="muted">none listed</span>`],
   ];
   $("#cmpBody").innerHTML = `<div class="scroll"><table class="cmp"><thead><tr><th></th>${legs.map(l => `<th>${plink(l)}</th>`).join("")}</tr></thead><tbody>
     ${rows.map(([name, f]) => `<tr><th>${name}</th>${legs.map(l => `<td>${f(l)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>
-    <p class="note" style="margin:0">Data as of ${esc(timeOf(S.board?.generated_at))}. All chances are model estimates. "Ask Claude" copies this comparison with its sources so you can ask a follow-up question.</p>`;
+    <p class="note" style="margin:0">Data as of ${esc(timeOf(S.board?.generated_at))}. All chances and ranges are model estimates. "Ask Claude" copies this comparison with its sources so you can ask a follow-up question.</p>
+    ${legs.length < 3 ? `<div class="cmpsearch"><label class="f">Add another prop<input id="cmpQ" placeholder="Type a player's name" autocomplete="off"></label><ul id="cmpHits"></ul></div>` : ""}
+    <div class="row">${legs.map(l => `<button class="btn sm" data-cmpdrop="${esc(poolKey(l))}">Remove ${esc(l.player)}</button>`).join("")}</div>`;
+  const q = $("#cmpQ");
+  q?.addEventListener("input", () => { const t = normName(q.value); const hits = t.length < 2 ? [] : [...legPool().values()].filter(x => legOpen(x) && normName(x.player).includes(t) && !legs.some(y => poolKey(y) === poolKey(x))).slice(0, 8);
+    $("#cmpHits").innerHTML = hits.map(x => `<li><button data-cmpadd="${esc(poolKey(x))}"><b>${esc(x.player)}</b> <span class="small muted">${esc(x.side)} ${+x.line} ${esc(x.stat)} · ${esc(appName(x.app))}</span></button></li>`).join("") || (t.length >= 2 ? `<li class="small muted">No open props match.</li>` : ""); });
   const d = $("#cmpSheet"); if(!d.open){ if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
 }
 $("#cmpClose").addEventListener("click", () => $("#cmpSheet").close?.());
@@ -1695,6 +1901,7 @@ function renderHome(){
         <div><b>${B ? esc(ago(B.generated_at)) : "–"}</b><span>Last update</span></div>
       </div>
     </div>
+    ${B ? feedHTML(all) : ""}
     <div class="chips" role="group" aria-label="Sport">
       <button class="chipbtn" aria-pressed="${!S.home.sport}" data-hsport=""><svg class="spi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span>All</span></button>
       ${sports.map(sp => `<button class="chipbtn" aria-pressed="${S.home.sport===sp}" data-hsport="${esc(sp)}">${sportIcon(sp)}<span>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</span></button>`).join("")}
@@ -1706,6 +1913,7 @@ function renderHome(){
         <div class="pc-name">${plink(l)}<span>${esc(l.stat)}${posTag(l)}</span></div>
         <div class="pc-line"><span class="side ${l.side}">${l.side}</span> ${+l.line}</div>
         <div class="pc-fair"><span class="num">${pct(+l.fair)}</span> fair ${moveTag(l)}</div>
+        ${(() => { const g = projRange(research(l)); return g ? `<div class="pc-fair">Proj <b>${num1(g.mu)}</b> · range ${num1(g.lo)}–${num1(g.hi)}</div>` : ""; })()}
         <div class="pc-foot"><span class="row" style="gap:6px">${edgeChip(l)}${confChip(l)}</span>${addBtn(l)}</div>
         <div class="pc-game"><span>${esc(l.game || "")}</span><span>${esc(timeOf(l.start))}</span></div></div>`).join("")}</div>`
       : `<p class="muted small" style="margin:0">No props above break-even right now.</p>`}
@@ -1750,7 +1958,8 @@ function renderHome(){
         <p class="payout">Payout if all hit: <b id="hPayout">${money((num($("#hStake")?.value) || sg.stake || 0) * topMult)}</b></p>
         ${payoutTable(S.build.entry, es, num($("#hStake")?.value) || sg.stake || 0)}
         ${slipInsight(legs, S.build.entry, es)}` : ""}
-      ${n >= 2 ? `${slipFlags(legs)}<button class="btn sm" id="hCompare">Compare these picks</button>` : ""}
+      ${n >= 2 ? `${slipFlags(legs)}` : ""}
+      ${n ? `<div class="row">${n >= 2 ? `<button class="btn sm" id="hCompare">Compare these picks</button>` : ""}<button class="btn sm" id="hShare">Share slip</button></div>` : ""}
     </div>
     <div class="panel">
       <div class="row" style="justify-content:space-between"><h3 style="margin:0">Filters</h3></div>
@@ -1758,6 +1967,7 @@ function renderHome(){
       ${apps.length > 1 ? `<label class="f">App<select id="hApp">${apps.map(a => `<option value="${a}" ${a===S.home.app?"selected":""}>${a === "underdog" ? "Underdog" : "PrizePicks"}</option>`).join("")}</select></label>` : ""}
       <label class="f">Sort by<select id="hSort">${[["edge","Highest edge"],["fair","Highest fair %"],["moving","Biggest moves"],["soon","Starting soonest"],["saved","Saved players"]].map(([k,t]) => `<option value="${k}" ${k===S.home.sort?"selected":""}>${t}</option>`).join("")}</select></label>
     </div>
+    ${B ? injuryPanel() : ""}
     <div class="panel cta"><svg viewBox="0 0 24 24" class="cta-ic" aria-hidden="true"><path d="M5 6.5h14M5 12h14M5 17.5h9"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M18.5 16.3v2.4M17.3 17.5h2.4"/></svg><h3 style="margin:0">Build your own slip</h3>
       <p class="small muted" style="margin:0">Fill it with the best legs, swap out started games, and see the expected return as you go.</p>
       <button class="btn sm" data-go="build">Open the builder →</button></div>
@@ -1767,12 +1977,18 @@ function renderHome(){
     </div>`;
 
   // ---- wiring
+  main.querySelectorAll("[data-fsport]").forEach(b => b.addEventListener("click", () => { const sp = b.dataset.fsport, f = S.home.favSports || [];
+    S.home.favSports = f.includes(sp) ? f.filter(x => x !== sp) : [...f, sp]; saveHome(); renderHome(); }));
+  main.querySelectorAll("[data-fplayer]").forEach(b => b.addEventListener("click", () => openPlayer(b.dataset.fplayer, b.dataset.fname)));
+  main.querySelectorAll("[data-finj]").forEach(b => b.addEventListener("click", () => openInjuries(b.dataset.finj)));
+  if(S.pendingSlip) applySharedSlip();
   main.querySelectorAll("[data-hsport]").forEach(b => b.addEventListener("click", () => { S.home.sport = b.dataset.hsport; S.home.more = false; saveHome(); renderHome(); }));
   main.querySelectorAll("[data-hsort]").forEach(b => b.addEventListener("click", () => { S.home.sort = b.dataset.hsort; S.home.more = false; saveHome(); renderHome(); }));
   main.querySelectorAll("[data-fav]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.fav; if(S.favs.has(k)) S.favs.delete(k); else S.favs.add(k); saveHome(); renderHome(); }));
   $("#hMore")?.addEventListener("click", () => { S.home.more = true; renderHome(); });
   $("#hClear")?.addEventListener("click", () => { S.build.legs = []; saveBuild(); renderAll(); });
   $("#hCompare")?.addEventListener("click", () => openCompare(buildLegs().slice(0, 3)));
+  $("#hShare")?.addEventListener("click", shareSlip);
   $("#hEntry")?.addEventListener("change", e => { S.build.entry = e.target.value; saveBuild(); renderAll(); });
   const mn = $("#hMin"); mn?.addEventListener("input", () => { $("#hMinOut").textContent = pct(+mn.value,1,true); });
   mn?.addEventListener("change", () => { S.home.minEdge = +mn.value; saveHome(); renderHome(); });
