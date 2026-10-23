@@ -7,8 +7,15 @@ import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from . import backtest, tracking
+from . import RETIRED_MODELS, backtest, tracking
 from .ui import calibration_chart, cls, esc, line_chart, page, pct, pts
+
+def _current_sql():
+    """SQL condition for picks from models still in use."""
+    if not RETIRED_MODELS:
+        return "1=1"
+    return "model_version NOT IN (" + ",".join("'" + v.replace("'", "''") + "'" for v in RETIRED_MODELS) + ")"
+
 
 BUCKETS = [(.50, .54, "50–54%"), (.54, .57, "54–57%"), (.57, .60, "57–60%"), (.60, .65, "60–65%"), (.65, 1.01, "65%+")]
 
@@ -26,7 +33,11 @@ def _summary(rows):
 
 
 def data(conn):
-    rows = [dict(r) for r in conn.execute("SELECT * FROM picks ORDER BY seq")]
+    every = [dict(r) for r in conn.execute("SELECT * FROM picks ORDER BY seq")]
+    rows = [r for r in every if r["model_version"] not in RETIRED_MODELS]
+    models = {}
+    for r in every:
+        models.setdefault(r["model_version"] or "unknown", []).append(r)
     ok, n, bad = tracking.verify_chain(conn)
     seq, head = tracking.chain_head(conn)
     buckets = []
@@ -51,6 +62,9 @@ def data(conn):
             "chain": {"ok": ok, "count": n, "first_bad": bad, "head_seq": seq, "head_hash": head},
             "all": _summary(rows), "training": _summary([r for r in rows if not r["holdout"]]),
             "holdout": _summary([r for r in rows if r["holdout"]]), "buckets": buckets,
+            "models": [{"version": v, "picks": len(rs), "retired": RETIRED_MODELS.get(v, ""), **_summary(rs)}
+                       for v, rs in sorted(models.items(), key=lambda kv: min(r["seq"] for r in kv[1]))],
+            "current_picks": len(rows),
             "groups": {f"{k[0]}|{k[1]}": _summary(v) for k, v in groups.items()},
             "portfolio": {"entries": len(ents), "index": curve, "staked_pct": staked, "profit_pct": profit,
                           "expected_profit_pct": exp_profit,
@@ -138,7 +152,7 @@ def _c1(x):
 def picks_html(conn, tz, limit=PICKS_SHOWN):
     """Every logged pick, newest games first, grouped by day, with open/graded filters."""
     rows = [dict(r) for r in conn.execute(
-        "SELECT seq, sport, app, player, stat, line, side, tier, home, away, start, fair, edge, clv, result, actual "
+        "SELECT seq, model_version, sport, app, player, stat, line, side, tier, home, away, start, fair, edge, clv, result, actual "
         "FROM picks ORDER BY start DESC, seq DESC LIMIT ?", (limit,))]
     total = conn.execute("SELECT COUNT(*) c FROM picks").fetchone()["c"]
     if not rows:
@@ -162,6 +176,8 @@ def picks_html(conn, tz, limit=PICKS_SHOWN):
         else:
             res = f'<span class="chip warn">{esc(r["result"])}</span>' if r["result"] else '<span class="muted small">Pending</span>'
         tier = f' · {esc(r["tier"])}' if r["tier"] else ""
+        if r["model_version"] in RETIRED_MODELS:
+            tier += f' · <span class="warn" title="{esc(RETIRED_MODELS[r["model_version"]])}">retired model {esc(r["model_version"])}</span>'
         game = f'{esc(r["away"])} @ {esc(r["home"])}' if r["home"] or r["away"] else ""
         when = _local(r["start"], tz, "%I:%M %p")
         clv = f' · CLV <span class="{_c1(r["clv"])}">{_p1(r["clv"])}</span>' if r["clv"] is not None else ""
@@ -289,7 +305,7 @@ def flex_html(conn, tz, days=14):
 def daily(conn, tz, days=30):
     """Per game day: picks graded, hits vs expected, and average closing line value."""
     out = {}
-    for r in conn.execute("SELECT start, fair, clv, result FROM picks"):
+    for r in conn.execute(f"SELECT start, fair, clv, result FROM picks WHERE {_current_sql()}"):
         day = _local(r["start"], tz, "%Y-%m-%d")
         if not day:
             continue
@@ -313,7 +329,7 @@ def periods(conn, now=None):
     now = now or datetime.now(timezone.utc)
     out = []
     for label, days in (("Last 7 days", 7), ("Last 30 days", 30), ("All time", None)):
-        q, args = "SELECT fair, clv, result FROM picks WHERE result IN ('hit','miss')", []
+        q, args = f"SELECT fair, clv, result FROM picks WHERE result IN ('hit','miss') AND {_current_sql()}", []
         if days:
             q += " AND start >= ?"
             args.append((now - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ"))
@@ -349,7 +365,7 @@ are both counted; nothing is removed after the fact.</p></div>"""
 def clv_curve(conn):
     """Running average CLV across finished picks, in start order."""
     vals, out = [], []
-    for r in conn.execute("SELECT clv FROM picks WHERE clv IS NOT NULL AND result != '' ORDER BY start, seq"):
+    for r in conn.execute(f"SELECT clv FROM picks WHERE clv IS NOT NULL AND result != '' AND {_current_sql()} ORDER BY start, seq"):
         vals.append(r["clv"] * 100)
         out.append(sum(vals) / len(vals))
     return out
@@ -409,6 +425,17 @@ def html(conn, nav=None, tz=None):
                    f'{pct((s["hit"] - s["exp"]) if s["n"] else None, 1, True)}</td>'
                    f'<td class="r num {cls(s["clv"])}">{pts(s["clv"])}</td><td class="r num">{pct(s["beat"], 0)}</td></tr>'
                    for label, s in (("All picks", a), ("Training picks", t), ("Holdout picks", h)))
+    def _mrow(m):
+        badge = '<span class="chip warn">Retired</span>' if m["retired"] else '<span class="chip good">Current</span>'
+        why = f'<br><span class="muted small">{esc(m["retired"])}</span>' if m["retired"] else ""
+        return (f'<tr><td>{esc(m["version"])} {badge}{why}</td><td class="r num">{m["picks"]:,}</td>'
+                f'<td class="r num">{m["n"]:,}</td><td class="r num">{pct(m["hit"])}</td><td class="r num">{pct(m["exp"])}</td>'
+                f'<td class="r num {cls(m["clv"])}">{pts(m["clv"])}</td></tr>')
+    mrows = "".join(_mrow(m) for m in d["models"])
+    retired_n = ch["count"] - d["current_picks"]
+    retired_note = (f'<div class="alert warn"><b>Headline numbers count the current model only.</b> {retired_n:,} earlier '
+                    f'picks came from a retired model version with a pricing bug. They stay in the record and the hash chain, '
+                    f'and their results are listed by version below.</div>' if retired_n else "")
     groups = sorted(d["groups"].items(), key=lambda kv: (kv[0].split("|")[0], -kv[1]["n"]))
     grows = "".join(f'<tr><td class="muted small">{esc(k.split("|")[0])}</td><td>{esc(k.split("|")[1])}</td>'
                     f'<td class="r num">{s["n"]:,}</td><td class="r num">{pct(s["hit"])}</td><td class="r num">{pct(s["exp"])}</td>'
@@ -429,8 +456,9 @@ def html(conn, nav=None, tz=None):
 and never edited afterward. Each pick's hash includes the one before it, so changing or deleting any old pick breaks
 every hash after it. Anyone can download the full log and check it.</p></div>
 {integrity}
+{retired_note}
 <div class="kpis">
-{_kpi("Picks logged", f'{ch["count"]:,}', f'{a["n"]:,} graded')}
+{_kpi("Picks logged", f'{ch["count"]:,}', f'{a["n"]:,} graded' + (f' · {d["current_picks"]:,} by the current model' if retired_n else ''))}
 {_kpi("Hit rate", pct(a["hit"]), f'Expected {pct(a["exp"])}')}
 {_kpi("Closing line value", f'<span class="{cls(a["clv"])}">{pts(a["clv"])} pts</span>', f'Beat the close {pct(a["beat"], 0)}')}
 {_kpi("Model portfolio", f'<span class="{cls(p["profit_pct"])}">{p["index"][-1] - 100:+.1f}%</span>', f'{p["entries"]} entries settled, {p["open"]} open')}
@@ -444,6 +472,8 @@ every hash after it. Anyone can download the full log and check it.</p></div>
 <p class="muted small" style="margin:8px 0 0">Closing line value compares the sharp-market price when the pick was made with the
 last price before the game. It's the fastest honest test of an edge: consistently positive CLV means the market moved toward the
 picks.</p></div>
+<div class="panel"><h2>Results by model version</h2><div class="scroll"><table><thead><tr><th>Model</th><th class="r">Picks</th>
+<th class="r">Graded</th><th class="r">Hit rate</th><th class="r">Expected</th><th class="r">CLV (pts)</th></tr></thead><tbody>{mrows}</tbody></table></div></div>
 <div class="grid2">
 <div class="panel"><h2>Calibration</h2><p class="muted small" style="margin:0 0 8px">Each dot is a group of picks by fair %.
 On the dashed line, picks hit exactly as often as predicted. Bars show the 95% range for that sample size.</p>

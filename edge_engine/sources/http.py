@@ -38,11 +38,26 @@ def post(url, data, headers=None):
     return fetch(url, data=data, headers=headers, timeout=15)
 
 
+# First names transliterated from Russian and other languages are spelled differently by different
+# sources (The Odds API says "Yegor Chinakhov", ESPN says "Egor Chinakhov"). Each spelling maps to one key.
+FIRST_NAME_ALIASES = {
+    "yegor": "egor", "yevgeni": "evgeni", "yevgeny": "evgeni", "evgeny": "evgeni", "evgenii": "evgeni",
+    "aleksandr": "alexander", "alexandr": "alexander", "aleksander": "alexander",
+    "alexey": "alexei", "aleksei": "alexei", "aleksey": "alexei",
+    "dmitry": "dmitri", "dmitrii": "dmitri", "ilia": "ilya", "sergey": "sergei", "artyom": "artem",
+    "nikolay": "nikolai", "andrey": "andrei", "vasily": "vasili", "vasiliy": "vasili",
+    "yury": "yuri", "iurii": "yuri", "maksim": "maxim", "pyotr": "petr", "fyodor": "fedor",
+}
+
+
 def norm_name(s):
     s = unicodedata.normalize("NFKD", s or "").encode("ascii", "ignore").decode()
     s = re.sub(r"[.\-'’]", " ", s.lower())
     s = re.sub(r"\b(jr|sr|ii|iii|iv|v)\b", " ", s)
-    return re.sub(r"\s+", " ", s).strip()
+    parts = s.split()
+    if parts:
+        parts[0] = FIRST_NAME_ALIASES.get(parts[0], parts[0])
+    return " ".join(parts)
 
 
 def canon_team(name):

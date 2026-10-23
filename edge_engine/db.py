@@ -102,7 +102,31 @@ def connect(path):
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
         except sqlite3.OperationalError:
             pass
+    _rekey_players(conn)
     return conn
+
+
+PLAYER_KEYS_VERSION = 2
+
+
+def _rekey_players(conn):
+    """When the name normalizer changes (version 2 merged transliterated first names), rewrite stored
+    player keys so old and new rows for the same player line up. Runs once per version."""
+    if meta_get(conn, "player_keys_version", 1) >= PLAYER_KEYS_VERSION:
+        return
+    from .sources.http import norm_name
+    tables = [r["name"] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+    conn.execute("BEGIN IMMEDIATE")
+    for t in tables:
+        if "player_key" not in [c["name"] for c in conn.execute(f"PRAGMA table_info([{t}])")]:
+            continue
+        for (old,) in conn.execute(f"SELECT DISTINCT player_key FROM [{t}]").fetchall():
+            new = norm_name(old or "")
+            if old and new != old:
+                conn.execute(f"UPDATE OR IGNORE [{t}] SET player_key=? WHERE player_key=?", (new, old))
+                conn.execute(f"DELETE FROM [{t}] WHERE player_key=?", (old,))   # rows that were already there under the new key
+    meta_set(conn, "player_keys_version", PLAYER_KEYS_VERSION)
+    conn.execute("COMMIT")
 
 
 def get(path):

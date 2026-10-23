@@ -65,7 +65,10 @@ def app_json(conn, cfg, now, days=60):
     injuries = injury_report(conn, all_legs)
     cutoff = iso(now - timedelta(days=days))
     hist = []
+    from . import RETIRED_MODELS
     for p in conn.execute("SELECT * FROM picks WHERE created_at >= ? ORDER BY seq", (cutoff,)):
+        if p["model_version"] in RETIRED_MODELS:   # bad prices; kept in the public record, not in the app's stats
+            continue
         t = p["start"]
         from .tracking import parse_time
         st = parse_time(t)

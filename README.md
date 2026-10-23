@@ -2,7 +2,7 @@
 
 Prices every PrizePicks and Underdog line against sharp books and betting exchanges, blends in its own
 player projections, logs every pick to a public, tamper-evident record, and sizes each day's entries
-together with uncertainty-aware Kelly staking. It replaces `prizepicks_edge.py` and keeps the Edge
+together with uncertainty-aware Kelly staking. It replaced the original `prizepicks_edge.py` script (still in the git history) and keeps the Edge
 Finder app working.
 
 ```

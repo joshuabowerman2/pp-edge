@@ -141,7 +141,9 @@ def _find(games, home, away, start):
 
 def grade(conn, now, max_days=4):
     """Grade finished picks; store each graded game's box score. Returns number graded."""
-    open_ = conn.execute("SELECT * FROM picks WHERE result='' AND start < ?", (iso(now - timedelta(hours=4)),)).fetchall()
+    # Picks marked "unmatched" get another look in case a name fix or a later box score now finds them.
+    open_ = conn.execute("SELECT * FROM picks WHERE result IN ('', 'unmatched') AND start < ?",
+                         (iso(now - timedelta(hours=4)),)).fetchall()
     boards, boxes, graded = {}, {}, 0
     for p in open_:
         t = parse_time(p["start"])
@@ -175,9 +177,18 @@ def grade(conn, now, max_days=4):
             boxes[gk] = {r["player_key"]: r for r in rows}
             if not g.get("exhibition"):   # preseason games would skew projections
                 store_box(conn, p["sport"], g["id"], day.strftime("%Y-%m-%d"), rows, p["home"], p["away"])
-        row = boxes[gk].get(p["player_key"])
+        key = norm_name(p["player"])
+        row = boxes[gk].get(key) or boxes[gk].get(p["player_key"])
         if row is None:
-            result, actual = "unmatched", None
+            # Missing from a final box score. If he has played for one of these teams before, he was a
+            # healthy scratch or ruled out late, so the pick is void (pick'em apps void players who don't play).
+            # Otherwise the name didn't match anyone and needs a look.
+            teams = (canon_team(p["home"]), canon_team(p["away"]))
+            known = conn.execute("SELECT 1 FROM boxscores WHERE sport=? AND player_key=? AND team IN (?,?) LIMIT 1",
+                                 (p["sport"], key, *teams)).fetchone() or \
+                conn.execute("SELECT 1 FROM rosters WHERE sport=? AND player_key=? AND team IN (?,?,?,?) LIMIT 1",
+                             (p["sport"], key, p["home"], p["away"], *teams)).fetchone()
+            result, actual = ("void" if known else "unmatched"), None
         elif row["dnp"] or any(k not in row["stats"] for k in keys):
             result, actual = "void", None
         else:

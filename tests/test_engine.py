@@ -156,6 +156,60 @@ class SafetyTests(unittest.TestCase):
             espn.scoreboard, espn.box = orig_sb, orig_box
         self.assertEqual(conn.execute("SELECT COUNT(*) FROM boxscores").fetchone()[0], 0)
 
+    def test_transliterated_names_share_a_key(self):
+        self.assertEqual(http.norm_name("Yegor Chinakhov"), http.norm_name("Egor Chinakhov"))
+        self.assertEqual(http.norm_name("Evgeny Kuznetsov"), http.norm_name("Evgeni Kuznetsov"))
+        self.assertEqual(http.norm_name("Aleksandr Barkov Jr."), "alexander barkov")
+
+    def test_scratched_player_voids_and_unknown_name_is_flagged(self):
+        tmp = tempfile.mkdtemp()
+        conn = db.get(make_cfg(tmp).db_path)
+        from edge_engine.sources import espn
+        tz = config.load().tz
+        start = datetime(2026, 10, 22, 23, 10, tzinfo=timezone.utc)
+        conn.execute("INSERT INTO boxscores(sport,event_id,game_date,team,opp,player_key,player,minutes,stats,home) "
+                     "VALUES('nhl','old','2026-10-19','penguins','panthers','egor chinakhov','Egor Chinakhov',15,"
+                     "'{\"shotsTotal\": 3}',1)")
+        for name in ("Yegor Chinakhov", "Nobody Known", "Sidney Crosby"):
+            leg = {"sport": "nhl", "game_id": "g", "app": "prizepicks", "player": name,
+                   "player_key": http.norm_name(name), "market": "player_shots_on_goal", "stat": "Shots on Goal",
+                   "line": 2.5, "side": "MORE", "tier": "", "home": "Pittsburgh Penguins", "away": "Florida Panthers",
+                   "start": start.strftime("%Y-%m-%dT%H:%M:%SZ"), "fair_market": 0.56, "fair_proj": None,
+                   "fair": 0.56, "sigma": 0.02, "edge": 0.02, "books": 3, "sharp": True, "exact": 1}
+            tracking.log_pick(conn, leg, start - timedelta(hours=3), "t", tz)
+        game = {"id": "G1", "home": "Pittsburgh Penguins", "away": "Florida Panthers",
+                "date": "2026-10-22T23:10:00Z", "final": True}
+        box = [{"player_key": "sidney crosby", "player": "Sidney Crosby", "team": "Pittsburgh Penguins",
+                "opp": "Florida Panthers", "minutes": 20, "stats": {"shotsTotal": 4}, "dnp": False}]
+        orig_sb, orig_box = espn.scoreboard, espn.box
+        espn.scoreboard, espn.box = (lambda sport, ymd: [game]), (lambda sport, gid: box)
+        try:
+            tracking.grade(conn, start + timedelta(hours=8))
+        finally:
+            espn.scoreboard, espn.box = orig_sb, orig_box
+        res = {r["player"]: r["result"] for r in conn.execute("SELECT player, result FROM picks")}
+        self.assertEqual(res, {"Yegor Chinakhov": "void", "Nobody Known": "unmatched", "Sidney Crosby": "hit"})
+
+    def test_retired_model_kept_out_of_headline(self):
+        tmp = tempfile.mkdtemp()
+        conn = db.get(make_cfg(tmp).db_path)
+        from edge_engine import RETIRED_MODELS
+        tz = config.load().tz
+        now = datetime.now(timezone.utc)
+        old = next(iter(RETIRED_MODELS))
+        for i, ver in enumerate((old, old, "current")):
+            leg = {"sport": "nba", "game_id": "g", "app": "prizepicks", "player": f"P{i}", "player_key": f"p{i}",
+                   "market": "player_points", "stat": "Points", "line": 10.5, "side": "MORE", "tier": "",
+                   "home": "A", "away": "B", "start": "2026-10-20T00:00:00Z", "fair_market": 0.9, "fair_proj": None,
+                   "fair": 0.9, "sigma": 0.02, "edge": 0.3, "books": 3, "sharp": True, "exact": 1}
+            tracking.log_pick(conn, leg, now, ver, tz)
+        conn.execute("UPDATE picks SET result='hit'")
+        d = results.data(conn)
+        self.assertEqual(d["all"]["n"], 1)
+        self.assertEqual(d["chain"]["count"], 3)
+        self.assertEqual({m["version"]: m["n"] for m in d["models"]}, {old: 2, "current": 1})
+        self.assertIn("Results by model version", results.html(conn))
+
     def test_projection_needs_real_sample(self):
         self.assertGreaterEqual(projections.MIN_GAMES, 15)
 
