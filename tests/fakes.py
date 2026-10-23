@@ -65,10 +65,11 @@ class Fake:
             return {"injuries": [{"injuries": [{"status": "Out", "athlete": {"displayName": "Gus Hurt"}},
                                                {"status": "Questionable", "athlete": {"displayName": "Hal Maybe"}}]}]}, {}
         if "/teams?limit" in url:
-            return {"sports": [{"leagues": [{"teams": [{"team": {"id": "2", "displayName": "Boston Celtics"}},
+            return {"sports": [{"leagues": [{"teams": [{"team": {"id": "2", "displayName": "Boston Celtics", "color": "008348", "alternateColor": "ffffff"}},
                                                        {"team": {"id": "18", "displayName": "New York Knicks"}}]}]}]}, {}
         if "/teams/2/roster" in url:
-            return {"athletes": [{"displayName": p} for p, s, _ in PLAYERS if s == "home"]}, {}
+            return {"athletes": [{"displayName": p, "jersey": str(i + 1), "position": {"abbreviation": "G"}}
+                                 for i, (p, s, _) in enumerate(PLAYERS) if s == "home"]}, {}
         if "/teams/18/roster" in url:
             return {"athletes": [{"displayName": p} for p, s, _ in PLAYERS if s == "away"]}, {}
         if "/scoreboard" in url:

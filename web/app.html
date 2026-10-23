@@ -223,6 +223,7 @@ input,select,textarea{background:var(--panel2)}
 .pc-game span:last-child{color:var(--muted);white-space:nowrap}
 .av{flex:none;width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;font:700 .8rem var(--body);color:#fff;background:hsl(var(--h) 45% 32%);border:2px solid hsl(var(--h) 55% 48%)}
 .av.big{width:58px;height:58px;font-size:1.05rem}
+.av.team{border-width:3px}.av.num{font:800 .95rem var(--display);letter-spacing:.02em}.av.big.num{font-size:1.5rem}
 .echip{display:inline-block;font:600 .78rem var(--mono);padding:4px 9px;border-radius:7px}
 .echip.good{background:var(--good-bg);color:var(--good)}.echip.warn{background:var(--warn-bg);color:var(--warn)}.echip.bad{background:var(--bad-bg);color:var(--bad)}
 .add{appearance:none;width:38px;height:38px;border-radius:9px;border:0;background:var(--accent);color:var(--on-accent);font:700 1.3rem/1 var(--body);cursor:pointer;flex:none}
@@ -1252,7 +1253,19 @@ const sportIcon = sp => `<svg class="spi" viewBox="0 0 24 24" aria-hidden="true"
 function initials(n){ return String(n||"?").replace(/[^A-Za-z\s'-]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase() || "?"; }
 const HUES = [152, 200, 222, 262, 290, 330, 12, 34, 180, 240];
 function hue(str){ let h = 0; for(const c of String(str||"")) h = (h*31 + c.charCodeAt(0)) % 9973; return HUES[h % HUES.length]; }
-function avatar(l, big){ const h = hue(l.team || l.player); return `<span class="av${big?" big":""}" style="--h:${h}" aria-hidden="true">${esc(initials(l.player))}</span>`; }
+function okHex(c){ return /^#[0-9a-f]{6}$/i.test(c || "") ? c : ""; }
+function lum(c){ const n = parseInt(c.slice(1), 16), ch = [n >> 16, n >> 8 & 255, n & 255].map(v => { v /= 255; return v <= .03928 ? v/12.92 : ((v+.055)/1.055) ** 2.4; });
+  return .2126*ch[0] + .7152*ch[1] + .0722*ch[2]; }
+/* Team colors with the jersey number when the roster has them; otherwise colored initials. */
+function avatar(l, big){
+  const c = okHex(l.color), label = l.jersey ? String(l.jersey) : initials(l.player);
+  const title = l.jersey ? `#${l.jersey}${l.pos ? " " + l.pos : ""}` : "";
+  if(!c) return `<span class="av${big?" big":""}" style="--h:${hue(l.team || l.player)}" aria-hidden="true">${esc(label)}</span>`;
+  let ring = okHex(l.alt) || "#ffffff"; if(ring.toLowerCase() === c.toLowerCase()) ring = "#ffffff";
+  const ink = lum(c) > .45 ? "#0b1118" : "#ffffff";
+  return `<span class="av team${big?" big":""}${l.jersey?" num":""}" style="background:${c};border-color:${ring};color:${ink}" title="${esc(title)}" aria-hidden="true">${esc(label)}</span>`;
+}
+const posTag = l => l.pos ? ` · ${esc(l.pos)}` : "";
 function teamName(t){ return t ? String(t).replace(/\b\w/g, c => c.toUpperCase()) : ""; }
 function homeLegs(){
   const app = S.home.app;
@@ -1308,7 +1321,7 @@ function renderHome(){
     <div class="sech"><h3><span class="flame" aria-hidden="true">▲</span> Top props right now</h3><button class="linkbtn" data-hsort="edge">View all →</button></div>
     ${top.length ? `<div class="topcards">${top.map(l => `<div class="pcard">
         <div class="pc-top">${avatar(l, true)}<span class="sport-tag">${sportIcon(l.sport)}${esc(SPORT_NAME[l.sport] || l.sport.toUpperCase())}</span></div>
-        <div class="pc-name">${plink(l)}<span>${esc(l.stat)}</span></div>
+        <div class="pc-name">${plink(l)}<span>${esc(l.stat)}${posTag(l)}</span></div>
         <div class="pc-line"><span class="side ${l.side}">${l.side}</span> ${+l.line}</div>
         <div class="pc-fair"><span class="num">${pct(+l.fair)}</span> fair ${moveTag(l)}</div>
         <div class="pc-foot">${edgeChip(l)}${addBtn(l)}</div>
@@ -1319,7 +1332,7 @@ function renderHome(){
     <div class="ptable">
       <div class="pt-head"><span>Player</span><span>Market</span><span>Line</span><span class="r">Fair</span><span class="r">Edge</span><span></span></div>
       ${list.length ? list.slice(0, shown).map(l => `<div class="pt-row">
-        <div class="pt-who">${avatar(l)}<div>${plink(l)}<div class="pt-sub">${esc((SPORT_NAME[l.sport] || l.sport.toUpperCase()))}${l.team ? " · " + esc(teamName(l.team)) : ""} · ${esc(timeOf(l.start))}</div></div>
+        <div class="pt-who">${avatar(l)}<div>${plink(l)}<div class="pt-sub">${esc((SPORT_NAME[l.sport] || l.sport.toUpperCase()))}${l.team ? " · " + esc(teamName(l.team)) : ""}${posTag(l)} · ${esc(timeOf(l.start))}</div></div>
           <button class="star ${S.favs.has(normName(l.player))?"on":""}" data-fav="${esc(normName(l.player))}" aria-label="Save ${esc(l.player)}">★</button></div>
         <div class="pt-mkt" data-line="${l.side} ${+l.line} · ">${esc(l.stat)}</div>
         <div class="pt-line"><span class="side ${l.side}">${l.side}</span> ${+l.line}</div>

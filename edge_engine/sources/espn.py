@@ -32,8 +32,19 @@ def injuries(sport):
     return out
 
 
+def _hex(c):
+    c = str(c or "").strip().lstrip("#")
+    return "#" + c.lower() if len(c) == 6 and all(x in "0123456789abcdefABCDEF" for x in c) else ""
+
+
 def rosters(sport, team_names):
     """{player_key: team name as given in team_names}."""
+    return {k: v["team"] for k, v in roster_details(sport, team_names).items()}
+
+
+def roster_details(sport, team_names):
+    """{player_key: {team, jersey, pos, color, alt}}: team colors from ESPN's team list, jersey number and
+    position from each roster."""
     path = ESPN_PATH.get(sport)
     if not path or not team_names:
         return {}
@@ -43,6 +54,8 @@ def rosters(sport, team_names):
     out = {}
     for tn in sorted(team_names):
         tm = next((t for t in teams if http.team_match(t["displayName"], tn)), None)
+        if tm:
+            color, alt = _hex(tm.get("color")), _hex(tm.get("alternateColor"))
         if not tm:
             continue
         try:
@@ -53,7 +66,10 @@ def rosters(sport, team_names):
             group = a.get("items") if isinstance(a, dict) and isinstance(a.get("items"), list) else [a]
             for p in group:
                 if isinstance(p, dict) and p.get("displayName"):
-                    out[http.norm_name(p["displayName"])] = tn
+                    pos = p.get("position")
+                    pos = (pos.get("abbreviation") or "") if isinstance(pos, dict) else ""
+                    out[http.norm_name(p["displayName"])] = {"team": tn, "jersey": str(p.get("jersey") or ""), "pos": pos,
+                                                             "color": color, "alt": alt}
     return out
 
 

@@ -65,6 +65,8 @@ CREATE TABLE IF NOT EXISTS injuries (sport TEXT, player_key TEXT, player TEXT, s
 CREATE TABLE IF NOT EXISTS rosters (sport TEXT, player_key TEXT, team TEXT, updated_at TEXT,
   PRIMARY KEY (sport, player_key));
 
+CREATE TABLE IF NOT EXISTS player_info (sport TEXT, player_key TEXT, team TEXT, jersey TEXT, pos TEXT, color TEXT,
+  alt TEXT, updated_at TEXT, PRIMARY KEY (sport, player_key));
 CREATE TABLE IF NOT EXISTS correlations (sport TEXT, relation TEXT, m1 TEXT, m2 TEXT, rho REAL, n INTEGER,
   updated_at TEXT, PRIMARY KEY (sport, relation, m1, m2));
 CREATE TABLE IF NOT EXISTS blend_params (sport TEXT PRIMARY KEY, a REAL, b REAL, c REAL, n INTEGER, updated_at TEXT);

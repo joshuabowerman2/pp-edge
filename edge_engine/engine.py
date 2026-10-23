@@ -135,13 +135,15 @@ def refresh_rosters(conn, sport, now, hours=36):
     if not teams:
         return 0
     try:
-        r = espn.rosters(sport, teams)
+        r = espn.roster_details(sport, teams)
     except Exception as e:
         print(f"   rosters {sport}: {e}")
         return 0
     conn.execute("BEGIN IMMEDIATE")
-    for k, team in r.items():
-        conn.execute("INSERT OR REPLACE INTO rosters VALUES(?,?,?,?)", (sport, k, canon_team(team), iso(now)))
+    for k, p in r.items():
+        conn.execute("INSERT OR REPLACE INTO rosters VALUES(?,?,?,?)", (sport, k, canon_team(p["team"]), iso(now)))
+        conn.execute("INSERT OR REPLACE INTO player_info VALUES(?,?,?,?,?,?,?,?)",
+                     (sport, k, p["team"], p["jersey"], p["pos"], p["color"], p["alt"], iso(now)))
     conn.execute("COMMIT")
     meta_set(conn, f"rosters_refreshed:{sport}", iso(now))
     return len(r)

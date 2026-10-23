@@ -36,6 +36,7 @@ jobs:
           EDGE_DB: data/edge.db
         run: |
           mkdir -p site
+          SPORTS="${{ vars.SPORTS || 'nba nhl' }}" edge rosters || true   # jersey numbers and team colors (ESPN, free)
           edge results --out site/results.html
           edge export --out site/index.json
           if [ -d assets ]; then cp assets/* site/; fi

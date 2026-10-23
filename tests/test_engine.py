@@ -210,6 +210,13 @@ class EndToEndTests(unittest.TestCase):
         results.write(self.conn, self.cfg, os.path.join(site, "results.html"))
         html_ = open(os.path.join(site, "results.html")).read()
         self.assertIn("Record verified", html_)
+        info = self.conn.execute("SELECT * FROM player_info WHERE jersey != '' LIMIT 1").fetchone()
+        self.assertIsNotNone(info)
+        self.assertEqual(info["color"], "#008348")
+        self.assertEqual(info["pos"], "G")
+        d2 = export.app_json(self.conn, self.cfg, later)
+        legs2 = [l for s in d2["plays"] for l in s["legs"]] + d2["props"]
+        self.assertTrue(any(l["jersey"] and l["color"] == "#008348" for l in legs2))
         f = self.conn.execute("SELECT * FROM flex_slips").fetchone()
         self.assertIn(f["status"], ("settled", "void"))
         self.assertIsNotNone(f["hits"])

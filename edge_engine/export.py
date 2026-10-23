@@ -18,11 +18,14 @@ def _name(e):
 
 
 _MOVES = {}
+_INFO = {}
 
 
 def _leg(l):
+    info = _INFO.get((l["sport"], l.get("player_key")), {})
     mv = _MOVES.get(prop_key(l)) if l.get("game_id") is not None and not l.get("tier") else None
     return {"sport": l["sport"], "player": l["player"], "player_key": l.get("player_key") or "",
+            "jersey": info.get("jersey", ""), "pos": info.get("pos", ""), "color": info.get("color", ""), "alt": info.get("alt", ""),
             "fair_open": round(mv[0], 4) if mv else None, "opened_at": mv[1] if mv else None, "moves": mv[2] if mv else 0, "market": l["market"], "stat": l["stat"], "line": l["line"],
             "side": l["side"], "fair": l["fair"], "game": f"{l['away']} @ {l['home']}", "start": l["start"],
             "books": l["books"], "sharp": bool(l["sharp"]), "exact": l["exact"], "injury": l.get("injury") or "",
@@ -52,6 +55,8 @@ def app_json(conn, cfg, now, days=60):
             payouts[full] = {"n": e["n"], "pay": {str(h): m for h, m in e["pay"].items()}}
     play_keys = {(p["app"], p["entry"], p["num"]) for p in board["plays"]}
     all_legs = [l for e in board["plays"] + board["entries"] + board.get("stacks", []) for l in e["legs"]] + board["legs"]
+    _INFO.clear()
+    _INFO.update({(r["sport"], r["player_key"]): dict(r) for r in conn.execute("SELECT * FROM player_info")})
     _MOVES.clear()
     _MOVES.update(moves_for(conn, all_legs))
     # Recent games for every player and stat on the board, for the app's player pages.

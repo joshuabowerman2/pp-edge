@@ -26,6 +26,7 @@ def main(argv=None):
     p.add_argument("--training", action="store_true", help="evaluate on training picks instead")
     p = sub.add_parser("backfill", help="load past box scores so models have history")
     p.add_argument("--days", type=int, default=60)
+    sub.add_parser("rosters", help="refresh rosters, jersey numbers and team colors from ESPN (free)")
     p = sub.add_parser("results", help="write the public results page and CSV")
     p.add_argument("--out", default="site/results.html")
     p = sub.add_parser("export", help="write the Edge Finder app data file")
@@ -69,6 +70,9 @@ def main(argv=None):
     elif a.cmd == "backfill":
         for s in cfg.sports:
             print(f"{s}: {tracking.backfill(conn, s, a.days, now)} games stored")
+    elif a.cmd == "rosters":
+        for s in cfg.sports:
+            print(f"{s}: {engine.refresh_rosters(conn, s, now)} players")
     elif a.cmd == "results":
         results.write(conn, cfg, a.out)
         print(f"Wrote {a.out}")
