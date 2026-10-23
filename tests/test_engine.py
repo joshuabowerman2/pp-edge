@@ -228,6 +228,10 @@ class EndToEndTests(unittest.TestCase):
         # line history file, injury report and data freshness
         tl = json.load(open(os.path.join(site, "timeline.json")))
         self.assertTrue(tl and any(v["books"] for v in tl.values()) and any(v["apps"] for v in tl.values()))
+        pl = json.load(open(os.path.join(site, "players.json")))
+        withg = [v for v in pl["players"].values() if v["games"]]
+        self.assertTrue(withg and "points" in withg[0]["games"][0]["s"])
+        self.assertEqual(pl["stat_keys"]["nba"]["player_points"], ["points"])
         self.assertIn("injuries", d2)
         self.assertTrue(d2["freshness"]["odds"] and d2["freshness"]["models"])
         self.assertIn("Accuracy over time", html_)

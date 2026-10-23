@@ -111,6 +111,37 @@ button.btn.sm{min-height:36px;padding:4px 10px;font-size:.8rem}
 .mv{font:600 .72rem var(--mono);white-space:nowrap}.mv.up{color:var(--good)}.mv.down{color:var(--bad)}
 button.plink{appearance:none;border:0;background:none;padding:0;margin:0;font:inherit;font-weight:600;color:inherit;cursor:pointer;text-align:left;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
 dialog.sheet{border:1px solid var(--line);border-radius:14px;padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 48px);background:var(--panel);color:var(--ink)}
+#playerSheet{width:min(1000px,calc(100% - 24px))}
+.pv{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:860px){.pv{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}.pv .pv-log{grid-row:span 3}}
+@media (max-width:859px){.pv .pv-log{order:5}.pv .pv-card{order:6}.pv-log td,.pv-log th{padding:7px 4px}}
+.pv-box{background:var(--panel-2,rgba(255,255,255,.03));border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.pv-box h4{margin:0;font-size:1rem}
+.pv-log .scroll table,.pv-log table{width:100%;min-width:0;border-collapse:collapse;font-size:.85rem}
+.pv-log td.a{color:var(--muted);font-style:italic}
+.pv-log th{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;text-align:right;padding:6px 6px;border-bottom:1px solid var(--line)}
+.pv-log th:first-child,.pv-log td:first-child{text-align:left}
+.pv-log td{text-align:right;padding:8px 6px;font-family:var(--mono);font-weight:600;border-bottom:1px solid var(--grid)}
+.pv-log td:first-child{font-family:inherit;font-weight:500;color:var(--ink-2,var(--ink));white-space:nowrap}
+.pv-log td.o{color:var(--good)}.pv-log td.u{color:var(--pink,#f0508c)}.pv-log td.n{color:var(--muted)}
+.pv-log th.sel,.pv-log td.sel{background:rgba(127,166,240,.09)}
+.pv-log tr.dim td{opacity:.35}
+.pv-alt{display:flex;align-items:center;gap:10px}
+.pv-alt input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
+.pv-alt .pvb{width:34px;height:34px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-size:1.2rem;line-height:1;cursor:pointer}
+.pv-alt output{font:700 1.05rem var(--mono);min-width:3.2em;text-align:center}
+.pv-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);padding-top:10px}
+.pv-stats div{display:flex;flex-direction:column;gap:2px;padding:0 8px;border-left:1px solid var(--line)}
+.pv-stats div:first-child{border-left:0;padding-left:0}
+.pv-stats span{font-size:.75rem;color:var(--muted)}.pv-stats b{font:700 1.1rem var(--mono)}
+.pv-filt{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pv-filt select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font:inherit;font-size:.85rem}
+.pv-seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pv-seg button{background:none;border:0;color:var(--muted);padding:7px 10px;font:inherit;font-size:.8rem;cursor:pointer}
+.pv-seg button[aria-pressed=true]{background:var(--accent);color:#04120a;font-weight:700}
+.pv-box.pv-card{flex-direction:row;gap:14px;align-items:center}
+.pv-avg{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:8px;flex:1;min-width:0}
+.pv-avg div{display:flex;flex-direction:column;gap:1px}.pv-avg span{font-size:.72rem;color:var(--muted)}.pv-avg b{font:700 .98rem var(--mono);white-space:nowrap}
 dialog.sheet::backdrop{background:rgba(0,0,0,.45)}
 .sheet .sh{position:sticky;top:0;background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
 .sheet .sb{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
@@ -1381,7 +1412,7 @@ function trendsHTML(l){
   if(!g.length) return `<div><h3 style="margin:0 0 6px">Trends</h3><p class="small muted" style="margin:0">No game logs yet. They fill in once the engine has loaded box scores for this player (from the next daily run).</p></div>`;
   const mins = g.slice(0, 10).filter(x => fin(x.min)), use = g.slice(0, 10).filter(x => fin(x.use));
   const isHome = l.team && l.home ? teamName(l.home).toLowerCase().includes(String(l.team).toLowerCase()) : null;
-  return `<div style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">Trends</h3>${trendChart(l, g)}
+  return `<div style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">Trends</h3>${S.players && pvPlayer(l) ? "" : trendChart(l, g)}
     <div class="rgrid">
       <div><span class="l">Minutes</span><b>${mins.length ? num1(mins.reduce((a, x) => a + x.min, 0) / mins.length) : "–"}</b><span class="s">${mins.length ? `last ${mins.length}: ${mins.map(x => Math.round(x.min)).join(", ")}` : "not recorded"}</span></div>
       <div><span class="l">${esc(r.usage_label || "Usage")}</span><b>${use.length ? num1(use.reduce((a, x) => a + x.use, 0) / use.length) : "–"}</b><span class="s">${use.length ? `last ${use.length}: ${use.map(x => x.use % 1 ? x.use.toFixed(1) : x.use).join(", ")}` : "not recorded for this sport"}</span></div>
@@ -1429,12 +1460,13 @@ function openPlayer(key, name){
   const props = [...legPool().values()].filter(l => (pkey && l.player_key === pkey) || normName(l.player) === nn)
     .sort((a, b) => ((a.app || "prizepicks") === S.home.app ? -1 : 1) - ((b.app || "prizepicks") === S.home.app ? -1 : 1));
   const byMarket = new Map(); for(const l of props) if(!byMarket.has(l.market)) byMarket.set(l.market, l);
-  S.sheet = {name, nn, list: [...byMarket.values()], i: 0};
+  S.sheet = {name, nn, list: [...byMarket.values()], i: 0, keepScroll: false};
   renderSheet();
   const d = $("#playerSheet"); if(!d.open){ if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
 }
 function renderSheet(){
   const sh = S.sheet; if(!sh) return; const l = sh.list[sh.i];
+  const scroller = $("#playerSheet"), keepTop = scroller ? scroller.scrollTop : 0; requestAnimationFrame(() => { if(scroller && sh.keepScroll) scroller.scrollTop = keepTop; sh.keepScroll = true; });
   const graded = S.histLegs.filter(h => normName(h.player) === sh.nn && (h.result === "hit" || h.result === "miss"));
   const hits = graded.filter(h => h.result === "hit").length, exp = graded.reduce((a, h) => a + (+h.fair || 0), 0);
   const team = l && l.team, followP = S.favs.has(sh.nn), followT = team && S.watch.teams.includes(team), followS = l && S.watch.stats.includes(l.market);
@@ -1448,7 +1480,7 @@ function renderSheet(){
     ${sh.list.length > 1 ? `<div class="ptabs" role="group" aria-label="Props">${sh.list.map((x, i) => `<button aria-pressed="${i === sh.i}" data-psel="${i}">${esc(x.side)} ${+x.line} ${esc(x.stat)}</button>`).join("")}</div>` : ""}
     ${l ? `<div class="row" style="justify-content:space-between"><span><span class="side ${l.side}">${l.side}</span> <b>${+l.line} ${esc(l.stat)}</b> <span class="muted small">${esc(appName(l.app))} · ${esc(timeOf(l.start))}</span></span>
         <span class="row" style="gap:6px">${legOpen(l) ? `<button class="add ${S.build.legs.includes(poolKey(l)) ? "on" : ""}" data-add="${esc(poolKey(l))}" aria-label="Add to slip">${S.build.legs.includes(poolKey(l)) ? "✓" : "+"}</button>` : `<span class="chip warn">Started</span>`}</span></div>
-      ${researchHTML(l)}${trendsHTML(l)}${timelineHTML(l)}${bestLinesHTML(l)}${whatChangedHTML(l)}
+      ${gameLogHTML(l, sh)}${researchHTML(l)}${trendsHTML(l)}${timelineHTML(l)}${bestLinesHTML(l)}${whatChangedHTML(l)}
       ${teamNews(l)}
       <div class="row"><button class="btn sm" data-cmp="${esc(poolKey(l))}">${(S.compare || []).includes(poolKey(l)) ? "✓ In compare" : "Add to compare"}</button>
         ${(S.compare || []).length >= 2 ? `<button class="btn sm primary" id="psOpenCmp">Open compare (${S.compare.length})</button>` : ""}
@@ -1458,8 +1490,139 @@ function renderSheet(){
       ? `<p class="small" style="margin:0">${hits} of ${graded.length} picks hit (${pct(hits / graded.length, 0)}), against ${pct(exp / graded.length, 0)} expected.${graded.length < 20 ? ` Only ${graded.length} graded, too few to read much into.` : ""}</p>`
       : `<p class="small muted" style="margin:0">No graded picks on this player yet.</p>`}</div>`;
   $("#psBody").querySelectorAll("[data-psel]").forEach(b => b.addEventListener("click", () => { sh.i = +b.dataset.psel; renderSheet(); }));
+  if(l) wireGameLog(l, sh);
   $("#psAsk")?.addEventListener("click", () => askClaude([l]));
   $("#psOpenCmp")?.addEventListener("click", () => openCompare(S.compare.map(k => legPool().get(k)).filter(Boolean)));
+}
+/* ---------- game log, alt line and hit rate ---------- */
+S.players = null; S.plFor = null; let plLoading = null;
+function loadPlayers(){
+  const ver = (S.board && (S.board.exported_at || S.board.generated_at)) || "";
+  if(S.players && S.plFor === ver) return Promise.resolve(S.players);
+  if(plLoading) return plLoading;
+  if(location.protocol === "file:" || S.mode === "db"){ S.players = {players: {}, stat_keys: {}}; S.plFor = ver; return Promise.resolve(S.players); }
+  plLoading = fetch("players.json?v=" + encodeURIComponent(ver), {cache: "no-store"}).then(r => r.ok ? r.json() : {}).catch(() => ({}))
+    .then(d => { S.players = d && d.players ? d : {players: {}, stat_keys: {}}; S.plFor = ver; plLoading = null; return S.players; });
+  return plLoading;
+}
+const TEAM_ABBR = {"atlanta hawks":"ATL","boston celtics":"BOS","brooklyn nets":"BKN","charlotte hornets":"CHA","chicago bulls":"CHI","cleveland cavaliers":"CLE","dallas mavericks":"DAL","denver nuggets":"DEN","detroit pistons":"DET","golden state warriors":"GSW","houston rockets":"HOU","indiana pacers":"IND","la clippers":"LAC","los angeles clippers":"LAC","los angeles lakers":"LAL","memphis grizzlies":"MEM","miami heat":"MIA","milwaukee bucks":"MIL","minnesota timberwolves":"MIN","new orleans pelicans":"NOP","new york knicks":"NYK","oklahoma city thunder":"OKC","orlando magic":"ORL","philadelphia 76ers":"PHI","phoenix suns":"PHX","portland trail blazers":"POR","sacramento kings":"SAC","san antonio spurs":"SAS","toronto raptors":"TOR","utah jazz":"UTA","washington wizards":"WAS",
+  "anaheim ducks":"ANA","boston bruins":"BOS","buffalo sabres":"BUF","calgary flames":"CGY","carolina hurricanes":"CAR","chicago blackhawks":"CHI","colorado avalanche":"COL","columbus blue jackets":"CBJ","dallas stars":"DAL","detroit red wings":"DET","edmonton oilers":"EDM","florida panthers":"FLA","los angeles kings":"LAK","minnesota wild":"MIN","montreal canadiens":"MTL","montréal canadiens":"MTL","nashville predators":"NSH","new jersey devils":"NJD","new york islanders":"NYI","new york rangers":"NYR","ottawa senators":"OTT","philadelphia flyers":"PHI","pittsburgh penguins":"PIT","san jose sharks":"SJS","seattle kraken":"SEA","st. louis blues":"STL","tampa bay lightning":"TBL","toronto maple leafs":"TOR","utah hockey club":"UTA","utah mammoth":"UTA","vancouver canucks":"VAN","vegas golden knights":"VGK","washington capitals":"WSH","winnipeg jets":"WPG"};
+function teamAbbr(t){
+  const k = String(t || "").toLowerCase().trim(); if(!k) return "";
+  if(TEAM_ABBR[k]) return TEAM_ABBR[k];
+  const hit = Object.keys(TEAM_ABBR).find(n => n.endsWith(" " + k) || n.includes(k)); if(hit) return TEAM_ABBR[hit];
+  const w = k.split(/\s+/); return (w.length > 1 ? w.map(x => x[0]).join("") : k.slice(0, 3)).toUpperCase();
+}
+const PV_FAMILY = {nba: "b", wnba: "b", nhl: "h", nfl: "f", cfb: "f"};
+// Game log columns per sport: [label, market it stands for, box keys summed]
+const PV_COLS = {
+  b: [["PTS", "player_points", ["points"]], ["REB", "player_rebounds", ["rebounds"]], ["AST", "player_assists", ["assists"]], ["3PM", "player_threes", ["threePointFieldGoalsMade"]]],
+  h: [["G", "", ["goals"]], ["A", "player_assists", ["assists"]], ["PTS", "player_points", ["goals", "assists"]], ["SOG", "player_shots_on_goal", ["shotsTotal"]]],
+  f: [["PASS", "player_pass_yds", ["passingYards"]], ["RUSH", "player_rush_yds", ["rushingYards"]], ["REC", "player_receptions", ["receptions"]], ["REC YDS", "player_reception_yds", ["receivingYards"]]],
+};
+const PV_SHORT = {player_points_rebounds_assists: "PRA", player_points_rebounds: "P+R", player_points_assists: "P+A", player_rebounds_assists: "R+A",
+  player_blocks: "BLK", player_steals: "STL", player_turnovers: "TO", player_total_saves: "SV", player_blocked_shots: "BLK", player_rush_reception_yds: "R+R YDS"};
+function pvPlayer(l){ const P = S.players; const p = P && P.players && P.players[`${l.sport}|${l.player_key}`]; return p && p.games && p.games.length ? p : null; }
+function sumKeys(g, keys){ let t = 0; for(const k of keys || []){ const v = g.s[k]; if(v == null) return null; t += +v; } return keys && keys.length ? t : null; }
+function pvVal(l, g){ return sumKeys(g, (S.players.stat_keys[l.sport] || {})[l.market]); }
+function pvLines(sh){ const m = {}; for(const x of sh.list) if(!(x.market in m)) m[x.market] = +x.line; return m; }
+function pvShort(d){ const t = String(d || "").slice(5).split("-"); return t.length === 2 ? `${+t[0]}/${+t[1]}` : d; }
+function pvGames(l, p, sh){
+  const minf = +sh.pvMin || 0;
+  return p.games.filter(g => pvVal(l, g) != null && (!minf || (fin(g.m) && g.m >= minf)));
+}
+function pvCols(l){
+  const cols = (PV_COLS[PV_FAMILY[l.sport]] || []).slice();
+  if(!cols.some(c => c[1] === l.market)){ const keys = (S.players.stat_keys[l.sport] || {})[l.market]; if(keys) cols.push([PV_SHORT[l.market] || l.stat, l.market, keys]); }
+  return cols;
+}
+function pvAverages(l, p){
+  const g = p.games, avg = f => { const v = g.map(f).filter(fin); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  const fam = PV_FAMILY[l.sport], out = [["Minutes", num1(avg(x => x.m))]];
+  if(fam === "b"){
+    const fgm = avg(x => x.s.fieldGoalsMade), fga = avg(x => x.s.fieldGoalsAttempted);
+    out.push(["Points", num1(avg(x => x.s.points))], ["Rebounds", num1(avg(x => x.s.rebounds))], ["Assists", num1(avg(x => x.s.assists))],
+      ["FG", fgm != null && fga ? `${num1(fgm)}/${num1(fga)}` : "–"], ["FG%", fgm != null && fga ? (fgm / fga * 100).toFixed(1) + "%" : "–"], ["3PM", num1(avg(x => x.s.threePointFieldGoalsMade))]);
+  } else if(fam === "h"){
+    out.push(["Goals", num1(avg(x => x.s.goals))], ["Assists", num1(avg(x => x.s.assists))], ["Shots", num1(avg(x => x.s.shotsTotal))]);
+    if(g.some(x => x.s.saves != null)) out.push(["Saves", num1(avg(x => x.s.saves))]);
+  } else for(const c of PV_COLS[fam] || []) out.push([c[0], num1(avg(x => sumKeys(x, c[2])))]);
+  return out;
+}
+function pvChart(l, games, line){
+  const g = games.slice().reverse(); if(!g.length) return `<p class="small muted" style="margin:0">No games match this filter.</p>`;
+  const vals = g.map(x => pvVal(l, x)), max = Math.max(line * 1.25, ...vals, 1), W = 400, H = 210, L = 26, R = 34, T = 16, B = 24;
+  const top = Math.ceil(max / 5) * 5, Y = v => T + (H - T - B) * (1 - v / top), bw = (W - L - R) / g.length;
+  const ticks = [0, top / 2, top];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Last ${g.length} games of ${esc(l.stat)} against ${line}" style="width:100%;height:auto;display:block">
+    ${ticks.map(v => `<text x="${L - 6}" y="${(Y(v) + 3).toFixed(1)}" font-size="10" fill="var(--muted)" text-anchor="end">${v}</text>`).join("")}
+    ${g.map((x, i) => { const v = vals[i], hit = v !== line && ((v > line) === (l.side !== "LESS")), y = Y(v), bx = L + i * bw + bw * .14, w = bw * .72;
+      return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1.5, Y(0) - y).toFixed(1)}" rx="3" fill="${v === line ? "var(--muted)" : hit ? "var(--good)" : "var(--pink,#f0508c)"}"><title>${esc(pvShort(x.d))} vs ${esc(teamAbbr(x.o))}: ${v}</title></rect>
+        ${g.length <= 12 ? `<text x="${(bx + w / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" font-size="10" fill="var(--ink)" text-anchor="middle" font-weight="600">${v % 1 ? v.toFixed(1) : v}</text>` : ""}
+        <text x="${(bx + w / 2).toFixed(1)}" y="${H - 8}" font-size="${g.length > 12 ? 7 : 9}" fill="var(--muted)" text-anchor="middle">${esc(teamAbbr(x.o))}</text>`; }).join("")}
+    <line x1="${L}" x2="${W - R}" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" stroke="var(--ink)" stroke-opacity=".7" stroke-dasharray="2 4"/>
+    <text x="${W - R + 4}" y="${(Y(line) + 4).toFixed(1)}" font-size="11" fill="var(--ink)" font-weight="700">${line}</text></svg>`;
+}
+function pvDynamic(l, p, sh){
+  const line = sh.pvLine, all = pvGames(l, p, sh), n = sh.pvN === "all" ? all.length : +sh.pvN, games = all.slice(0, n);
+  const vals = games.map(x => pvVal(l, x)), hits = vals.filter(v => v !== line && ((v > line) === (l.side !== "LESS"))).length;
+  const pushes = vals.filter(v => v === line).length, avg = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  const hr = vals.length - pushes ? hits / (vals.length - pushes) : null;
+  return `${pvChart(l, games, line)}
+    <div class="pv-stats"><div><span>Hit rate (${esc(l.side === "LESS" ? "LESS" : "MORE")})</span><b class="${hr == null ? "" : hr >= .5 ? "pos" : "neg"}">${hr == null ? "–" : Math.round(hr * 100) + "%"}</b><span>${hits} of ${vals.length - pushes}${pushes ? ` · ${pushes} push` : ""}</span></div>
+      <div><span>Average</span><b class="${avg == null ? "" : (avg > line) === (l.side !== "LESS") ? "pos" : "neg"}">${num1(avg)}</b><span>${vals.length} ${vals.length === 1 ? "game" : "games"}</span></div>
+      <div><span>Line</span><b>${line}</b><span>${line === +l.line ? esc(appName(l.app)) : `${esc(appName(l.app))} is ${+l.line}`}</span></div></div>`;
+}
+function pvLog(l, p, sh){
+  const cols = pvCols(l), lines = pvLines(sh), keep = new Set(pvGames(l, p, sh).map(g => g.d));
+  const cls = (v, ln, isAvg) => v == null || ln == null || v === ln ? "n" : (v > ln ? "o" : "u") + (isAvg ? " a" : "");
+  const avgOf = keys => { const v = p.games.map(g => sumKeys(g, keys)).filter(fin); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
+  for(const c of cols) if(lines[c[1]] == null && c[1] !== l.market) c.avg = avgOf(c[2]);
+  const rows = p.games.slice(0, 20).map(g => `<tr class="${keep.has(g.d) ? "" : "dim"}"><td>${esc(pvShort(g.d))} ${g.h === 0 ? "@" : "vs"} ${esc(teamAbbr(g.o))}</td>
+      <td class="n">${fin(g.m) ? Math.round(g.m) : "–"}</td>
+      ${cols.map(c => { const v = sumKeys(g, c[2]), useAvg = c.avg != null, ln = c[1] === l.market ? sh.pvLine : useAvg ? c.avg : lines[c[1]];
+        return `<td class="${cls(v, ln, useAvg)}${c[1] === l.market ? " sel" : ""}">${v == null ? "–" : v % 1 ? v.toFixed(1) : v}</td>`; }).join("")}</tr>`).join("");
+  return `<div class="scroll"><table><thead><tr><th>Games</th><th>Min</th>${cols.map(c => `<th class="${c[1] === l.market ? "sel" : ""}" title="${c[1] === l.market ? `Line ${sh.pvLine}` : lines[c[1]] != null ? `Line ${lines[c[1]]}` : c.avg != null ? `No line today; compared with his average ${num1(c.avg)}` : ""}">${esc(c[0])}${c[1] !== l.market && lines[c[1]] == null && c.avg != null ? "*" : ""}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="small muted" style="margin:0">Green beat that stat's line today, pink fell short. Columns marked * have no line today, so they're compared with the player's own average (in italics). Faded rows are outside your minutes filter.</p>`;
+}
+function gameLogHTML(l, sh){
+  if(!S.players || S.plFor !== ((S.board && (S.board.exported_at || S.board.generated_at)) || "")){
+    loadPlayers().then(() => { if(S.sheet) renderSheet(); });
+    return `<div class="pv-box"><h4>Game log</h4><p class="small muted" style="margin:0">Loading games…</p></div>`;
+  }
+  const p = pvPlayer(l);
+  if(!p) return `<div class="pv-box"><h4>Game log</h4><p class="small muted" style="margin:0">No games stored for this player yet. Game logs load from ESPN box scores with each run.</p></div>`;
+  if(sh.pvFor !== poolKey(l)){ sh.pvFor = poolKey(l); sh.pvLine = +l.line; sh.pvN = sh.pvN || "10"; }
+  const vals = p.games.map(g => pvVal(l, g)).filter(fin), hi = Math.max(+l.line * 2, ...vals, 1);
+  const fam = PV_FAMILY[l.sport], mins = fam === "h" ? [10, 15, 20] : [20, 25, 30, 35];
+  const avgs = pvAverages(l, p);
+  return `<div class="pv">
+    <div class="pv-box pv-log"><h4>Game log</h4>${pvLog(l, p, sh)}</div>
+    <div class="pv-box"><div class="row" style="justify-content:space-between"><h4>Alternative line</h4>${sh.pvLine !== +l.line ? `<button class="btn sm" id="pvReset">Back to ${+l.line}</button>` : ""}</div>
+      <div class="pv-alt"><button class="pvb" id="pvMinus" aria-label="Lower the line">−</button>
+        <input type="range" id="pvRange" min="0" max="${Math.ceil(hi) + 0.5}" step="0.5" value="${sh.pvLine}" aria-label="Line for ${esc(l.stat)}">
+        <button class="pvb" id="pvPlus" aria-label="Raise the line">+</button><output id="pvOut">${sh.pvLine}</output></div></div>
+    <div class="pv-box"><div class="pv-filt"><div class="pv-seg" role="group" aria-label="Games shown">${["5", "10", "20", "all"].map(x => `<button data-pvn="${x}" aria-pressed="${sh.pvN === x}">${x === "all" ? "All" : "L" + x}</button>`).join("")}</div>
+        <select id="pvMin" aria-label="Minutes filter"><option value="0">All minutes</option>${mins.map(m => `<option value="${m}" ${+sh.pvMin === m ? "selected" : ""}>${m}+ minutes</option>`).join("")}</select></div>
+      <div id="pvDyn">${pvDynamic(l, p, sh)}</div></div>
+    <div class="pv-box pv-card">${avatar(l, true)}<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px"><b>${esc(p.name)}</b>
+      <div class="pv-avg">${avgs.map(([k, v]) => `<div><span>${esc(k)}</span><b>${v}</b></div>`).join("")}</div>
+      <span class="small muted">Averages over the last ${p.games.length} ${p.games.length === 1 ? "game" : "games"} stored.</span></div></div>
+  </div>`;
+}
+function wireGameLog(l, sh){
+  const p = pvPlayer(l); if(!p) return;
+  const box = $("#psBody");
+  const upd = () => { $("#pvOut").textContent = sh.pvLine; $("#pvRange").value = sh.pvLine; $("#pvDyn").innerHTML = pvDynamic(l, p, sh);
+    box.querySelector(".pv-log").innerHTML = `<h4>Game log</h4>${pvLog(l, p, sh)}`; };
+  const set = v => { sh.pvLine = Math.max(0, Math.round(v * 2) / 2); upd(); };
+  $("#pvRange")?.addEventListener("input", e => set(+e.target.value));
+  $("#pvRange")?.addEventListener("change", () => renderSheet());
+  $("#pvMinus")?.addEventListener("click", () => { set(Math.max(sh.pvLine % 1 ? 0.5 : 0, sh.pvLine - 1)); renderSheet(); });
+  $("#pvPlus")?.addEventListener("click", () => { set(sh.pvLine + 1); renderSheet(); });
+  $("#pvReset")?.addEventListener("click", () => { sh.pvLine = +l.line; renderSheet(); });
+  $("#pvMin")?.addEventListener("change", e => { sh.pvMin = +e.target.value; renderSheet(); });
+  box.querySelectorAll("[data-pvn]").forEach(b => b.addEventListener("click", () => { sh.pvN = b.dataset.pvn; renderSheet(); }));
 }
 /* ---------- projection range and risk ---------- */
 function projRange(r){

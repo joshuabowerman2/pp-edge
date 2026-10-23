@@ -7,11 +7,11 @@ name: Publish site (no Odds API credits)
 on:
   push:
     branches: [main]
-    paths: ["web/**", "assets/**", "edge_engine/results.py", "edge_engine/ui.py", "edge_engine/export.py"]
+    paths: ["web/**", "assets/**", "edge_engine/results.py", "edge_engine/ui.py", "edge_engine/export.py", "edge_engine/players.py", "edge_engine/timeline.py", ".github/workflows/publish.yml"]
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # saves newly loaded box scores back to data/edge.db
   pages: write
   id-token: write
 
@@ -36,12 +36,20 @@ jobs:
           EDGE_DB: data/edge.db
         run: |
           mkdir -p site
-          SPORTS="${{ vars.SPORTS || 'nba nhl' }}" edge rosters || true   # jersey numbers and team colors (ESPN, free)
+          export SPORTS="${{ vars.SPORTS || 'nba nhl' }}"
+          edge rosters || true          # jersey numbers and team colors (ESPN, free)
+          edge backfill --days 30 || true   # recent box scores for game logs and projections (ESPN, free)
           edge results --out site/results.html
           edge export --out site/index.json
           if [ -d assets ]; then cp assets/* site/; fi
           if [ -d web ]; then cp web/* site/; fi
           cp site/results.html site/index.html
+      - name: Save database
+        run: |
+          git config user.name "edge-engine bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/edge.db
+          git diff --cached --quiet || { git commit -m "Box scores $(date -u +%FT%TZ)"; git pull --rebase -X theirs -q || true; git push; }
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

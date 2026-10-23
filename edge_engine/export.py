@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from .db import meta_get
 from .tracking import iso
-from . import projections, research, results, timeline
+from . import players, projections, research, results, timeline
 from .tracking import moves_for, prop_key
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
@@ -151,3 +151,4 @@ def write_app_json(conn, cfg, path, now):
     board = meta_get(conn, "board") or {}
     legs = [l for e in board.get("plays", []) + board.get("entries", []) + board.get("stacks", []) for l in e["legs"]] + board.get("legs", [])
     timeline.write(conn, legs, os.path.join(d or ".", "timeline.json"))
+    players.write(conn, legs, os.path.join(d or ".", "players.json"))
