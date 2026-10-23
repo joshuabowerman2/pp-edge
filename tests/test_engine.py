@@ -285,6 +285,7 @@ class NewFeatureTests(unittest.TestCase):
         self.assertAlmostEqual(mv[0], 0.56)
         self.assertEqual(mv[2], 1)
 
+    @unittest.skipIf(slips.np is None, "correlated simulation needs numpy (the engine installs it)")
     def test_stacks_find_correlated_combo(self):
         class Corr:
             def pair(self, a, b):
