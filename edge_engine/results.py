@@ -341,7 +341,7 @@ def html(conn, nav=None, tz=None):
                    f'{esc(bt.get("verdict", "").capitalize())}.</p><div class="scroll"><table><thead><tr><th>Price</th><th class="r">Legs</th>'
                    f'<th class="r">Log loss</th><th class="r">Brier</th></tr></thead><tbody>{rows}</tbody></table></div></div>')
     body = f"""
-<p style="margin:0"><a class="btn primary" href="app.html">Open the Edge Finder app</a></p>
+<p class="app-link" style="margin:0"><a class="btn primary" href="app.html">Open the Edge Finder app</a></p>
 <div><h1>Track record</h1><p class="muted small" style="margin:4px 0 0">Updated {esc(_local(d["generated_at"], tz, "%a %b %d, %I:%M %p"))} Central time</p><p class="lead">Every pick the model makes is logged the moment it's made, before the game,
 and never edited afterward. Each pick's hash includes the one before it, so changing or deleting any old pick breaks
 every hash after it. Anyone can download the full log and check it.</p></div>
@@ -390,7 +390,12 @@ every finished pick. Staying above zero means the sharp market keeps moving towa
 <li>Each row's hash is SHA-256 of the previous row's hash plus that pick's fields, so changing or removing any old pick breaks every hash after it.</li>
 <li>Run <span class="num">edge verify --csv picks.csv</span> from the open-source engine, or recompute the hashes yourself, and compare the last one with the hash above.</li>
 <li>Copies of this hash posted publicly over time pin the record down, so it can't be rebuilt from scratch either.</li></ol></div>"""
-    return page("Edge Engine Track Record", body, nav, "/results")
+    embed = """<style>html.embed{--bg:#0A1017;--panel:#0F1822;--panel2:#152131;--line:#1F2D3D;--ink:#E9EEF4;--muted:#8C99AA;
+--accent:#22D37E;--on-accent:#04170D;--good:#3DDC8E;--good-bg:#0F2E1E;--warn:#F0B85A;--warn-bg:#2F2410;--bad:#F2867B;--bad-bg:#371A18;
+--s1:#22D37E;--s2:#6E9BF0;--grid:#1A2735;color-scheme:dark}
+html.embed header.top,html.embed footer,html.embed .app-link{display:none}html.embed main{padding-top:0}</style>
+<script>if(/[?&]embed=1/.test(location.search))document.documentElement.classList.add("embed")</script>"""
+    return page("Edge Engine Track Record", embed + body, nav, "/results")
 
 
 def write(conn, cfg, path):

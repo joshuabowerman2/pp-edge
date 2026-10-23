@@ -283,6 +283,9 @@ input[type=range]{accent-color:var(--accent);padding:0;min-height:30px;backgroun
 .cmp th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
 .wtags{display:flex;flex-wrap:wrap;gap:6px}.wtags button{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:999px;padding:6px 10px;font:500 .8rem var(--body);cursor:pointer}
 .slipbar{display:none}
+a{color:var(--accent)}
+.tb-in .bk{flex-wrap:nowrap;margin-left:auto}.tb-title{flex:1 1 auto}.tb-title>div{min-width:0}
+.tb-title .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 footer{border-top:1px solid var(--line)}
 @media (max-width:1180px){
   .home{grid-template-columns:minmax(0,1fr)}
@@ -889,8 +892,21 @@ const icon = {
   stop: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>',
   ok: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4 10-10"/></svg>',
 };
+S.dashView = "you";
+function dashSwitch(){ return `<div class="seg2" role="group" aria-label="Whose results">${[["you","Your results"],["model","Model track record"]].map(([k,t]) => `<button aria-pressed="${S.dashView===k}" data-dview="${k}">${t}</button>`).join("")}</div>`; }
+function renderRecord(el){
+  // The public track record page, shown inside the app. It updates with every run.
+  if(el.querySelector("#recFrame")) return;
+  el.innerHTML = `${dashSwitch()}<p class="muted small" style="margin:0">Every pick the model makes, hash-locked before the game. <a href="results.html" target="_blank" rel="noopener">Open the full page</a></p>
+    <iframe id="recFrame" src="results.html?embed=1" title="Model track record" style="width:100%;border:0;min-height:70vh;background:transparent" loading="lazy"></iframe>`;
+  const f = $("#recFrame");
+  const fit = () => { try { f.style.height = f.contentDocument.documentElement.scrollHeight + "px"; } catch(e){} };
+  f.addEventListener("load", () => { fit(); setTimeout(fit, 400); try { new ResizeObserver(fit).observe(f.contentDocument.body); } catch(e){} });
+}
+document.addEventListener("click", e => { const b = e.target.closest("button[data-dview]"); if(!b) return; S.dashView = b.dataset.dview; $("#view-dash").innerHTML = ""; renderAll(); });
 function renderDash(A){
   const el = $("#view-dash"); const st = S.settings, L = limitState(A), LS2 = legStats();
+  if(S.dashView === "model"){ renderRecord(el); return; }
   const alerts = [];
   if(L.weekStopHit) alerts.push(["bad", icon.stop, `Weekly stop-loss reached: you're down ${money(-A.weekPL)} over the last 7 days. Take a break until next week.`]);
   else if(L.dayStopHit) alerts.push(["bad", icon.stop, `Daily stop-loss reached: down ${money(-A.todayPL)} today. No more entries today.`]);
@@ -910,6 +926,7 @@ function renderDash(A){
       <p class="muted small" style="margin:0">Once a few entries settle, this page shows profit against expected profit and how likely your edge is real.</p>
       <div class="row" style="justify-content:center"><button class="btn primary" data-go="picks">${S.mode !== "db" || !S.isOwner ? "See today's picks" : "Load today's picks"}</button><button class="btn" data-go="calc">Open the EV calculator</button></div></div>
       ${legPanel(LS2)}`;
+    el.insertAdjacentHTML("afterbegin", dashSwitch());
     return;
   }
   const verdict = edgeVerdict(A);
@@ -948,6 +965,7 @@ function renderDash(A){
     ${vsModelPanel(A)}
     ${breakdownPanel(A)}
     ${legPanel(LS2)}`;
+  el.insertAdjacentHTML("afterbegin", dashSwitch());
   drawChart($("#pChart"), A.series);
   renderSim();
 }
