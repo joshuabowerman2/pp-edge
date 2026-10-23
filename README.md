@@ -72,6 +72,7 @@ Switch to the server when you want real-time prices; then disable both workflows
 | `ALT_LINES` | `0` | `1` prices goblins and demons (more credits) |
 | `LOG_EDGE` / `ALERT_EDGE` | `0` / `0.03` | Log picks at break-even or better; alert at 3+ points |
 | `KELLY_MULT`, `MAX_STAKE_PCT`, `DAY_CAP_PCT`, `PLAYER_CAP_PCT` | `0.25`, `0.02`, `0.08`, `0.04` | Staking limits for the model portfolio |
+| `ONE_PLAY_PER_PLAYER` | `1` | Each player appears in at most one of the day's plays, on any app. `0` allows repeats (capped by `PLAYER_CAP_PCT`) |
 | `NTFY_TOPIC`, `DISCORD_WEBHOOK` | | Phone and Discord alerts |
 | `INVITE_CODE`, `OPEN_SIGNUPS` | | Sign-ups need the invite code unless `OPEN_SIGNUPS=1` |
 | `APPS_FILE` | | JSON file overriding payout tables (Pick6, Dabble, promos) |

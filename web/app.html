@@ -1901,6 +1901,12 @@ function slipFlags(legs){
     const same = g.length === 2 && g[0].team && g[0].team === g[1].team;
     flags.push(`${g.map(l => l.player).join(" and ")} are in the same game${same ? " on the same team" : teams.size > 1 ? " on opposite teams" : ""}. Their results can move together, but the payout prices them as independent, so the real chance can differ from what's shown.`);
   }
+  // A player already riding in an open bet: if he has a bad game, both entries lose.
+  const inOpen = new Map();
+  for(const b of S.bets){ if(b.kind !== "pp" || b.status === "settled") continue;
+    for(const l of b.legs || []) if(!l.result && (!l.start || new Date(l.start) > Date.now() - 6*36e5)) inOpen.set(normName(l.player), l.player); }
+  const repeats = [...new Set(legs.map(l => normName(l.player)).filter(k => inOpen.has(k)))].map(k => inOpen.get(k));
+  if(repeats.length) flags.push(`${repeats.join(", ")} ${repeats.length === 1 ? "is" : "are"} already in one of your open bets. If ${repeats.length === 1 ? "he has" : "they have"} a bad game, both entries lose. Consider swapping ${repeats.length === 1 ? "him" : "them"} out.`);
   const statCount = {}; for(const l of legs) statCount[l.market] = (statCount[l.market] || 0) + 1;
   for(const [m, c] of Object.entries(statCount)) if(c >= 3) flags.push(`${c} picks are the same stat (${legs.find(l => l.market === m).stat}), so one surprise in pace or minutes could hit several at once.`);
   return flags.length ? `<ul class="flags">${flags.map(f => `<li>${esc(f)}</li>`).join("")}</ul>` : "";
@@ -2176,7 +2182,7 @@ function renderHome(){
         <p class="payout">Payout if all hit: <b id="hPayout">${money((num($("#hStake")?.value) || sg.stake || 0) * topMult)}</b></p>
         ${payoutTable(S.build.entry, es, num($("#hStake")?.value) || sg.stake || 0)}
         ${slipInsight(legs, S.build.entry, es)}` : ""}
-      ${n >= 2 ? `${slipFlags(legs)}` : ""}
+      ${n ? `${slipFlags(legs)}` : ""}
       ${n ? `<div class="row">${n >= 2 ? `<button class="btn sm" id="hCompare">Compare these picks</button>` : ""}<button class="btn sm" id="hShare">Share slip</button></div>` : ""}
     </div>
     ${B ? injuryPanel() : ""}

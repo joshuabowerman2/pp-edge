@@ -10,7 +10,7 @@ from . import MODEL_VERSION, alerts, blend, correlation, mathx, portfolio, prici
 from .db import meta_get, meta_set
 from .markets import LABELS, SPORTS, injury_level
 from .sources import espn, odds_api
-from .sources.http import canon_team
+from .sources.http import canon_team, norm_name
 
 iso = tracking.iso
 
@@ -243,8 +243,11 @@ def build_board(conn, cfg, now, legs, apps=None):
         for c in cands:
             c["pool_idx"] = [i + offset for i in c["pool_idx"]]
         all_cands += cands
-    plays = portfolio.optimize(all_cands, pool, corr, cfg.kelly_mult, cfg.max_stake_pct, cfg.day_cap_pct,
-                               cfg.player_cap_pct, cfg.max_plays)
+    if cfg.one_play_per_player:
+        plays = choose_unique_plays(legs, apps, cfg, corr)
+    else:
+        plays = portfolio.optimize(all_cands, pool, corr, cfg.kelly_mult, cfg.max_stake_pct, cfg.day_cap_pct,
+                                   cfg.player_cap_pct, cfg.max_plays)
     for p in plays:
         ids = []
         for l in p["legs"]:
@@ -274,6 +277,41 @@ def build_board(conn, cfg, now, legs, apps=None):
              "blend": {s: blend.params(conn, s) for s in cfg.sports}}
     meta_set(conn, "board", board)
     return board, plays
+
+
+def _candidates_for(legs, apps, cfg, corr):
+    cands, pool = [], []
+    for key in cfg.dfs_apps:
+        a = apps.get(key)
+        if not a or not a["entries"]:
+            continue
+        app_cands, app_pool = slips.candidates([l for l in legs if l["app"] == key and l["edge"] is not None], a, corr)
+        offset = len(pool)
+        pool += app_pool
+        for c in app_cands:
+            c["pool_idx"] = [i + offset for i in c["pool_idx"]]
+        cands += app_cands
+    return cands, pool
+
+
+def choose_unique_plays(legs, apps, cfg, corr):
+    """The day's plays with no player in more than one of them (on any app), so one bad game can only
+    sink one slip. Each play after the first is built from scratch from the players not used yet, then
+    sized the same way as before; the daily cap still applies to the total."""
+    used, plays = set(), []
+    for _ in range(cfg.max_plays):
+        left = [l for l in legs if norm_name(l["player"]) not in used]
+        cands, pool = _candidates_for(left, apps, cfg, corr)
+        best = portfolio.optimize(cands, pool, corr, cfg.kelly_mult, cfg.max_stake_pct, 1.0, 1.0, 1)
+        if not best:
+            break
+        plays.append(best[0])
+        used |= {norm_name(l["player"]) for l in best[0]["legs"]}
+    total = sum(p["stake_pct"] for p in plays)
+    if total > cfg.day_cap_pct:
+        for p in plays:
+            p["stake_pct"] *= cfg.day_cap_pct / total
+    return plays
 
 
 def board_legs(legs, app_keys, per_app=120):

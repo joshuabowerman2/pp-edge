@@ -60,6 +60,8 @@ class Config:
     day_cap_pct: float = field(default_factory=lambda: _float("DAY_CAP_PCT", 0.08))
     player_cap_pct: float = field(default_factory=lambda: _float("PLAYER_CAP_PCT", 0.04))
     max_plays: int = field(default_factory=lambda: int(_float("MAX_PLAYS", 6)))
+    # Each player appears in at most one of the day's plays (across every app). 0 turns it off.
+    one_play_per_player: bool = field(default_factory=lambda: _env("ONE_PLAY_PER_PLAYER", "1") == "1")
     bankroll: float = field(default_factory=lambda: _float("BANKROLL", 0))
     holdout_share: int = 5   # 1 in 5 picks goes to the holdout set
     # Alerts

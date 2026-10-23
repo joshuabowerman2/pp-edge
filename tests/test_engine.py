@@ -236,6 +236,26 @@ class PortfolioTests(unittest.TestCase):
         self.assertLessEqual(max(exposure.values()), 0.04 + 1e-9)
 
 
+class UniquePlayerTests(unittest.TestCase):
+    def test_no_player_in_two_plays(self):
+        corr = correlation.Correlations()
+        cfg = config.load()
+        cfg.dfs_apps, cfg.max_plays = ["prizepicks", "underdog"], 6
+        legs = []
+        for i in range(24):
+            for app in ("prizepicks", "underdog"):   # the same players on both apps
+                legs.append({"sport": "nba", "game_id": f"g{i % 8}", "app": app, "player": f"P{i}", "player_key": f"p{i}",
+                             "market": "player_points", "side": "LESS", "fair": 0.62 - i * 0.003, "sigma": 0.02,
+                             "edge": 0.06, "tier": "", "injury": "", "team": "", "line": 10.5, "stat": "Points",
+                             "start": "2026-10-24T00:00:00Z", "home": "A", "away": "B"})
+        plays = engine.choose_unique_plays(legs, engine._apps(cfg), cfg, corr)
+        self.assertGreaterEqual(len(plays), 2)
+        names = [l["player"] for p in plays for l in p["legs"]]
+        self.assertEqual(len(names), len(set(names)), "a player was used in more than one play")
+        self.assertLessEqual(sum(p["stake_pct"] for p in plays), cfg.day_cap_pct + 1e-9)
+        self.assertTrue(all(0 < p["stake_pct"] <= cfg.max_stake_pct + 1e-9 for p in plays))
+
+
 class EndToEndTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
@@ -303,6 +323,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue({a["tier"] for a in b["alts"]} <= {"goblin", "demon"} and b["alts"])
         self.assertTrue(all(l["fair_proj"] is not None for l in b["legs"]))   # projections from seeded history
         self.assertTrue(b["plays"], "expected at least one recommended entry")
+        play_players = [l["player"] for p in b["plays"] for l in p["legs"]]
+        self.assertEqual(len(play_players), len(set(play_players)))
         # alerts went to ntfy
         self.assertTrue(any("ntfy.sh/test-topic" in u for u, *_ in self.fake.posts))
         # export is in the Edge Finder app format
