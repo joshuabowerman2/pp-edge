@@ -1,0 +1,74 @@
+name: Pre-lock check (few credits)
+
+# Every 20 minutes from late morning to late evening (Central), re-price only the legs in today's
+# plays for games starting within the hour, asking only for those legs' markets. Most runs find
+# nothing close and exit without calling The Odds API. When something changed (a player ruled out,
+# a moved line, the books moving against a pick), it updates the watch list in the app and alerts.
+
+on:
+  schedule:
+    - cron: "*/20 15-23 * * *"
+    - cron: "*/20 0-4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: edge-engine
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[fast]"
+      - name: Re-check plays about to start
+        id: pre
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          NTFY_TOPIC: ${{ vars.NTFY_TOPIC }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          SPORTS: ${{ vars.SPORTS || 'nba nfl nhl' }} mlb
+          BANKROLL: ${{ vars.BANKROLL }}
+          EDGE_DB: data/edge.db
+          PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/results.html
+        run: |
+          mkdir -p site
+          edge prelock --export site/index.json
+      # Everything below runs only when the check actually re-priced something.
+      - name: Rebuild site
+        if: steps.pre.outputs.polled != '0'
+        env:
+          EDGE_DB: data/edge.db
+        run: |
+          edge results --out site/results.html
+          mkdir -p data && cp site/index.json data/latest.json
+          if [ -d assets ]; then cp assets/* site/; fi
+          if [ -d web ]; then cp web/* site/; fi
+          cp site/results.html site/index.html
+      - name: Save database
+        if: steps.pre.outputs.polled != '0'
+        run: |
+          git config user.name "edge-engine bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/edge.db data/latest.json
+          git diff --cached --quiet || { git commit -m "Pre-lock check $(date -u +%FT%TZ)"; git pull --rebase -X theirs -q || true; git push; }
+      - uses: actions/configure-pages@v5
+        if: steps.pre.outputs.polled != '0'
+      - uses: actions/upload-pages-artifact@v3
+        if: steps.pre.outputs.polled != '0'
+        with:
+          path: site
+      - id: deploy
+        if: steps.pre.outputs.polled != '0'
+        uses: actions/deploy-pages@v4

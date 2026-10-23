@@ -73,12 +73,32 @@ def schedule(conn, cfg, now):
     return due, base
 
 
-def poll_games(conn, cfg, games, now):
-    n_lines, used = 0, 0
-    for g in games:
+def credits_left(conn):
+    try:
+        v = meta_get(conn, "credits_remaining")
+        return None if v is None else float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def poll_games(conn, cfg, games, now, markets=None, respect_repoll=True):
+    """Buy odds for each game, earliest start first. Skips games priced in the last REPOLL_MINUTES
+    (unless flagged by lineup news) and stops before the account drops below CREDIT_RESERVE.
+    `markets` ({game_id: [market, ...]}) asks for only those markets; anything else gets the full set."""
+    n_lines, used, skipped = 0, 0, {"recent": 0, "reserve": 0}
+    for g in sorted(games, key=lambda g: g["start"] or ""):
+        last = tracking.parse_time(g["last_polled"]) if g["last_polled"] else None
+        if respect_repoll and last and not g["poll_now"] and (now - last).total_seconds() / 60 < cfg.repoll_minutes:
+            skipped["recent"] += 1
+            continue
+        mk = (markets or {}).get(g["id"]) or markets_for(cfg, g["sport"])
+        left = credits_left(conn)
+        if left is not None and left - odds_api.call_cost(len(mk), len(cfg.books)) < cfg.credit_reserve:
+            skipped["reserve"] += 1
+            continue
         try:
             data, usage = odds_api.fetch_event_odds(SPORTS[g["sport"]][0], g["id"], cfg.odds_api_key,
-                                                    cfg.books, markets_for(cfg, g["sport"]))
+                                                    cfg.books, mk)
         except Exception as e:
             print(f"   odds {g['away']} @ {g['home']}: {e}")
             code = getattr(e, "code", None)
@@ -86,7 +106,7 @@ def poll_games(conn, cfg, games, now):
                 raise
             continue
         ev = {"id": g["id"], "home_team": g["home"], "away_team": g["away"], "commence_time": g["start"]}
-        n_lines += odds_api.store_event(conn, g["sport"], ev, data, now)["dfs"]
+        n_lines += odds_api.store_event(conn, g["sport"], ev, data, now, partial=bool(markets))["dfs"]
         try:
             used += int(usage.get("last") or 0)
         except ValueError:
@@ -94,6 +114,9 @@ def poll_games(conn, cfg, games, now):
         if usage.get("remaining") is not None:
             meta_set(conn, "credits_remaining", usage["remaining"])
     add_spent(conn, cfg, now, used)
+    if skipped["recent"] or skipped["reserve"]:
+        print(f"   credit saver: {skipped['recent']} games priced recently, {skipped['reserve']} held back for the reserve")
+    meta_set(conn, "last_poll", {"at": iso(now), "used": used, **skipped})
     return n_lines
 
 
@@ -244,14 +267,24 @@ def build_board(conn, cfg, now, legs, apps=None):
              "entries": [_entry_json(c, apps) for c in sorted(all_cands, key=lambda c: c["ev"], reverse=True)[:40]],
              "stacks": [{**_entry_json(s, apps), "p_joint": round(s["p_joint"], 4), "p_indep": round(s["p_indep"], 4),
                          "lift": round(s["lift"], 4), "rho": round(s["rho"], 3)} for s in stack_list[:15]],
-             "legs": [_leg_json(l) for l in sorted([l for l in legs if not l["tier"] and l["edge"] is not None],
-                                                   key=lambda l: l["edge"], reverse=True)[:200]],
+             "legs": board_legs(legs, cfg.dfs_apps),
              "alts": [_leg_json(l) for l in sorted([l for l in legs if l["tier"]], key=lambda l: l["fair"], reverse=True)[:80]],
              "best_app": portfolio.best_app([l for l in legs if l["edge"] is not None], apps)[:60],
              "watch": watch_list(conn, now), "credits_remaining": meta_get(conn, "credits_remaining"),
              "blend": {s: blend.params(conn, s) for s in cfg.sports}}
     meta_set(conn, "board", board)
     return board, plays
+
+
+def board_legs(legs, app_keys, per_app=120):
+    """Each app's priced lines for the board, up to `per_app` apiece. Apps with a payout table are ranked by
+    edge; apps whose payouts change per entry (Pick6, Dabble) have no edge, so they're ranked by fair %."""
+    out = []
+    for app in app_keys:
+        mine = [l for l in legs if l["app"] == app and not l["tier"] and l["fair"] is not None]
+        mine.sort(key=lambda l: (l["edge"] is not None, l["edge"] if l["edge"] is not None else l["fair"]), reverse=True)
+        out += [_leg_json(l) for l in mine[:per_app]]
+    return out
 
 
 def track_flex(conn, cfg, now, cands):
@@ -333,6 +366,11 @@ def send_alerts(conn, cfg, legs, plays, watch, injury_changes, now):
             if conn.execute("SELECT 1 FROM picks WHERE player_key=? AND result='' AND start > ?",
                             (c["player_key"], iso(now))).fetchone():
                 lines.append(f"OUT: {c['player']} ({c['status']}). Affected lines repriced.")
+    # Once a day, pin the track record: the latest pick number and its chain hash. A copy of the hash
+    # outside the repo proves later that no earlier pick was changed or quietly removed.
+    seq, head = tracking.chain_head(conn)
+    if seq and lines and alerts.once(conn, "hash:" + now.astimezone(cfg.tz).strftime("%Y-%m-%d")):
+        lines = lines[:11] + [f"Record check: pick #{seq}, chain hash {head}"]
     if lines:
         alerts.send(cfg, f"Edge Engine: {len(lines)} update{'s' if len(lines) > 1 else ''}", "\n".join(lines[:12]),
                     cfg.public_url or None)
@@ -364,11 +402,59 @@ def run_once(conn, cfg, now=None, export_path=None):
     games = conn.execute("SELECT * FROM games WHERE start > ? AND start < ?",
                          (iso(now), iso(now + timedelta(hours=cfg.window_hours)))).fetchall()
     poll_games(conn, cfg, [g for g in games if g["sport"] in cfg.sports], now)
-    if cfg.team_bets:
+    left = credits_left(conn)
+    if cfg.team_bets and (left is None or left - 3 * len(cfg.sports) >= cfg.credit_reserve):
         from . import teams
         _, used = teams.run(conn, cfg, now)
         add_spent(conn, cfg, now, used)
     return _after_poll(conn, cfg, now, apps, injury_changes, export_path)
+
+
+def prelock(conn, cfg, now=None, minutes=None, export_path=None):
+    """Cheap re-check before games lock: re-price only the legs in the model's plays for games starting
+    within `minutes`, asking only for those legs' markets (usually 1-3 credits a game). Updates closing
+    prices and the watch list and alerts on anything that changed. Polls nothing if no plays are close."""
+    now = now or datetime.now(timezone.utc)
+    minutes = cfg.prelock_minutes if minutes is None else minutes
+    rows = conn.execute("""SELECT p.game_id, p.market, p.sport, g.* FROM picks p JOIN games g ON g.id=p.game_id
+                           WHERE p.in_play=1 AND p.result='' AND g.start > ? AND g.start <= ?""",
+                        (iso(now), iso(now + timedelta(minutes=minutes)))).fetchall()
+    games, markets = {}, {}
+    for r in rows:
+        if r["sport"] not in cfg.sports:
+            continue
+        checked = [tracking.parse_time(x) for x in (r["last_polled"], meta_get(conn, "prelock:" + r["game_id"])) if x]
+        if any(t and (now - t).total_seconds() < 20 * 60 for t in checked):
+            continue   # priced in the last 20 minutes already
+        games[r["game_id"]] = r
+        markets.setdefault(r["game_id"], set()).add(r["market"])
+    if not games:
+        return {"games": 0, "watch": len(watch_list(conn, now))}
+    injury_changes = []
+    for s in {g["sport"] for g in games.values()}:
+        injury_changes += refresh_injuries(conn, cfg, s, now)
+    before = credits_left(conn)
+    poll_games(conn, cfg, list(games.values()), now, markets={k: sorted(v) for k, v in markets.items()},
+               respect_repoll=False)
+    for gid in games:
+        meta_set(conn, "prelock:" + gid, iso(now))
+    legs, _ = price_all(conn, cfg, now)
+    tracking.record_moves(conn, legs, now)
+    tracking.update_closing(conn, now)
+    watch = watch_list(conn, now)
+    board = meta_get(conn, "board", None)
+    if board:
+        board["watch"] = watch
+        board["credits_remaining"] = meta_get(conn, "credits_remaining")
+        board["prelock_at"] = iso(now)
+        meta_set(conn, "board", board)
+    n_alerts = send_alerts(conn, cfg, [], [], watch, injury_changes, now)
+    if export_path and board:
+        from . import export
+        export.write_app_json(conn, cfg, export_path, now)
+    after = credits_left(conn)
+    return {"games": len(games), "watch": len(watch), "alerts": n_alerts,
+            "credits_used": (before - after) if before is not None and after is not None else None}
 
 
 def _after_poll(conn, cfg, now, apps, injury_changes, export_path):
@@ -410,7 +496,7 @@ def run_forever(conn, cfg, tick=30, export_path=None, results_path=None):
                 last["inj"] = t
             due, base = schedule(conn, cfg, now)
             if due:
-                poll_games(conn, cfg, due, now)
+                poll_games(conn, cfg, due, now, respect_repoll=False)   # the schedule already spaces polls
                 r = _after_poll(conn, cfg, now, apps, changes, export_path)
                 print(f"{now:%H:%M} polled {len(due)} games (base {base:.1f} min): {r}")
             elif changes:

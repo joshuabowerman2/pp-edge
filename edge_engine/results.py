@@ -412,6 +412,38 @@ def teams_html(conn, tz):
             f'{table}</div>')
 
 
+HIT_RATE_TARGET = 1000   # graded legs before hit rate can tell a ~3-point edge from luck (95% margin about ±3 pts)
+CLV_TARGET = 150         # finished legs before average closing line value is a useful early read
+
+
+def sample_html(conn, d):
+    """How close the record is to telling anything: plain progress bars, current model only."""
+    from .blend import MIN_PICKS
+    a = d["all"]
+    tune = [(r["sport"], r["n"]) for r in conn.execute(
+        """SELECT sport, COUNT(*) n FROM picks WHERE holdout=0 AND result IN ('hit','miss')
+           AND fair_proj IS NOT NULL AND fair_market IS NOT NULL GROUP BY sport ORDER BY n DESC""")]
+    best_sport, best_n = tune[0] if tune else ("", 0)
+
+    def bar(label, have, need, note):
+        share = min(have / need, 1) if need else 0
+        return (f'<div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;gap:8px">'
+                f'<b class="small">{esc(label)}</b><span class="num small">{have:,} of {need:,}</span></div>'
+                f'<div role="progressbar" aria-valuemin="0" aria-valuemax="{need}" aria-valuenow="{have}" aria-label="{esc(label)}" '
+                f'style="height:8px;border-radius:4px;background:var(--panel2);overflow:hidden">'
+                f'<div style="width:{share * 100:.1f}%;height:100%;background:{"var(--accent)" if share >= 1 else "var(--gold)"}"></div></div>'
+                f'<span class="muted small">{note}</span></div>')
+
+    rows = [bar("Early read: closing line value", a["clv_n"], CLV_TARGET,
+                "Finished legs with a closing price. Steady positive CLV over this many legs is the first real sign of an edge."),
+            bar("Model starts tuning itself" + (f" ({best_sport.upper()})" if best_sport else ""), best_n, MIN_PICKS,
+                "Graded training legs in the busiest sport. Until then the price is 85% market, 15% projection."),
+            bar("Hit rate means something", a["n"], HIT_RATE_TARGET,
+                "Graded legs from the current model. Below this, a hot or cold stretch is mostly luck.")]
+    return ('<div class="panel" style="display:flex;flex-direction:column;gap:14px"><h2 style="margin:0">How much is proven so far</h2>'
+            + "".join(rows) + "</div>")
+
+
 def html(conn, nav=None, tz=None):
     tz = tz or ZoneInfo("America/Chicago")
     d = data(conn)
@@ -463,6 +495,7 @@ every hash after it. Anyone can download the full log and check it.</p></div>
 {_kpi("Closing line value", f'<span class="{cls(a["clv"])}">{pts(a["clv"])} pts</span>', f'Beat the close {pct(a["beat"], 0)}')}
 {_kpi("Model portfolio", f'<span class="{cls(p["profit_pct"])}">{p["index"][-1] - 100:+.1f}%</span>', f'{p["entries"]} entries settled, {p["open"]} open')}
 </div>
+{sample_html(conn, d)}
 {flex_html(conn, tz)}
 {teams_html(conn, tz)}
 {picks_html(conn, tz)}

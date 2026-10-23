@@ -303,10 +303,14 @@ I am 21 or older and have read the <a href="/terms">terms</a>.</label><button cl
         watch = "".join(f'<div class="alert warn">{esc(w["player"])} {w["side"]} {w["line"]:g} {esc(w["stat"])} ({esc(w["app"])}): '
                         f'{esc(", ".join(w["why"]))}</div>' for w in b.get("watch", []))
         app_f, sport_f = req.query.get("app", ""), req.query.get("sport", "")
+        def _edge_chip(e):
+            if e is None:
+                return '<span class="muted small">no payout table</span>'
+            return f'<span class="chip {"good" if e >= 0.01 else "warn" if e >= 0 else "bad"}">{pct(e, 1, True)}</span>'
         legs = [l for l in b["legs"] if (not app_f or l["app"] == app_f) and (not sport_f or l["sport"] == sport_f)][:80]
         legrows = "".join(f"""<tr><td><b>{esc(l['player'])}</b><div class="muted small">{esc(l['sport'].upper())} · {esc(l['stat'])} {l['line']:g} · {esc(l['app'])}</div></td>
 <td class="side {l['side']}">{l['side']}</td><td class="r num">{pct(l['fair_market'])}</td><td class="r num">{pct(l['fair_proj'])}</td>
-<td class="r num">{pct(l['fair'])}</td><td class="r"><span class="chip {'good' if l['edge'] >= 0.01 else 'warn' if l['edge'] >= 0 else 'bad'}">{pct(l['edge'], 1, True)}</span></td>
+<td class="r num">{pct(l['fair'])}</td><td class="r">{_edge_chip(l['edge'])}</td>
 <td class="r num">{l['books']}{'' if l['sharp'] else ' <span class="muted small">no sharp</span>'}</td></tr>""" for l in legs)
         best = "".join(f"""<tr><td><b>{esc(x['player'])}</b><div class="muted small">{esc(x['stat'])}</div></td><td>{esc(x['best_app'])} {x['side']} {x['line']:g}</td>
 <td class="r"><span class="chip good">{pct(x['edge'], 1, True)}</span></td><td class="small muted">{esc('; '.join(f"{o['app']} {o['side']} {o['line']:g} ({pct(o['edge'], 1, True)})" for o in x['others']))}</td></tr>"""

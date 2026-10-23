@@ -3,6 +3,7 @@ import argparse
 import csv
 import getpass
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -19,6 +20,10 @@ def main(argv=None):
     p = sub.add_parser("once", help="one full pass (for scheduled jobs like GitHub Actions)")
     p.add_argument("--export", default="site/index.json")
     p.add_argument("--results", default="site/results.html")
+    p = sub.add_parser("prelock", help="re-price only the legs in today's plays for games about to start (few credits)")
+    p.add_argument("--minutes", type=float, default=None, help="games starting within this many minutes (default PRELOCK_MINUTES)")
+    p.add_argument("--export", default=None)
+    sub.add_parser("head", help="print the latest pick number and chain hash")
     sub.add_parser("grade", help="grade finished picks")
     sub.add_parser("fit", help="refit the market/projection blend and correlations")
     p = sub.add_parser("backtest", help="evaluate models on holdout picks")
@@ -57,6 +62,17 @@ def main(argv=None):
         r = engine.run_once(conn, cfg, now, export_path=a.export)
         results.write(conn, cfg, a.results)
         print(json.dumps(r))
+    elif a.cmd == "prelock":
+        _need_key(cfg)
+        r = engine.prelock(conn, cfg, now, a.minutes, export_path=a.export)
+        print(json.dumps(r))
+        out = os.environ.get("GITHUB_OUTPUT")
+        if out:
+            with open(out, "a", encoding="utf-8") as f:
+                f.write(f"polled={r['games']}\n")
+    elif a.cmd == "head":
+        seq, h = tracking.chain_head(conn)
+        print(f"#{seq} {h}")
     elif a.cmd == "grade":
         apps = engine._apps(cfg)
         from . import teams

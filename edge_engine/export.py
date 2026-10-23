@@ -88,7 +88,9 @@ def app_json(conn, cfg, now, days=60):
             "payouts": payouts,
             "plays": [_slip(e, True) for e in board["plays"]],
             "slips": [_slip(e, False) for e in board["entries"] if (e["app"], e["entry"], e["num"]) not in play_keys][:30],
-            "props": [{**_leg(l), "edge": l["edge"]} for l in board["legs"]][:200],
+            "props": [{**_leg(l), "edge": l["edge"]} for l in board["legs"]],
+            "apps": {k: {"label": a["label"], "breakeven": a.get("breakeven"), "payouts": bool(a["entries"])}
+                     for k, a in apps.items() if k in cfg.dfs_apps},
             "alts": [_leg(l) for l in board["alts"]],
             "watch": [{"player": w["player"], "stat": w["stat"], "line": f"{w['line']:g}", "side": w["side"],
                        "start": w["start"], "why": w["why"]} for w in board["watch"]],

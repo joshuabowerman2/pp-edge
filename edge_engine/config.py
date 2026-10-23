@@ -32,9 +32,11 @@ class Config:
     db_path: str = field(default_factory=lambda: _env("EDGE_DB", "data/edge.db"))
     sports: list = field(default_factory=lambda: _list("SPORTS", "nba nhl"))
     # Ten bookmakers bill as one region. Sharp books and exchanges first, then pick'em apps, then US books.
+    # More than 10 bookmakers doubles the credit cost of every call, so the list stays at 10: four pick'em
+    # apps, four sharp books and exchanges, and the two biggest US books.
     books: list = field(default_factory=lambda: _list(
-        "BOOKS", "prizepicks underdog pinnacle betonlineag novig prophetx fanduel draftkings betmgm williamhill_us"))
-    dfs_apps: list = field(default_factory=lambda: _list("DFS_APPS", "prizepicks underdog"))
+        "BOOKS", "prizepicks underdog pick6 dabble_us_dfs pinnacle betonlineag novig prophetx fanduel draftkings"))
+    dfs_apps: list = field(default_factory=lambda: _list("DFS_APPS", "prizepicks underdog pick6 dabble_us_dfs"))
     all_markets: bool = field(default_factory=lambda: _env("ALL_MARKETS", "0") == "1")
     alt_lines: bool = field(default_factory=lambda: _env("ALT_LINES", "0") == "1")
     # Moneylines, spreads and totals vs the sharp books: 3 Odds API credits per sport with games, per run.
@@ -43,6 +45,12 @@ class Config:
     daily_credit_budget: float = field(default_factory=lambda: _float("DAILY_CREDIT_BUDGET", 600))
     min_poll_minutes: float = field(default_factory=lambda: _float("MIN_POLL_MINUTES", 3))
     window_hours: float = field(default_factory=lambda: _float("WINDOW_HOURS", 24))
+    # Credit savers. A game priced in the last REPOLL_MINUTES isn't bought again (unless lineup news
+    # flags it), and polling stops before the account drops below CREDIT_RESERVE, which is kept for
+    # pre-lock checks.
+    repoll_minutes: float = field(default_factory=lambda: _float("REPOLL_MINUTES", 90))
+    credit_reserve: float = field(default_factory=lambda: _float("CREDIT_RESERVE", 40))
+    prelock_minutes: float = field(default_factory=lambda: _float("PRELOCK_MINUTES", 60))
     # Picks and staking
     min_books: int = field(default_factory=lambda: int(_float("MIN_BOOKS", 2)))
     log_edge: float = field(default_factory=lambda: _float("LOG_EDGE", 0.0))      # log every pick at or above break-even

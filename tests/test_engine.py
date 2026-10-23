@@ -247,6 +247,49 @@ class EndToEndTests(unittest.TestCase):
         self.fake = fakes.Fake(self.start)
         http.fetch = self.fake
 
+    def test_credit_saver_skips_recent_games_and_keeps_reserve(self):
+        engine.run_once(self.conn, self.cfg, self.now)
+        odds_calls = lambda: sum("/events/ev1/odds" in c for c in self.fake.calls)
+        n = odds_calls()
+        self.assertGreater(n, 0)
+        engine.run_once(self.conn, self.cfg, self.now + timedelta(minutes=30))   # priced 30 minutes ago: not bought again
+        self.assertEqual(odds_calls(), n)
+        db.meta_set(self.conn, "credits_remaining", "45")   # a full call (10 markets) would drop below the 40 reserve
+        engine.run_once(self.conn, self.cfg, self.now + timedelta(hours=2))
+        self.assertEqual(odds_calls(), n)
+        self.assertEqual(db.meta_get(self.conn, "last_poll")["reserve"], 1)
+
+    def test_prelock_reprices_only_play_markets(self):
+        engine.run_once(self.conn, self.cfg, self.now)
+        self.assertTrue(self.conn.execute("SELECT 1 FROM picks WHERE in_play=1").fetchone())
+        n_alts = self.conn.execute("SELECT COUNT(*) c FROM dfs_lines WHERE active=1 AND tier!=''").fetchone()["c"]
+        # Too early: nothing within the hour, so no calls at all.
+        n = len(self.fake.calls)
+        r = engine.prelock(self.conn, self.cfg, self.now, 60)
+        self.assertEqual(r["games"], 0)
+        self.assertFalse(any("/odds" in c for c in self.fake.calls[n:]))
+        # 40 minutes before the start: one call, for the plays' markets only.
+        soon = datetime.fromisoformat(self.start.replace("Z", "+00:00")) - timedelta(minutes=40)
+        r = engine.prelock(self.conn, self.cfg, soon, 60)
+        self.assertEqual(r["games"], 1)
+        calls = [c for c in self.fake.calls[n:] if "/events/ev1/odds" in c]
+        self.assertEqual(len(calls), 1)
+        self.assertIn("markets=player_points&", calls[0] + "&")
+        # a partial check removes nothing it didn't ask about, and doesn't block the next full poll
+        self.assertEqual(self.conn.execute("SELECT COUNT(*) c FROM dfs_lines WHERE active=1 AND tier!=''").fetchone()["c"], n_alts)
+        self.assertEqual(engine.prelock(self.conn, self.cfg, soon + timedelta(minutes=5), 60)["games"], 0)
+
+    def test_apps_without_payouts_still_on_board(self):
+        legs = [{"app": "pick6", "tier": "", "fair": 0.58, "edge": None, "sport": "nba"},
+                {"app": "prizepicks", "tier": "", "fair": 0.57, "edge": 0.03, "sport": "nba"},
+                {"app": "prizepicks", "tier": "", "fair": 0.55, "edge": 0.01, "sport": "nba"}]
+        for l in legs:
+            l.update({k: None for k in ("game_id", "player", "player_key", "market", "stat", "line", "side", "home", "away",
+                                        "start", "team", "fair_market", "fair_proj", "proj_mu", "sigma", "books", "sharp",
+                                        "exact", "injury", "quotes")})
+        out = engine.board_legs(legs, ["prizepicks", "pick6"])
+        self.assertEqual([(l["app"], l["fair"]) for l in out], [("prizepicks", 0.57), ("prizepicks", 0.55), ("pick6", 0.58)])
+
     def test_full_cycle(self):
         site = os.path.join(self.tmp, "site")
         r = engine.run_once(self.conn, self.cfg, self.now, export_path=os.path.join(site, "index.json"))

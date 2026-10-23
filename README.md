@@ -49,9 +49,12 @@ up (`fly volumes snapshots` runs daily by default; for more, add Litestream).
 
 ## No server yet: scheduled mode
 
-`.github/workflows/engine.yml` runs a full pass four times a day, keeps the database in the repo, and
+`.github/workflows/engine.yml` runs a full pass once a day (5:30 PM Central), keeps the database in the repo, and
 publishes the results page to GitHub Pages. It replaces `daily.yml` (disable that one). Same secrets
-and variables as before. Switch to the server when you want real-time prices; then disable this workflow.
+and variables as before. `.github/workflows/prelock.yml` runs every 20 minutes through the afternoon and evening. It re-prices only
+the legs in the day's plays for games starting within the hour, asking only for those legs' markets (a few
+credits), and alerts on injuries or line moves. Runs with nothing close exit without calling The Odds API.
+Switch to the server when you want real-time prices; then disable both workflows.
 
 ## Settings (environment variables)
 
@@ -59,8 +62,11 @@ and variables as before. Switch to the server when you want real-time prices; th
 |---|---|---|
 | `ODDS_API_KEY` | (required) | The Odds API key |
 | `SPORTS` | `nba nhl` | Any of `nba wnba nfl cfb nhl mlb` |
-| `BOOKS` | 10 books | Sharp books and exchanges (Pinnacle, BetOnline, Novig, ProphetX), pick'em apps, US books. 10 books bill as one region |
-| `DFS_APPS` | `prizepicks underdog` | Pick'em apps to price; add `pick6`, `dabble_us_dfs` |
+| `BOOKS` | 10 books | Pick'em apps (PrizePicks, Underdog, Pick6, Dabble), sharp books and exchanges (Pinnacle, BetOnline, Novig, ProphetX), FanDuel, DraftKings. 10 books bill as one region; an 11th doubles the cost |
+| `DFS_APPS` | `prizepicks underdog pick6 dabble_us_dfs` | Pick'em apps to price. Pick6 and Dabble set payouts per entry, so they show fair % but no edge unless `APPS_FILE` gives a payout table |
+| `REPOLL_MINUTES` | `90` | A game priced this recently isn't bought again on a scheduled run (lineup news overrides) |
+| `CREDIT_RESERVE` | `40` | Polling stops before credits drop below this, keeping some for pre-lock checks |
+| `PRELOCK_MINUTES` | `60` | The pre-lock check re-prices plays in games starting within this many minutes |
 | `DAILY_CREDIT_BUDGET` | `600` | Credits per day the poller may spend; it sets the polling interval to fit |
 | `MIN_POLL_MINUTES` | `3` | Fastest polling, used near game time |
 | `ALT_LINES` | `0` | `1` prices goblins and demons (more credits) |
@@ -84,7 +90,8 @@ budget. Pick an Odds API plan that covers your budget times 30.
   fair_market, fair_proj, fair, edge` (floats rounded to 6 places, keys sorted). Editing or deleting
   any pick breaks every hash after it. Anyone can check a download with `edge verify --csv picks.csv`.
   Publish the latest hash somewhere public now and then (a social post, a commit) so the whole chain
-  can't be silently rebuilt.
+  can't be silently rebuilt. The daily commit message and the first alert each day carry it automatically
+  (`edge head` prints it).
 * **Holdout.** One pick in five, chosen by its hash, is never used to fit models. `edge backtest`
   scores market vs projection vs final price on those picks. Run `edge backtest --strict` before
   shipping a model change; it fails if the new price is worse than the market alone.

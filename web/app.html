@@ -227,6 +227,14 @@ input,select,textarea{background:var(--panel2)}
 .rail .panel{display:flex;flex-direction:column;gap:12px;scroll-margin-top:84px}
 .chipbtn{position:relative}
 @media (max-width:600px){.chips{gap:6px;width:100%;box-sizing:border-box}.chipbtn .cnt{top:3px;right:4px;font-size:.58rem}.chipbtn{flex:1 1 0!important;min-width:0!important;padding:10px 4px!important}}.chipbtn .cnt{position:absolute;top:4px;right:5px;font:600 .62rem var(--mono);font-style:normal;color:var(--muted)}
+.apptabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line)}
+.apptabs button{appearance:none;flex:none;position:relative;border:0;background:none;color:var(--muted);font:600 .92rem var(--body);padding:10px 14px 10px 12px;min-height:44px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+.apptabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.apptabs .cnt{font:600 .68rem var(--mono);font-style:normal;color:var(--muted);margin-left:6px}
+.pt-shop{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.shop{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font:600 .7rem var(--body);border-radius:999px;padding:3px 8px;cursor:pointer;white-space:nowrap}
+.shop.better{color:var(--good);border-color:var(--good)}.shop.worse{opacity:.75}
+.echip.plain{color:var(--muted)}
 .chipbtn.none{opacity:.55}.chipbtn[aria-pressed=true] .cnt{color:var(--accent)}
 .tcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px}
 .tcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -829,7 +837,7 @@ async function importText(text, label, quiet){
       const d = JSON.parse(text);
       if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
       if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
-      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], research:d.research||{}, injuries:d.injuries||[], freshness:d.freshness||{}, teams:d.teams||{plays:[], record:null},
+      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,480), apps:d.apps||{}, flex:d.flex||[], stacks:d.stacks||[], research:d.research||{}, injuries:d.injuries||[], freshness:d.freshness||{}, teams:d.teams||{plays:[], record:null},
         alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
       const prevBoard = S.board;
       await store.saveBoard(board);
@@ -1372,9 +1380,14 @@ function movers(B){
 const rKey = l => `${l.sport}|${l.player_key}|${l.market}`;
 function research(l, board){ const B = board || S.board; return (B && B.research && B.research[rKey(l)]) || null; }
 const BOOK_NAME = {pinnacle:"Pinnacle", betonlineag:"BetOnline", novig:"Novig", prophetx:"ProphetX", fanduel:"FanDuel", draftkings:"DraftKings", betmgm:"BetMGM",
-  williamhill_us:"Caesars", espnbet:"ESPN BET", betrivers:"BetRivers", bovada:"Bovada", prizepicks:"PrizePicks", underdog:"Underdog"};
+  williamhill_us:"Caesars", espnbet:"ESPN BET", betrivers:"BetRivers", bovada:"Bovada", prizepicks:"PrizePicks", underdog:"Underdog", pick6:"DraftKings Pick6", dabble_us_dfs:"Dabble"};
 const bookName = b => BOOK_NAME[b] || b;
-const appName = a => (a || "prizepicks") === "underdog" ? "Underdog" : "PrizePicks";
+const APP_NAME = {prizepicks:"PrizePicks", underdog:"Underdog", pick6:"DraftKings Pick6", dabble_us_dfs:"Dabble", betr_us_dfs:"Betr"};
+const APP_SHORT = {prizepicks:"PP", underdog:"UD", pick6:"Pick6", dabble_us_dfs:"Dabble", betr_us_dfs:"Betr"};
+const appName = a => S.board?.apps?.[a || "prizepicks"]?.label || APP_NAME[a || "prizepicks"] || a;
+// Apps whose payouts change with every entry (Pick6, Dabble) have no fixed break-even, so no edge.
+const hasEdgeVal = l => l.edge != null && l.edge !== "" && fin(+l.edge);
+const appHasEdge = a => { const x = S.board?.apps?.[a || "prizepicks"]; return x ? !!x.payouts : (a || "prizepicks") === "prizepicks" || a === "underdog"; };
 const oddsTxt = x => x == null || x === "" ? "–" : (+x > 0 ? "+" : "") + x;
 const num1 = x => x == null || !fin(+x) ? "–" : (+x).toFixed(1);
 const sideProb = (l, p) => p == null ? null : (l.side === "MORE" ? +p : 1 - +p);
@@ -1992,7 +2005,7 @@ document.addEventListener("click", async e => { if(!e.target.closest("#prEnd")) 
 
 /* ---------- home ---------- */
 S.home = (() => { try { return JSON.parse(localStorage.getItem("edgefinder.home") || "null") || {}; } catch(e){ return {}; } })();
-S.home = {sport:"", sort:"edge", more:false, ...S.home, app:"prizepicks"};
+S.home = {sport:"", sort:"edge", more:false, app:"prizepicks", ...S.home};
 if(!(S.home.minEdge >= 0)) S.home.minEdge = 0;
 S.favs = (() => { try { return new Set(JSON.parse(localStorage.getItem("edgefinder.favs") || "[]")); } catch(e){ return new Set(); } })();
 function saveHome(){ try { localStorage.setItem("edgefinder.home", JSON.stringify(S.home)); localStorage.setItem("edgefinder.favs", JSON.stringify([...S.favs])); } catch(e){} }
@@ -2038,7 +2051,8 @@ const posTag = l => l.pos ? ` · ${esc(l.pos)}` : "";
 function teamName(t){ return t ? String(t).replace(/\b\w/g, c => c.toUpperCase()) : ""; }
 function homeLegs(){
   const app = S.home.app;
-  return [...legPool().values()].filter(l => (l.app||"prizepicks") === app && legOpen(l) && fin(+l.fair) && fin(+l.edge));
+  const needEdge = appHasEdge(app);
+  return [...legPool().values()].filter(l => (l.app||"prizepicks") === app && legOpen(l) && fin(+l.fair) && (!needEdge || hasEdgeVal(l)));
 }
 function autoEntry(){
   const legs = buildLegs(), n = legs.length; if(n < 2) return;
@@ -2050,12 +2064,30 @@ function autoEntry(){
 }
 function sorted(list){
   const mv = l => l.fair_open == null ? 0 : Math.abs(+l.fair - +l.fair_open);
-  const out = list.filter(l => +l.edge >= S.home.minEdge && (!S.home.sport || l.sport === S.home.sport));
-  if(S.home.sort === "saved") return out.filter(l => S.favs.has(normName(l.player))).sort((a,b) => b.edge - a.edge);
+  // Apps without a fixed payout have no edge: rank them by fair % and skip the min-edge filter.
+  const score = l => hasEdgeVal(l) ? +l.edge : +l.fair;
+  const out = list.filter(l => (!hasEdgeVal(l) || +l.edge >= S.home.minEdge) && (!S.home.sport || l.sport === S.home.sport));
+  if(S.home.sort === "saved") return out.filter(l => S.favs.has(normName(l.player))).sort((a,b) => score(b) - score(a));
   if(S.home.sort === "moving") return out.filter(l => mv(l) >= 0.005).sort((a,b) => mv(b) - mv(a));
   if(S.home.sort === "fair") return out.sort((a,b) => b.fair - a.fair);
-  if(S.home.sort === "soon") return out.sort((a,b) => (a.start||"").localeCompare(b.start||"") || b.edge - a.edge);
-  return out.sort((a,b) => b.edge - a.edge);
+  if(S.home.sort === "soon") return out.sort((a,b) => (a.start||"").localeCompare(b.start||"") || score(b) - score(a));
+  return out.sort((a,b) => score(b) - score(a));
+}
+/* Line shopping: the same player and stat on the other pick'em apps. */
+function otherLines(l){
+  const me = l.app || "prizepicks", nn = normName(l.player), out = new Map();
+  for(const x of legPool().values()){
+    const a = x.app || "prizepicks";
+    if(a === me || x.market !== l.market || normName(x.player) !== nn || out.has(a)) continue;
+    out.set(a, x);
+  }
+  return [...out.values()];
+}
+function shopTxt(l){
+  const o = otherLines(l); if(!o.length) return "";
+  return `<div class="pt-shop">${o.map(x => { const d = +x.line - +l.line, better = l.side === "MORE" ? d < 0 : d > 0;
+    const tip = d === 0 ? "Same line" : better ? `Better ${l.side} line` : `Worse ${l.side} line`;
+    return `<button class="shop ${d === 0 ? "" : better ? "better" : "worse"}" data-happ="${esc(x.app)}" title="${tip} on ${esc(appName(x.app))}. Tap to switch." aria-label="${esc(appName(x.app))} ${+x.line}: ${tip.toLowerCase()}. Switch to ${esc(appName(x.app))}">${esc(APP_SHORT[x.app] || appName(x.app))} ${+x.line}${d === 0 ? "" : better ? " ▲" : ""}</button>`; }).join("")}</div>`;
 }
 function renderHome(){
   const main = $("#homeMain"), rail = $("#homeRail"); if(!main) return;
@@ -2068,15 +2100,24 @@ function renderHome(){
   const list = sorted(all.slice()), inSlip = new Set(S.build.legs);
   const games = new Set(all.map(l => l.game)).size, best = all.reduce((m,l) => Math.max(m, +l.edge), -1);
   const apps = [...new Set([...legPool().values()].map(l => l.app || "prizepicks"))];
-  const top = sorted(all.slice().filter(l => +l.edge > 0)).slice(0, 4);
+  const hasEdge = appHasEdge(S.home.app);
+  const top = sorted(all.slice().filter(l => hasEdge ? +l.edge > 0 : +l.fair > 0.5)).slice(0, 4);
+  // One tab per pick'em app on the board, with how many open props each has.
+  const appKeys = [...new Set([...Object.keys(B?.apps || {}), ...[...legPool().values()].map(l => l.app || "prizepicks")])];
+  const nApp = {}; for(const l of legPool().values()) if(legOpen(l)) nApp[l.app || "prizepicks"] = (nApp[l.app || "prizepicks"] || 0) + 1;
+  const appTabs = appKeys.length > 1 ? `<div class="apptabs" role="tablist" aria-label="Pick'em app">${appKeys.map(a =>
+    `<button role="tab" aria-selected="${S.home.app === a}" data-happ="${esc(a)}">${esc(appName(a))}<i class="cnt">${nApp[a] || 0}</i></button>`).join("")}</div>` : "";
   const shown = S.home.more ? 60 : 20;
   const topKeys = new Set(top.map(poolKey));
   const rest = S.home.sort === "edge" ? list.filter(l => !topKeys.has(poolKey(l))) : list;
   const addBtn = l => { const k = poolKey(l), on = inSlip.has(k);
     return `<button class="add ${on?"on":""}" data-add="${esc(k)}" aria-label="${on?"Remove":"Add"} ${esc(l.player)} ${l.side} ${+l.line} ${esc(l.stat)} ${on?"from":"to"} your slip">${on ? "✓" : "+"}</button>`; };
-  const edgeChip = l => `<span class="echip ${+l.edge >= 0.01 ? "good" : +l.edge >= 0 ? "warn" : "bad"}">${pct(+l.edge,1,true)}</span>`;
+  const edgeChip = l => hasEdgeVal(l) ? `<span class="echip ${+l.edge >= 0.01 ? "good" : +l.edge >= 0 ? "warn" : "bad"}">${pct(+l.edge,1,true)}</span>`
+    : `<span class="echip plain" title="${esc(appName(l.app))} payouts change with each entry, so there's no fixed break-even to measure edge against.">n/a</span>`;
   main.innerHTML = `
     ${B ? feedHTML(all) : ""}
+    ${appTabs}
+    ${B && !hasEdge ? `<div class="alert">${icon.warn}<span>${esc(appName(S.home.app))} sets its payouts per entry, so these props show the fair chance of each line but no edge. Compare a fair % with the break-even for the payout ${esc(appName(S.home.app))} offers you (the Calculator tab does this). Tap another app's line under a prop to compare.</span></div>` : ""}
     <div class="chips" role="group" aria-label="Sport">
       <button class="chipbtn" aria-pressed="${!S.home.sport}" data-hsport=""><svg class="spi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span>All</span></button>
       ${chipSports.map(sp => `<button class="chipbtn${nBy[sp] ? "" : " none"}" aria-pressed="${S.home.sport===sp}" data-hsport="${esc(sp)}">${sportIcon(sp)}<span>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</span><i class="cnt">${nBy[sp] || 0}</i></button>`).join("")}
@@ -2092,14 +2133,14 @@ function renderHome(){
         ${(() => { const g = projRange(research(l)); return g ? `<div class="pc-fair">Proj <b>${num1(g.mu)}</b> · range ${num1(g.lo)}–${num1(g.hi)}</div>` : ""; })()}
         <div class="pc-foot"><span class="row" style="gap:6px">${edgeChip(l)}${confChip(l)}</span>${addBtn(l)}</div>
         <div class="pc-game"><span>${esc(l.game || "")}</span><span>${esc(timeOf(l.start))}</span></div></div>`).join("")}</div>`
-      : `<p class="muted small" style="margin:0">No props above break-even right now.</p>`}
+      : `<p class="muted small" style="margin:0">${hasEdge ? "No props above break-even right now." : `No ${esc(appName(S.home.app))} props priced in this run.`}</p>`}
     <div class="sech"><h3>More props</h3>
-      <label class="minedge">Min edge <span class="num" id="hMinOut">${pct(S.home.minEdge,1,true)}</span><input type="range" id="hMin" min="0" max="0.08" step="0.005" value="${S.home.minEdge}" aria-label="Minimum edge"></label>
+      <label class="minedge" ${hasEdge ? "" : "hidden"}>Min edge <span class="num" id="hMinOut">${pct(S.home.minEdge,1,true)}</span><input type="range" id="hMin" min="0" max="0.08" step="0.005" value="${S.home.minEdge}" aria-label="Minimum edge"></label>
       <div class="seg2" role="group" aria-label="Sort props">${[["edge","Highest edge"],["moving","Moving"],["soon","Starting soon"],["saved","Saved"]].map(([k,t]) => `<button aria-pressed="${S.home.sort===k}" data-hsort="${k}">${t}</button>`).join("")}</div></div>
     <div class="ptable">
       <div class="pt-head"><span>Player</span><span>Market</span><span>Line</span><span class="r">Fair</span><span class="r">Edge</span><span></span></div>
       ${rest.length ? rest.slice(0, shown).map(l => `<div class="pt-row">
-        <div class="pt-who">${avatar(l)}<div>${plink(l)}<div class="pt-sub">${esc((SPORT_NAME[l.sport] || l.sport.toUpperCase()))}${l.team ? " · " + esc(teamName(l.team)) : ""}${posTag(l)} · ${esc(timeOf(l.start))}</div></div>
+        <div class="pt-who">${avatar(l)}<div>${plink(l)}<div class="pt-sub">${esc((SPORT_NAME[l.sport] || l.sport.toUpperCase()))}${l.team ? " · " + esc(teamName(l.team)) : ""}${posTag(l)} · ${esc(timeOf(l.start))}</div>${shopTxt(l)}</div>
           <button class="star ${S.favs.has(normName(l.player))?"on":""}" data-fav="${esc(normName(l.player))}" aria-label="Save ${esc(l.player)}">★</button></div>
         <div class="pt-mkt" data-line="${l.side} ${+l.line} · ">${esc(l.stat)}</div>
         <div class="pt-line"><span class="side ${l.side}">${l.side}</span> ${+l.line}</div>
@@ -2151,6 +2192,7 @@ function renderHome(){
   main.querySelectorAll("[data-fplayer]").forEach(b => b.addEventListener("click", () => openPlayer(b.dataset.fplayer, b.dataset.fname)));
   main.querySelectorAll("[data-finj]").forEach(b => b.addEventListener("click", () => openInjuries(b.dataset.finj)));
   if(S.pendingSlip) applySharedSlip();
+  main.querySelectorAll("[data-happ]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); S.home.app = b.dataset.happ; S.home.more = false; saveHome(); renderHome(); }));
   main.querySelectorAll("[data-hsport]").forEach(b => b.addEventListener("click", () => { S.home.sport = b.dataset.hsport; S.home.more = false; saveHome(); renderHome(); }));
   main.querySelectorAll("[data-hsort]").forEach(b => b.addEventListener("click", () => { S.home.sort = b.dataset.hsort; S.home.more = false; saveHome(); renderHome(); }));
   main.querySelectorAll("[data-fav]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.fav; if(S.favs.has(k)) S.favs.delete(k); else S.favs.add(k); saveHome(); renderHome(); }));

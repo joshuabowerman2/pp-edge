@@ -63,15 +63,20 @@ def parse_event_odds(data):
     return dfs, quotes
 
 
-def store_event(conn, sport, ev, data, now):
-    """Write one event's odds: games row, changed quotes (+ snapshot), pick'em lines (+ deactivate gone ones)."""
+def store_event(conn, sport, ev, data, now, partial=False):
+    """Write one event's odds: games row, changed quotes (+ snapshot), pick'em lines (+ deactivate gone ones).
+    A `partial` poll asked for only some markets, so it updates what came back and removes nothing: lines
+    it didn't ask about aren't gone, just not checked."""
     ts = iso(now)
     dfs, quotes = parse_event_odds(data)
     conn.execute("BEGIN IMMEDIATE")
     try:
-        conn.execute("""INSERT INTO games(id,sport,home,away,start,last_polled,poll_now) VALUES(?,?,?,?,?,?,0)
-                        ON CONFLICT(id) DO UPDATE SET start=excluded.start, last_polled=excluded.last_polled, poll_now=0""",
-                     (ev["id"], sport, ev.get("home_team", ""), ev.get("away_team", ""), ev.get("commence_time", ""), ts))
+        if partial:   # a partial poll doesn't count as a full price check of the game
+            conn.execute("UPDATE games SET start=? WHERE id=?", (ev.get("commence_time", ""), ev["id"]))
+        else:
+            conn.execute("""INSERT INTO games(id,sport,home,away,start,last_polled,poll_now) VALUES(?,?,?,?,?,?,0)
+                            ON CONFLICT(id) DO UPDATE SET start=excluded.start, last_polled=excluded.last_polled, poll_now=0""",
+                         (ev["id"], sport, ev.get("home_team", ""), ev.get("away_team", ""), ev.get("commence_time", ""), ts))
         changed = 0
         for q in quotes:
             old = conn.execute("SELECT over, under FROM quotes WHERE game_id=? AND book=? AND market=? AND player_key=? AND point=?",
@@ -88,10 +93,10 @@ def store_event(conn, sport, ev, data, now):
                          (ts, ev["id"], q["book"], q["market"], q["player_key"], q["point"], q["over"], q["under"]))
             changed += 1
         # Quotes a book stopped posting this poll are stale: drop them so they aren't used.
-        books_seen = {q["book"] for q in quotes}
+        books_seen = set() if partial else {q["book"] for q in quotes}
         for b in books_seen:
             conn.execute("DELETE FROM quotes WHERE game_id=? AND book=? AND updated_at<>?", (ev["id"], b, ts))
-        apps_seen = {d["app"] for d in dfs}
+        apps_seen = set() if partial else {d["app"] for d in dfs}
         for d in dfs:
             conn.execute("""INSERT INTO dfs_lines VALUES(?,?,?,?,?,?,?,?,?,1)
                             ON CONFLICT(game_id,app,market,player_key,point,tier) DO UPDATE SET last_seen=excluded.last_seen, active=1""",
