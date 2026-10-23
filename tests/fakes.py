@@ -52,6 +52,19 @@ class Fake:
                                             "athletes": athletes}]})
         return {"boxscore": {"players": players}}
 
+    def team_odds(self):
+        h, a = TEAMS["home"], TEAMS["away"]
+        def book(key, ml_h, ml_a, sp_h, sp_a, o, u, spread=-4.5, total=221.5):
+            return {"key": key, "markets": [
+                {"key": "h2h", "outcomes": [{"name": h, "price": ml_h}, {"name": a, "price": ml_a}]},
+                {"key": "spreads", "outcomes": [{"name": h, "price": sp_h, "point": spread}, {"name": a, "price": sp_a, "point": -spread}]},
+                {"key": "totals", "outcomes": [{"name": "Over", "price": o, "point": total}, {"name": "Under", "price": u, "point": total}]}]}
+        return [{"id": "ev1", "home_team": h, "away_team": a, "commence_time": self.start, "bookmakers": [
+            book("pinnacle", -190, 165, -108, -112, -110, -110),
+            book("novig", -185, 170, -110, -110, -108, -112),
+            book("fanduel", -170, 150, -110, -110, -110, -110),      # home moneyline is generous here
+            book("draftkings", -200, 160, 105, -125, -105, -115)]}]   # home spread at +105 is generous
+
     def __call__(self, url, data=None, headers=None, timeout=30):
         self.calls.append(url)
         if data is not None:
@@ -59,6 +72,8 @@ class Fake:
             return {}, {}
         if "/events?" in url:
             return [{"id": "ev1", "home_team": TEAMS["home"], "away_team": TEAMS["away"], "commence_time": self.start}], {}
+        if "/odds?" in url and "/events/" not in url:
+            return self.team_odds(), {"x-requests-remaining": "18990", "x-requests-last": "3"}
         if "/events/ev1/odds" in url:
             return self.odds(), {"x-requests-remaining": "19000", "x-requests-last": "10"}
         if url.endswith("/injuries"):
@@ -75,8 +90,8 @@ class Fake:
         if "/scoreboard" in url:
             return {"events": [{"id": "401", "date": self.start, "status": {"type": {"completed": self.final}},
                                 "competitions": [{"competitors": [
-                                    {"homeAway": "home", "team": {"displayName": "Boston Celtics"}},
-                                    {"homeAway": "away", "team": {"displayName": "New York Knicks"}}]}]}]}, {}
+                                    {"homeAway": "home", "team": {"displayName": "Boston Celtics"}, "score": "112"},
+                                    {"homeAway": "away", "team": {"displayName": "New York Knicks"}, "score": "105"}]}]}]}, {}
         if "/summary?event=401" in url:
             return self.box_summary(), {}
         raise RuntimeError("unexpected url " + url)

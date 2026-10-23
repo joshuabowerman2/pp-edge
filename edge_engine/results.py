@@ -355,6 +355,47 @@ def clv_curve(conn):
     return out
 
 
+def _bet_label(x):
+    from .teams import MARKET_NAME
+    pt = x["point"]
+    if pt is None or x["market"] == "h2h":
+        tail = ""
+    elif x["market"] == "spreads":
+        tail = f" {pt:+g}"
+    else:
+        tail = f" {pt:g}"
+    return f'{MARKET_NAME.get(x["market"], x["market"])}: <b>{esc(x["outcome"])}{tail}</b>'
+
+
+def _team_row(x, tz):
+    odds = f'{x["odds"]:+d}' if x["odds"] is not None else "–"
+    chip = "good" if x["result"] == "win" else "bad" if x["result"] == "loss" else "warn"
+    score = f' <span class="muted small">{x["away_score"]:g}-{x["home_score"]:g}</span>' if x["home_score"] is not None else ""
+    return (f'<tr><td class="small muted">{esc(_local(x["start"], tz, "%b %d"))}</td><td>{esc(x["away"])} @ {esc(x["home"])}</td>'
+            f'<td>{_bet_label(x)}</td><td class="num">{esc(x["book"])} {odds}</td><td class="r num">{pct(x["ev"], 1, True)}</td>'
+            f'<td class="r"><span class="chip {chip}">{esc(x["result"])}</span>{score}</td></tr>')
+
+
+def teams_html(conn, tz):
+    from . import teams
+    r = teams.record(conn)
+    if not (r["won"] + r["lost"] + r["push"]) and not r["open"]:
+        return ""
+    rec = f'{r["won"]}-{r["lost"]}' + (f'-{r["push"]}' if r["push"] else "")
+    units = f'<span class="{cls(r["units"])}">{r["units"]:+.2f}</span>'
+    roi = f'<span class="{cls(r["roi"])}">{pct(r["roi"], 1, True)}</span>'
+    rows = "".join(_team_row(x, tz) for x in r["recent"][:25])
+    table = (f'<div class="scroll" style="margin-top:12px"><table><thead><tr><th>Day</th><th>Game</th><th>Bet</th><th>Price</th>'
+             f'<th class="r">EV</th><th class="r">Result</th></tr></thead><tbody>{rows}</tbody></table></div>' if rows
+             else '<p class="muted small" style="margin:10px 0 0">Results show here once the first games finish.</p>')
+    return (f'<div class="panel" id="teams"><h2>Team bets</h2><p class="muted small" style="margin:0 0 10px">Moneylines, spreads '
+            f"and totals where a sportsbook paid more than the sharp books' fair price. Every one is logged when first found and "
+            f'graded from the final score at a flat 1 unit, wins and losses alike.</p>'
+            f'<div class="kpis">{_kpi("Record", rec, str(r["open"]) + " open")}'
+            f'{_kpi("Units", units, "Expected " + format(r["exp_units"], "+.2f"))}{_kpi("ROI", roi, "per unit staked")}</div>'
+            f'{table}</div>')
+
+
 def html(conn, nav=None, tz=None):
     tz = tz or ZoneInfo("America/Chicago")
     d = data(conn)
@@ -395,6 +436,7 @@ every hash after it. Anyone can download the full log and check it.</p></div>
 {_kpi("Model portfolio", f'<span class="{cls(p["profit_pct"])}">{p["index"][-1] - 100:+.1f}%</span>', f'{p["entries"]} entries settled, {p["open"]} open')}
 </div>
 {flex_html(conn, tz)}
+{teams_html(conn, tz)}
 {picks_html(conn, tz)}
 <div class="panel"><h2>Results by set</h2><div class="scroll"><table><thead><tr><th>Set</th><th class="r">Graded</th>
 <th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">CLV (pts)</th><th class="r">Beat close</th>

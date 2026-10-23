@@ -174,6 +174,10 @@ class EndToEndTests(unittest.TestCase):
         self.assertEqual(d["app"], "edge-finder")
         self.assertTrue(d["plays"] and all(k in d["plays"][0] for k in ("name", "mult", "dist", "legs", "stake_pct")))
         self.assertTrue(d["history"])
+        # team bets: FanDuel's home moneyline and DraftKings' home spread beat the sharp price; nothing else does
+        tp = {(p["market"], p["book"]) for p in d["teams"]["plays"]}
+        self.assertEqual(tp, {("h2h", "fanduel"), ("spreads", "draftkings")})
+        self.assertTrue(all(p["ev"] >= 0.01 and 0 < p["fair"] < 1 and p["books"] for p in d["teams"]["plays"]))
         # scheduling: right after a poll nothing is due; a lineup change forces a repoll
         due, base = engine.schedule(self.conn, self.cfg, self.now + timedelta(minutes=1))
         self.assertEqual(due, [])
@@ -201,6 +205,11 @@ class EndToEndTests(unittest.TestCase):
         self.fake.final = True
         graded = tracking.grade(self.conn, later)
         self.assertGreater(graded, 0)
+        from edge_engine import teams
+        self.assertEqual(teams.grade(self.conn, later), 2)   # 112-105: home wins and covers -4.5
+        rec = teams.record(self.conn)
+        self.assertEqual((rec["won"], rec["lost"]), (2, 0))
+        self.assertGreater(rec["units"], 1.5)
         res = {r["result"] for r in self.conn.execute("SELECT result FROM picks")}
         self.assertTrue(res & {"hit", "miss"})
         apps = engine._apps(self.cfg)
@@ -240,6 +249,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn(f["status"], ("settled", "void"))
         self.assertIsNotNone(f["hits"])
         self.assertIn("Flex plays", html_)
+        self.assertIn("Team bets", html_)
+        self.assertIn("2-0", html_)
         from edge_engine.cli import verify_csv
         self.assertTrue(verify_csv(os.path.join(site, "picks.csv"))[0])
         self.assertIn("verdict", backtest.evaluate(self.conn, 0) | {"verdict": ""})

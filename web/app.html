@@ -209,7 +209,7 @@ nav.tabs button[aria-selected="true"] svg{color:var(--accent)}
 header.topbar{position:sticky;top:0;z-index:5;background:rgba(10,16,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .tb-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
 .tb-title{display:flex;align-items:center;gap:10px;min-width:0}
-.tb-title b{font:700 1.3rem/1.1 var(--display);letter-spacing:.01em}
+.tb-title b{font:700 1.3rem/1.1 var(--display);letter-spacing:.01em;white-space:nowrap}
 .tb-title .sub{font-size:.75rem;color:var(--muted)}.tb-title .sub.stale{color:var(--warn);font-weight:600}
 .mlogo{display:none}.mlogo svg{width:32px;height:32px;border-radius:9px}
 .bk{display:flex;gap:8px;align-items:center;margin:0}
@@ -228,6 +228,18 @@ input,select,textarea{background:var(--panel2)}
 .chipbtn{position:relative}
 @media (max-width:600px){.chips{gap:6px;width:100%;box-sizing:border-box}.chipbtn .cnt{top:3px;right:4px;font-size:.58rem}.chipbtn{flex:1 1 0!important;min-width:0!important;padding:10px 4px!important}}.chipbtn .cnt{position:absolute;top:4px;right:5px;font:600 .62rem var(--mono);font-style:normal;color:var(--muted)}
 .chipbtn.none{opacity:.55}.chipbtn[aria-pressed=true] .cnt{color:var(--accent)}
+.tcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.tcard .tc-top{display:flex;justify-content:space-between;gap:8px;font-size:.78rem;color:var(--muted)}
+.tcard .tc-game{font-size:.86rem;color:var(--muted)}
+.tcard .tc-pick{font:italic 700 1.55rem/1.05 var(--display);text-transform:uppercase;letter-spacing:.01em}
+.tcard .tc-mkt{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);font-weight:700}
+.tcard .tc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.tcard .tc-grid div{display:flex;flex-direction:column;gap:2px}.tcard .tc-grid span{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tcard .tc-grid b{font:600 1rem var(--mono)}
+.tcard .tc-books{display:flex;flex-wrap:wrap;gap:6px}.tcard .tc-books span{font:500 .74rem var(--mono);border:1px solid var(--line);border-radius:999px;padding:3px 8px;color:var(--muted)}
+.tcard .tc-books span.best{border-color:var(--accent);color:var(--ink)}
+.trec{display:flex;gap:18px;flex-wrap:wrap;align-items:baseline}.trec b{font:600 1.15rem var(--mono)}.trec span{font-size:.75rem;color:var(--muted)}
 .minedge{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);margin-left:auto}
 .minedge input{width:110px;accent-color:var(--accent)}
 .minedge .num{color:var(--ink);min-width:3.6em}
@@ -376,6 +388,7 @@ footer{border-top:1px solid var(--line)}
   <nav class="tabs" role="tablist" aria-label="Sections">
     <button role="tab" id="tab-home" aria-selected="true" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Home</span></button>
     <button role="tab" id="tab-picks" aria-selected="false" data-tab="picks"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/></svg><span>Plays</span></button>
+    <button role="tab" id="tab-teams" aria-selected="false" data-tab="teams"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 5 6v5.5c0 4.2 3 7.6 7 9 4-1.4 7-4.8 7-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Teams</span></button>
     <button role="tab" id="tab-build" aria-selected="false" data-tab="build"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14M5 12h14M5 17.5h9"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M18.5 16.3v2.4M17.3 17.5h2.4"/></svg><span data-s="Picks">My Picks</span></button>
     <button role="tab" id="tab-bets" aria-selected="false" data-tab="bets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h11l3 3v12H5z"/><path d="M8.5 11l2 2 4-4"/></svg><span data-s="Bets">Bet log</span></button>
     <button role="tab" id="tab-dash" aria-selected="false" data-tab="dash"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v4a5 5 0 0 1-10 0z"/><path d="M7 6.5H4.5a3 3 0 0 0 3 4M17 6.5h2.5a3 3 0 0 1-3 4"/><path d="M12 13.5v3.5M8.5 20h7M10 17h4v3h-4z"/></svg><span>Results</span></button>
@@ -405,6 +418,12 @@ footer{border-top:1px solid var(--line)}
       <p class="lead" id="picksLead">Log the entries you actually play; they're graded as results come in.</p>
     </div>
     <div id="boardOut"></div>
+  </section>
+
+  <!-- TEAM BETS -->
+  <section id="view-teams" role="tabpanel" aria-labelledby="tab-teams" hidden>
+    <div><h2>Team bets</h2><p class="lead">Moneylines, spreads and totals where a sportsbook pays more than the sharp books' fair price. These are sportsbook bets, not PrizePicks.</p></div>
+    <div id="teamsOut"></div>
   </section>
 
   <!-- BUILD -->
@@ -810,7 +829,7 @@ async function importText(text, label, quiet){
       const d = JSON.parse(text);
       if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
       if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
-      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], research:d.research||{}, injuries:d.injuries||[], freshness:d.freshness||{},
+      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], research:d.research||{}, injuries:d.injuries||[], freshness:d.freshness||{}, teams:d.teams||{plays:[], record:null},
         alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
       const prevBoard = S.board;
       await store.saveBoard(board);
@@ -897,6 +916,7 @@ function renderAll(){
   renderSlipBar(); renderBell();
   if(S.tab === "dash") renderDash(A);
   if(S.tab === "picks") renderBoard();
+  if(S.tab === "teams") renderTeams();
   if(S.tab === "build") renderBuild();
   if(S.tab === "bets") renderBets();
   if(S.tab === "settings") renderSettings();
@@ -1258,6 +1278,79 @@ function renderBoard(){
   });
 }
 
+/* ---------- team bets ---------- */
+S.teamSport = ""; S.teamMkt = "";
+function fairAmerican(p){ if(!(p > 0 && p < 1)) return "–"; return p >= 0.5 ? "-" + Math.round(100 * p / (1 - p)) : "+" + Math.round(100 * (1 - p) / p); }
+function teamPick(t){
+  const pt = t.point == null || t.market === "h2h" ? "" : t.market === "spreads" ? " " + (t.point > 0 ? "+" : "") + t.point : " " + t.point;
+  return `${t.outcome}${pt}${t.market === "h2h" ? " ML" : ""}`;
+}
+function teamCard(t){
+  const p = +t.fair, bs = bookStats(+t.odds, p), sg = suggestStake(bs.kelly), k = "team|" + t.id;
+  const logged = S.bets.some(b => b.sourceKey === k), started = t.start && new Date(t.start) <= Date.now();
+  const others = (t.books || []).slice(0, 6).map(([b, o]) => `<span class="${b === t.book && +o === +t.odds ? "best" : ""}">${esc(bookName(b))} ${esc(oddsTxt(o))}</span>`).join("");
+  return `<div class="tcard" data-team="${esc(t.id)}">
+    <div class="tc-top"><span class="sport-tag">${sportIcon(t.sport)}${esc(SPORT_NAME[t.sport] || t.sport.toUpperCase())}</span><span>${esc(timeOf(t.start))}</span></div>
+    <div class="tc-game">${esc(t.away)} @ ${esc(t.home)}</div>
+    <div><div class="tc-mkt">${esc(t.market_name || t.market)}</div><div class="tc-pick">${esc(teamPick(t))}</div></div>
+    <div class="tc-grid"><div><span>${esc(bookName(t.book))}</span><b>${esc(oddsTxt(t.odds))}</b></div>
+      <div><span>Fair</span><b>${fairAmerican(p)}</b></div><div><span>EV</span><b class="pos">${pct(+t.ev, 1, true)}</b></div></div>
+    <p class="small muted" style="margin:0">Sharp books give this ${pct(p, 1)}. ${esc(bookName(t.book))}${/s$/.test(bookName(t.book)) ? "'" : "'s"} price needs ${pct(1 / bs.D, 1)} to break even.${+t.first_odds !== +t.odds ? ` First seen at ${esc(oddsTxt(t.first_odds))}.` : ""}</p>
+    ${others ? `<div class="tc-books" aria-label="Prices at each book">${others}</div>` : ""}
+    ${started ? `<div class="alert warn">${icon.warn}<span>This game has started.</span></div>` : smallNote(sg)}
+    <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num tStake" inputmode="decimal" value="${sg.stake || ""}"></label>
+      <button class="btn ${logged || started ? "" : "primary"} tLog" style="align-self:flex-end" ${started ? "disabled" : ""}>${logged ? "Log again" : "Log bet"}</button></div>
+    <div class="small tWarn" style="color:var(--warn)"></div></div>`;
+}
+function teamsRecord(r){
+  if(!r || !(r.won + r.lost + r.push)) return `<p class="small muted" style="margin:0">No team bets graded yet. Every one the engine finds is logged and graded from the final score, so the record here will include the losses.</p>`;
+  return `<div class="trec"><div><b>${r.won}-${r.lost}${r.push ? "-" + r.push : ""}</b><br><span>Record</span></div>
+    <div><b class="${r.units >= 0 ? "pos" : "neg"}">${r.units >= 0 ? "+" : ""}${r.units.toFixed(2)}u</b><br><span>Units (1u flat)</span></div>
+    <div><b class="${(r.roi || 0) >= 0 ? "pos" : "neg"}">${pct(r.roi, 1, true)}</b><br><span>ROI</span></div>
+    <div><b>${r.exp_units >= 0 ? "+" : ""}${(+r.exp_units).toFixed(2)}u</b><br><span>Expected</span></div>
+    <div><b>${r.open}</b><br><span>Open</span></div></div>
+    ${(r.won + r.lost) < 50 ? `<p class="note" style="margin:6px 0 0">Under 50 graded bets, the record is mostly luck. Expected units show what the prices said should happen.</p>` : ""}`;
+}
+function renderTeams(){
+  const el = $("#teamsOut"); if(!el) return;
+  const T = (S.board && S.board.teams) || {plays: [], record: null};
+  const open = (T.plays || []).filter(t => !t.start || new Date(t.start) > Date.now());
+  const nBy = {}; for(const t of open) nBy[t.sport] = (nBy[t.sport] || 0) + 1;
+  const sports = [...new Set([...SPORT_ORDER, ...Object.keys(nBy)])];
+  const list = open.filter(t => (!S.teamSport || t.sport === S.teamSport) && (!S.teamMkt || t.market === S.teamMkt));
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:16px">
+    <div class="chips" role="group" aria-label="Sport"><button class="chipbtn" aria-pressed="${!S.teamSport}" data-tsport=""><svg class="spi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span>All</span><i class="cnt">${open.length}</i></button>
+      ${sports.map(sp => `<button class="chipbtn${nBy[sp] ? "" : " none"}" aria-pressed="${S.teamSport === sp}" data-tsport="${esc(sp)}">${sportIcon(sp)}<span>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</span><i class="cnt">${nBy[sp] || 0}</i></button>`).join("")}</div>
+    <div class="seg2" role="group" aria-label="Bet type">${[["", "All"], ["h2h", "Moneyline"], ["spreads", "Spread"], ["totals", "Total"]].map(([k, t]) => `<button aria-pressed="${S.teamMkt === k}" data-tmkt="${k}">${t}</button>`).join("")}</div>
+    ${!S.board ? `<div class="panel empty"><h3>Loading…</h3></div>`
+      : list.length ? `<div class="tcards">${list.map(teamCard).join("")}</div>`
+      : `<div class="panel empty"><h3>No +EV team bets ${S.teamSport ? "in " + esc(SPORT_NAME[S.teamSport] || S.teamSport.toUpperCase()) + " " : ""}right now</h3><p class="muted" style="margin:0;max-width:60ch">${(T.plays || []).length || T.record ? "In the latest run, no book's price beat the sharp books' fair price by 1% or more here. That's normal; most prices are fair." : "Team bets are priced on each daily run (5:30 PM Central). They'll show up after the next one."}</p></div>`}
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Track record</h3><a class="linkbtn" href="results.html#teams" target="_blank" rel="noopener">Full list →</a></div>${teamsRecord(T.record)}</div>
+    <p class="note" style="margin:0">Fair price is Pinnacle, Novig, BetOnline and ProphetX with the vig removed and blended. A book is shown only when it pays at least 1% more than that, and only at the same line (a −3.5 is never compared with a −3). Prices move fast: check the book's price before you bet, and skip it if it's gone. Only bet where sports betting is legal for you.</p></div>`;
+  el.querySelectorAll("[data-tsport]").forEach(b => b.addEventListener("click", () => { S.teamSport = b.dataset.tsport; renderTeams(); }));
+  el.querySelectorAll("[data-tmkt]").forEach(b => b.addEventListener("click", () => { S.teamMkt = b.dataset.tmkt; renderTeams(); }));
+  el.querySelectorAll("[data-team]").forEach(c => {
+    const t = list.find(x => x.id === c.dataset.team); if(!t) return;
+    const inp = c.querySelector(".tStake"), btn = c.querySelector(".tLog"), w = c.querySelector(".tWarn");
+    const upd = () => { if(btn.disabled) return; w.textContent = stakeWarnings(num(inp.value) || 0).join(" "); btn.dataset.armed = ""; };
+    inp.addEventListener("input", upd); upd();
+    btn.addEventListener("click", async () => {
+      const stake = num(inp.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
+      const ws = stakeWarnings(stake);
+      if(ws.length && !btn.dataset.armed){ btn.dataset.armed = "1"; btn.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
+      const bs = bookStats(+t.odds, +t.fair);
+      await logEntry({kind: "book", label: `${teamPick(t)} · ${bookName(t.book)} ${oddsTxt(t.odds)}`, sport: (SPORT_NAME[t.sport] || t.sport.toUpperCase()),
+        odds: +t.odds, fair: +t.fair, stake, E: bs.E, V: bs.V, cash: bs.cash, result: "", source: "teams", sourceKey: "team|" + t.id, start: t.start});
+      renderTeams();
+    });
+  });
+}
+function teamsPanel(){
+  const T = S.board && S.board.teams; const open = ((T && T.plays) || []).filter(t => !t.start || new Date(t.start) > Date.now());
+  return `<div class="panel"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Team bets</h3><button class="linkbtn" data-go="teams">See all →</button></div>
+    ${open.length ? `<ul class="board">${open.slice(0, 3).map(t => `<li><span class="bicon">${sportIcon(t.sport)}</span><div><b>${esc(teamPick(t))}</b><div class="small muted">${esc(bookName(t.book))} ${esc(oddsTxt(t.odds))} · <span class="pos">${pct(+t.ev, 1, true)} EV</span> · ${esc(timeOf(t.start))}</div></div></li>`).join("")}</ul>`
+      : `<p class="small muted" style="margin:0">No +EV moneylines, spreads or totals in the latest run.</p>`}</div>`;
+}
 /* ---------- moving lines ---------- */
 function movers(B){
   const seen = new Set(), rows = [];
@@ -2046,6 +2139,7 @@ function renderHome(){
       ${n ? `<div class="row">${n >= 2 ? `<button class="btn sm" id="hCompare">Compare these picks</button>` : ""}<button class="btn sm" id="hShare">Share slip</button></div>` : ""}
     </div>
     ${B ? injuryPanel() : ""}
+    ${B ? teamsPanel() : ""}
     <div class="panel"><h3 style="margin:0 0 4px">On the board</h3>
       ${Object.keys(board).length ? `<ul class="board">${Object.entries(board).sort().map(([sp,g]) => `<li><span class="bicon">${sportIcon(sp)}</span><div><b>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</b><div class="small muted">${g.games.size} ${g.games.size===1?"game":"games"} · ${g.n} props · next ${esc(timeOf(g.next))}</div></div></li>`).join("")}</ul>`
         : `<p class="small muted" style="margin:0">Nothing open right now.</p>`}
@@ -2371,8 +2465,8 @@ async function renderPeople(){
 }
 
 /* ---------- tabs ---------- */
-const TABS = ["home","dash","picks","build","bets","calc","settings","people"];
-const TITLES = {home:"Home", dash:"Results", picks:"Today's plays", build:"My Picks", bets:"Bet log", calc:"EV calculator", settings:"Settings", people:"People"};
+const TABS = ["home","dash","picks","teams","build","bets","calc","settings","people"];
+const TITLES = {home:"Home", dash:"Results", picks:"Today's plays", teams:"Team bets", build:"My Picks", bets:"Bet log", calc:"EV calculator", settings:"Settings", people:"People"};
 function setTab(t){ if(!TABS.includes(t) || (t === "people" && !S.isOwner)) t = "home"; S.tab = t; $("#tbTitle").textContent = TITLES[t] || "Edge Finder";
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
   TABS.forEach(x => $("#view-"+x).hidden = x !== t); renderAll(); window.scrollTo(0,0); }

@@ -93,11 +93,15 @@ def poll_games(conn, cfg, games, now):
             pass
         if usage.get("remaining") is not None:
             meta_set(conn, "credits_remaining", usage["remaining"])
+    add_spent(conn, cfg, now, used)
+    return n_lines
+
+
+def add_spent(conn, cfg, now, used):
     day = now.astimezone(cfg.tz).strftime("%Y-%m-%d")
     spent = meta_get(conn, "credits_spent", {}) or {}
     spent[day] = spent.get(day, 0) + used
     meta_set(conn, "credits_spent", {k: v for k, v in spent.items() if k >= (now - timedelta(days=30)).strftime("%Y-%m-%d")})
-    return n_lines
 
 
 def refresh_injuries(conn, cfg, sport, now):
@@ -360,6 +364,10 @@ def run_once(conn, cfg, now=None, export_path=None):
     games = conn.execute("SELECT * FROM games WHERE start > ? AND start < ?",
                          (iso(now), iso(now + timedelta(hours=cfg.window_hours)))).fetchall()
     poll_games(conn, cfg, [g for g in games if g["sport"] in cfg.sports], now)
+    if cfg.team_bets:
+        from . import teams
+        _, used = teams.run(conn, cfg, now)
+        add_spent(conn, cfg, now, used)
     return _after_poll(conn, cfg, now, apps, injury_changes, export_path)
 
 
@@ -369,6 +377,8 @@ def _after_poll(conn, cfg, now, apps, injury_changes, export_path):
     tracking.update_closing(conn, now)
     board, plays = build_board(conn, cfg, now, legs, apps)
     n_graded = tracking.grade(conn, now)
+    from . import teams
+    teams.grade(conn, now)
     tracking.settle_system_entries(conn, apps, now)
     n_alerts = send_alerts(conn, cfg, legs, plays, board["watch"], injury_changes, now)
     if export_path:

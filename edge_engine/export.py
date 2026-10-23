@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from .db import meta_get
 from .tracking import iso
-from . import players, projections, research, results, timeline
+from . import players, projections, research, results, teams, timeline
 from .tracking import moves_for, prop_key
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
@@ -95,6 +95,7 @@ def app_json(conn, cfg, now, days=60):
             "research": research_data,
             "injuries": injuries,
             "freshness": freshness(conn),
+            "teams": {"plays": teams.board(conn, now), "record": teams.record(conn)},
             "flex": [{k: s[k] for k in ("entry", "n", "slips", "open", "settled", "cashed", "profit", "exp_profit", "roi",
                                          "cash_rate")} for s in results.flex_data(conn)]}
 

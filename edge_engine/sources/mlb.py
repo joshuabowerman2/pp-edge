@@ -11,6 +11,7 @@ def schedule(ymd_dash):
             tm = g.get("teams", {})
             out.append({"id": str(g["gamePk"]), "home": tm.get("home", {}).get("team", {}).get("name", ""),
                         "away": tm.get("away", {}).get("team", {}).get("name", ""), "date": g.get("gameDate", ""),
+                        "home_score": tm.get("home", {}).get("score"), "away_score": tm.get("away", {}).get("score"),
                         "final": g.get("status", {}).get("abstractGameState") == "Final"})
     return out
 

@@ -59,7 +59,9 @@ def main(argv=None):
         print(json.dumps(r))
     elif a.cmd == "grade":
         apps = engine._apps(cfg)
-        print(f"Graded {tracking.grade(conn, now)} picks; settled {tracking.settle_system_entries(conn, apps, now)} model entries.")
+        from . import teams
+        print(f"Graded {tracking.grade(conn, now)} picks and {teams.grade(conn, now)} team bets; "
+              f"settled {tracking.settle_system_entries(conn, apps, now)} model entries.")
     elif a.cmd == "fit":
         print(json.dumps(engine.nightly(conn, cfg), default=str, indent=1))
     elif a.cmd == "backtest":

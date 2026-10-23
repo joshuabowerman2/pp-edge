@@ -37,6 +37,8 @@ class Config:
     dfs_apps: list = field(default_factory=lambda: _list("DFS_APPS", "prizepicks underdog"))
     all_markets: bool = field(default_factory=lambda: _env("ALL_MARKETS", "0") == "1")
     alt_lines: bool = field(default_factory=lambda: _env("ALT_LINES", "0") == "1")
+    # Moneylines, spreads and totals vs the sharp books: 3 Odds API credits per sport with games, per run.
+    team_bets: bool = field(default_factory=lambda: _env("TEAM_BETS", "1") == "1")
     # Polling
     daily_credit_budget: float = field(default_factory=lambda: _float("DAILY_CREDIT_BUDGET", 600))
     min_poll_minutes: float = field(default_factory=lambda: _float("MIN_POLL_MINUTES", 3))

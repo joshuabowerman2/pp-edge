@@ -81,8 +81,14 @@ def scoreboard(sport, ymd):
     for ev in data.get("events", []):
         comp = (ev.get("competitions") or [{}])[0]
         teams = {c.get("homeAway"): c.get("team", {}).get("displayName", "") for c in comp.get("competitors", [])}
+        score = {}
+        for c in comp.get("competitors", []):
+            try:
+                score[c.get("homeAway")] = float(c.get("score"))
+            except (TypeError, ValueError):
+                pass
         out.append({"id": ev["id"], "home": teams.get("home", ""), "away": teams.get("away", ""),
-                    "date": ev.get("date", ""),
+                    "date": ev.get("date", ""), "home_score": score.get("home"), "away_score": score.get("away"),
                     "final": bool(ev.get("status", {}).get("type", {}).get("completed"))})
     return out
 
