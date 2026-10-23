@@ -1,0 +1,180 @@
+soccer_epl events: 21 ['2026-10-23T19:00:00Z', '2026-10-24T11:30:00Z', '2026-10-24T14:00:00Z']
+soccer_epl Ipswich Town cost 1 remaining 209
+    fanduel 45 outcomes [{'name': 'Over', 'description': 'Chris Wood', 'price': 150, 'point': 1.5}, {'name': 'Over', 'description': 'Liam Delap', 'price': 195, 'point': 1.5}]
+soccer_spain_la_liga events: 20 ['2026-10-23T19:00:00Z', '2026-10-24T12:00:00Z', '2026-10-24T14:15:00Z']
+soccer_italy_serie_a events: 20 ['2026-10-23T18:45:00Z', '2026-10-24T13:00:00Z', '2026-10-24T13:00:00Z']
+soccer_germany_bundesliga events: 18 ['2026-10-23T18:30:00Z', '2026-10-24T13:30:00Z', '2026-10-24T13:30:00Z']
+soccer_france_ligue_one events: 19 ['2026-10-23T18:45:00Z', '2026-10-24T15:15:00Z', '2026-10-24T18:45:00Z']
+soccer_usa_mls events: 29 ['2026-10-24T17:30:00Z', '2026-10-24T19:30:00Z', '2026-10-24T21:30:00Z']
+baseball_mlb events: 1 ['2026-10-24T00:00:00Z']
+baseball_mlb Milwaukee Brewers cost 1 remaining 208
+    draftkings 8 outcomes [{'name': 'Over', 'description': 'Jackson Chourio', 'price': 122, 'point': 1.5}, {'name': 'Under', 'description': 'Jackson Chourio', 'price': -162, 'point': 1.5}]
+    betmgm 36 outcomes [{'name': 'Over', 'description': 'Garrett Mitchell', 'price': -155, 'point': 0.5}, {'name': 'Under', 'description': 'Garrett Mitchell', 'price': 115, 'point': 0.5}]
+    betonlineag 36 outcomes [{'name': 'Over', 'description': 'Yandy Diaz', 'price': 149, 'point': 1.5}, {'name': 'Under', 'description': 'Yandy Diaz', 'price': -196, 'point': 1.5}]
+    prophetx 38 outcomes [{'name': 'Under', 'description': 'Christian Yelich', 'price': 109, 'point': 0.5}, {'name': 'Over', 'description': 'Jake Bauers', 'price': -118, 'point': 0.5}]
+    pinnacle 36 outcomes [{'name': 'Over', 'description': 'Brice Turang', 'price': -157, 'point': 0.5}, {'name': 'Under', 'description': 'Brice Turang', 'price': 129, 'point': 0.5}]
+    underdog 6 outcomes [{'name': 'Over', 'description': 'Jake Bauers', 'price': -137, 'point': 0.5}, {'name': 'Under', 'description': 'Jake Bauers', 'price': -137, 'point': 0.5}]
+    novig 40 outcomes [{'name': 'Over', 'description': 'Jake Bauers', 'price': 182, 'point': 1.5}, {'name': 'Under', 'description': 'Jake Bauers', 'price': -308, 'point': 1.5}]
+    prizepicks 8 outcomes [{'name': 'Over', 'description': 'Jonny Deluca', 'price': -137, 'point': 0.5}, {'name': 'Under', 'description': 'Jonny Deluca', 'price': -137, 'point': 0.5}]
+americanfootball_nfl events: 26 ['2026-10-23T00:15:47Z', '2026-10-25T13:30:00Z', '2026-10-25T17:00:00Z']
+espn eng.1 10/18 events 4
+summary keys ['boxscore', 'format', 'gameInfo', 'lastFiveGames', 'leaders', 'broadcasts', 'pickcenter', 'odds', 'hasOdds', 'news', 'rosters', 'header', 'article', 'videos', 'seasonseries', 'keyEvents', 'commentary', 'wallclockAvailable', 'meta', 'standings']
+boxscore keys ['teams'] False
+rosters 2
+team AFC Bournemouth home/away home
+[
+{
+"active": true,
+"starter": true,
+"jersey": "1",
+"athlete": {
+"id": "289824",
+"uid": "s:600~a:289824",
+"guid": "af2b7cc1-2a6e-9ca1-30b3-6955e8b1d103",
+"lastName": "Petrovic",
+"fullName": "Djordje Petrovic",
+"displayName": "Djordje Petrovic",
+"shortName": "D. Petrovic",
+"links": [
+{
+"language": "en-US",
+"rel": [
+"playercard",
+"desktop",
+"athlete"
+],
+"href": "https://www.espn.com/soccer/player/_/id/289824/djordje-petrovic",
+"text": "Player Card",
+"shortText": "Player Card",
+"isExternal": false,
+"isPremium": false
+}
+],
+"headshot": {
+"href": "https://a.espncdn.com/i/headshots/soccer/players/full/289824.png",
+"alt": "Djordje Petrovic"
+},
+"jerseyImages": [
+{
+"href": "https://stitcher.espn.com/sports/soccer/leagues/eng.1/events/401879263/athletes/289824/jersey.png?darkMode=false",
+"rel": [
+"full",
+"default"
+],
+"width": 1440,
+"height": 1440
+},
+{
+"href": "https://stitcher.espn.com/sports/soccer/leagues/eng.1/events/401879263/athletes/289824/jersey.png?darkMode=true",
+"rel": [
+"full",
+"dark"
+],
+"width": 1440,
+"height": 1440
+}
+]
+},
+"position": {
+"name": "Goalkeeper",
+"displayName": "Goalkeeper",
+"abbreviation": "G"
+},
+"subbedIn": false,
+"subbedOut": false,
+"formationPlace": "1",
+"media": {},
+"stats": [
+{
+"name": "appearances",
+"displayName": "Appearances",
+"shortDisplayName": "APP",
+"description": "The number of times a player has made an appearance in a match.",
+"abbreviation": "APP",
+"value": 1.0,
+"displayValue": "1"
+},
+{
+"name": "foulsCommitted",
+"displayName": "Fouls Committed",
+"shortDisplayName": "FC",
+"description": "The number of fouls comitted by a player or team.",
+"abbreviation": "FC",
+"value": 0.0,
+"displayValue": "0"
+},
+{
+"name": "foulsSuffered",
+"displayName": "Fouls Suffered",
+"shortDisplayName": "FA",
+"description": "The number of fouls suffered by a player or team.",
+"abbreviation": "FA",
+"value": 0.0,
+"displayValue": "0"
+},
+{
+"name": "ownGoals",
+"displayName": "Own Goals",
+"shortDisplayName": "OG",
+"description": "The number of own goals conceded.",
+"abbreviation": "OG",
+"value": 0.0,
+"displayValue": "0"
+},
+{
+"name": "redCards",
+"displayName": "Red Cards",
+"shortDisplayName": "RC",
+"description": "The number of red cards that have been issued.",
+"abbreviation": "RC",
+"value": 0.0,
+"displayValue": "0"
+},
+{
+"name": "subIns",
+"displayName": "Substitute Appearances",
+"shortDisplayName": "SUBIN",
+"description": "The number of times a player has come on a sub in a match.",
+"abbreviation": "SUB",
+"value": 0.0,
+"displayValue": "0"
+},
+{
+"name": "yellowCar
+comp {
+"id": "349",
+"uid": "s:600~t:349",
+"type": "team",
+"order": 0,
+"homeAway": "home",
+"winner": true,
+"form": "DWWLL",
+"score": "2",
+"records": [
+{
+"name": "All Splits",
+"type": "total",
+"summary": "1-3-3",
+"abbreviation": "Total"
+}
+],
+"team": {
+"id": "349",
+"uid": "s:600~t:349",
+"abbreviation": "BOU",
+"displayName": "AFC Bournemouth",
+"shortDisplayName": "Bournemouth",
+"name": "AFC Bournemouth",
+"location": "AFC Bournemouth",
+"color": "f42727",
+"alternateColor": "B57EDC",
+"isActive": true,
+"logo": "https://a.espncdn.com/i/teamlogos/soccer/500/349.png",
+"links": [
+{
+"rel": [
+"clubhouse",
+"deskt
+injuries keys ['timestamp', 'status', 'season', 'injuries'] 0
+team 349 AFC Bournemouth f42727
+roster athletes 29 [{"id": "93193", "uid": "s:600~a:93193", "guid": "09010c45-9a91-c275-39e0-dadb1d718be0", "firstName": "Fraser", "lastName": "Forster", "fullName": "Fraser Forster", "displayName": "Fraser Forster", "shortName": "F. Forster", "weight": 203.0, "displayWeight": "203 lbs", "height": 79.0, "displayHeight": "6' 7\"", "age": 38, "dateOfBirth": "1988-03-17T08:00Z", "gender": "MALE", "links": [{"language": "en-US", "rel": ["playercard", "desktop", "athlete"], "href": "https://www.espn.com/soccer/player/_/id/93193/fraser-forster", "text": "Player Card", "shortText": "Player Card", "isExternal": false, "
