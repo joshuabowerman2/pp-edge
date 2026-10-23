@@ -94,6 +94,8 @@ jobs:
           git add data/edge.db data/latest.json
           # The commit message pins the track record: latest pick number and its chain hash.
           git diff --cached --quiet || git commit -m "Engine run $(date -u +%FT%TZ)" -m "Track record $(EDGE_DB=data/edge.db edge head)"
+          # Pick up anything pushed while this run was working, so the push isn't rejected.
+          git pull --rebase -X theirs -q || true
           git push
       - uses: actions/configure-pages@v5
         if: steps.when.outputs.skip != '1'
