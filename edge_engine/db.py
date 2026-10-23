@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS prop_moves (key TEXT, ts TEXT, fair REAL, PRIMARY KEY
 
 CREATE TABLE IF NOT EXISTS boxscores (
   sport TEXT, event_id TEXT, game_date TEXT, team TEXT, opp TEXT, player_key TEXT, player TEXT,
-  minutes REAL, stats TEXT, PRIMARY KEY (sport, event_id, player_key));
+  minutes REAL, stats TEXT, home INTEGER, PRIMARY KEY (sport, event_id, player_key));
 CREATE INDEX IF NOT EXISTS box_player ON boxscores (sport, player_key, game_date);
 CREATE INDEX IF NOT EXISTS box_team ON boxscores (sport, team, game_date);
 
@@ -96,6 +96,12 @@ def connect(path):
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
+    # Columns added after the first release, for databases created before them.
+    for table, col in (("boxscores", "home INTEGER"),):
+        try:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass
     return conn
 
 

@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from .db import meta_get
 from .tracking import iso
-from . import projections, results
+from . import research, results
 from .tracking import moves_for, prop_key
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
@@ -30,7 +30,8 @@ def _leg(l):
             "side": l["side"], "fair": l["fair"], "game": f"{l['away']} @ {l['home']}", "start": l["start"],
             "books": l["books"], "sharp": bool(l["sharp"]), "exact": l["exact"], "injury": l.get("injury") or "",
             "team": l.get("team") or "", "tier": l.get("tier") or "", "app": l["app"],
-            "edge": l.get("edge"), "fair_market": l.get("fair_market"), "fair_proj": l.get("fair_proj")}
+            "edge": l.get("edge"), "fair_market": l.get("fair_market"), "fair_proj": l.get("fair_proj"),
+            "proj_mu": l.get("proj_mu"), "sigma": l.get("sigma"), "home": l.get("home"), "away": l.get("away"), "market_books": l.get("books")}
 
 
 def _slip(e, play):
@@ -59,15 +60,8 @@ def app_json(conn, cfg, now, days=60):
     _INFO.update({(r["sport"], r["player_key"]): dict(r) for r in conn.execute("SELECT * FROM player_info")})
     _MOVES.clear()
     _MOVES.update(moves_for(conn, all_legs))
-    # Recent games for every player and stat on the board, for the app's player pages.
-    logs = {}
-    for l in all_legs:
-        k = f"{l['sport']}|{l.get('player_key')}|{l['market']}"
-        if l.get("player_key") and k not in logs:
-            h = projections.history(conn, l["sport"], l["player_key"], l["market"], limit=10)
-            if h:
-                logs[k] = [{"d": g["date"], "v": round(g["v"], 2), "min": None if g["minutes"] is None else round(g["minutes"], 1),
-                            "opp": g["opp"] or ""} for g in h]
+    # Research for every player and stat on the board: projection, averages, matchup, games, book lines.
+    research_data = research.build(conn, all_legs)
     cutoff = iso(now - timedelta(days=days))
     hist = []
     for p in conn.execute("SELECT * FROM picks WHERE created_at >= ? ORDER BY seq", (cutoff,)):
@@ -97,7 +91,7 @@ def app_json(conn, cfg, now, days=60):
             "tuning": {"blend": board.get("blend")}, "history": hist,
             # The model's own record for each Flex size (1 unit per slip), for the app's you-vs-the-model view.
             "stacks": [_slip(e, False) for e in board.get("stacks", [])],
-            "logs": logs,
+            "research": research_data,
             "flex": [{k: s[k] for k in ("entry", "n", "slips", "open", "settled", "cashed", "profit", "exp_profit", "roi",
                                          "cash_rate")} for s in results.flex_data(conn)]}
 

@@ -217,6 +217,14 @@ class EndToEndTests(unittest.TestCase):
         d2 = export.app_json(self.conn, self.cfg, later)
         legs2 = [l for s in d2["plays"] for l in s["legs"]] + d2["props"]
         self.assertTrue(any(l["jersey"] and l["color"] == "#008348" for l in legs2))
+        # research: projection, averages, splits, usage and book lines for props on the board
+        rs = [r for r in d2["research"].values() if r["n"]]
+        self.assertTrue(rs)
+        r = rs[0]
+        self.assertTrue(r["proj"] and r["l5"] is not None and r["avg"] is not None and len(r["games"]) <= 20)
+        self.assertTrue(r["home_n"] + r["away_n"] == r["n"])
+        self.assertEqual(r["usage_label"], "Shot attempts")
+        self.assertTrue(any(x["books"] for x in d2["research"].values()))
         f = self.conn.execute("SELECT * FROM flex_slips").fetchone()
         self.assertIn(f["status"], ("settled", "void"))
         self.assertIsNotNone(f["hits"])

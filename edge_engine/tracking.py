@@ -123,9 +123,11 @@ def store_box(conn, sport, event_id, game_date, rows, home, away):
             continue
         team = home if team_match(r["team"], home) else away if team_match(r["team"], away) else r["team"]
         opp = away if team == home else home if team == away else r["opp"]
-        conn.execute("""INSERT OR REPLACE INTO boxscores VALUES(?,?,?,?,?,?,?,?,?)""",
+        is_home = 1 if team == home else 0 if team == away else None
+        conn.execute("""INSERT OR REPLACE INTO boxscores(sport, event_id, game_date, team, opp, player_key, player,
+                        minutes, stats, home) VALUES(?,?,?,?,?,?,?,?,?,?)""",
                      (sport, str(event_id), game_date, canon_team(team), canon_team(opp), r["player_key"], r["player"],
-                      r["minutes"], json.dumps(r["stats"])))
+                      r["minutes"], json.dumps(r["stats"]), is_home))
     conn.execute("COMMIT")
 
 

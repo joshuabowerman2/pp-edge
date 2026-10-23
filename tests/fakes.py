@@ -95,6 +95,8 @@ def seed_boxscores(conn, n_games=30, seed=5):
             z = 0.6 * team_shock[side] + math.sqrt(1 - 0.36) * rng.gauss(0, 1)   # teammates correlate ~0.36
             pts = max(0, round(line + 0.5 + 5 * z))
             team, opp = canon_team(TEAMS[side]), canon_team(TEAMS["away" if side == "home" else "home"])
-            conn.execute("INSERT INTO boxscores VALUES(?,?,?,?,?,?,?,?,?)",
+            conn.execute("""INSERT INTO boxscores(sport, event_id, game_date, team, opp, player_key, player, minutes, stats, home)
+                            VALUES(?,?,?,?,?,?,?,?,?,?)""",
                          ("nba", f"h{g}", date, team, opp, norm_name(p), p, 32.0,
-                          json.dumps({"points": pts, "rebounds": 5, "assists": 3})))
+                          json.dumps({"points": pts, "rebounds": 5, "assists": 3, "fieldGoalsAttempted": 12 + g % 5}),
+                          1 if side == "home" else 0))
