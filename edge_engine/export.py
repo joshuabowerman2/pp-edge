@@ -84,7 +84,7 @@ def app_json(conn, cfg, now, days=60):
                      "raw_fair": _fmt(p["fair_market"]), "sharp": str(p["sharp"]), "exact": str(p["exact"]),
                      "pp_line_now": "" if p["app_line_now"] is None else f"{p['app_line_now']:g}", "injury": p["injury"] or ""})
     be = apps["prizepicks"]["breakeven"] if "prizepicks" in apps else 0.5
-    return {"app": "edge-finder", "version": 2, "generated_at": board.get("generated_at", iso(now)),
+    return {"app": "edge-finder", "version": 2, "generated_at": board.get("generated_at", iso(now)), "exported_at": iso(now),
             "entry": apps.get("prizepicks", {}).get("main", ""), "breakeven": round(be or 0.5, 5),
             "notes": f"Edge Engine {board.get('model_version', '')}. Credits left: {board.get('credits_remaining')}.",
             "payouts": payouts,

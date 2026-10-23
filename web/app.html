@@ -757,7 +757,7 @@ async function importText(text, label, quiet){
       const d = JSON.parse(text);
       if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
       if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
-      const board = {generated_at:d.generated_at, entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], logs:d.logs||{},
+      const board = {generated_at:d.generated_at, exported_at:d.exported_at||"", entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], logs:d.logs||{},
         alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
       await store.saveBoard(board);
       const n = await importHistory(d.history || []);
@@ -781,7 +781,9 @@ async function autoLoad(){
   try {
     const r = await fetch("index.json?t=" + Date.now(), {cache: "no-store"});
     if(r.ok){ const text = await r.text(); const d = JSON.parse(text);
-      if(d.app === "edge-finder" && d.generated_at !== (S.board && S.board.generated_at)) await importText(text, "your site", true);
+      // Reload when there's a new run, or when the same run's file was rebuilt with more detail.
+      const B = S.board || {};
+      if(d.app === "edge-finder" && (d.generated_at !== B.generated_at || (d.exported_at || "") !== (B.exported_at || ""))) await importText(text, "your site", true);
       else { const g = await autoGrade(); if(g) renderAll(); } }
   } catch(e){ console.warn("auto-load", e); }
   autoLoading = false;
