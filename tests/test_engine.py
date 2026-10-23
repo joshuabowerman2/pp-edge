@@ -260,5 +260,50 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("password don&#x27;t match", body)
 
 
+
+class NewFeatureTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.conn = db.connect(os.path.join(self.tmp.name, "t.db"))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def leg(self, player, market, fair, side="MORE", game="g1", team="A"):
+        return {"sport": "nfl", "game_id": game, "app": "prizepicks", "player": player, "player_key": player.lower(),
+                "market": market, "stat": market, "line": 10.5, "side": side, "tier": "", "fair": fair, "sigma": 0.02,
+                "edge": fair - 0.54, "team": team, "injury": ""}
+
+    def test_line_moves(self):
+        t0 = datetime(2026, 10, 22, 15, tzinfo=timezone.utc)
+        l = self.leg("Qb One", "player_pass_yds", 0.56)
+        self.assertEqual(tracking.record_moves(self.conn, [l], t0), 1)
+        self.assertEqual(tracking.record_moves(self.conn, [l], t0 + timedelta(hours=1)), 0)   # unchanged: not stored
+        l2 = {**l, "fair": 0.585}
+        self.assertEqual(tracking.record_moves(self.conn, [l2], t0 + timedelta(hours=2)), 1)
+        mv = tracking.moves_for(self.conn, [l2])[tracking.prop_key(l2)]
+        self.assertAlmostEqual(mv[0], 0.56)
+        self.assertEqual(mv[2], 1)
+
+    def test_stacks_find_correlated_combo(self):
+        class Corr:
+            def pair(self, a, b):
+                return 0.45 if a["game_id"] == b["game_id"] else 0.0
+        apps = engine._apps(config.load())
+        legs = [self.leg("Qb One", "player_pass_yds", 0.58), self.leg("Wr Two", "player_reception_yds", 0.57),
+                self.leg("Other Guy", "player_rush_yds", 0.56, game="g2")]
+        found = slips.stacks(legs, apps["prizepicks"], Corr())
+        self.assertTrue(found)
+        top = found[0]
+        self.assertTrue(all(l["game_id"] == "g1" for l in top["legs"]))
+        self.assertGreater(top["p_joint"], top["p_indep"])
+        self.assertGreater(top["ev"], 1.0)
+        # with no correlation there is nothing to stack
+        class NoCorr:
+            def pair(self, a, b):
+                return 0.0
+        self.assertEqual(slips.stacks(legs, apps["prizepicks"], NoCorr()), [])
+
+
 if __name__ == "__main__":
     unittest.main()

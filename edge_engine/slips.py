@@ -41,6 +41,61 @@ def eligible(leg):
     return not leg.get("tier") and injury_level(leg.get("injury")) < 2
 
 
+def stacks(legs, app_cfg, corr, per_game=10, min_rho=0.05, top=12, max_use=2):
+    """Same-game 2- and 3-leg combos whose legs tend to hit together. Pick'em payouts price legs as
+    independent, so a positively correlated combo can be worth more than its legs suggest."""
+    entries = {k: e for k, e in app_cfg["entries"].items() if e["n"] in (2, 3)}
+    if not entries:
+        return []
+    by_game = {}
+    for l in legs:
+        if eligible(l) and l.get("fair") is not None and l["fair"] > 0.45:
+            by_game.setdefault(l["game_id"], []).append(l)
+    found = []
+    for gl in by_game.values():
+        gl = sorted(gl, key=lambda l: l["fair"], reverse=True)[:per_game]
+        m = len(gl)
+        names = [norm_name(l["player"]) for l in gl]
+        rho = {(i, j): corr.pair(gl[i], gl[j]) for i in range(m) for j in range(i + 1, m)}
+        ok = lambda i, j: names[i] != names[j] and rho[(i, j)] >= min_rho
+        combos = [c for c in combinations(range(m), 2) if ok(*c)]
+        combos += [c for c in combinations(range(m), 3) if ok(c[0], c[1]) and ok(c[0], c[2]) and ok(c[1], c[2])]
+        for combo in combos:
+            ls = [gl[i] for i in combo]
+            n = len(ls)
+            d, correlated = entry_dist(ls, corr)
+            if not correlated:
+                continue
+            best = max(((name, mathx.payout_mult(d, e["pay"]), e) for name, e in entries.items() if e["n"] == n),
+                       key=lambda x: x[1], default=None)
+            if not best or best[1] <= 1.0:
+                continue
+            p_ind = 1.0
+            for l in ls:
+                p_ind *= l["fair"]
+            name, ev, e = best
+            sigma = mathx.ev_sigma([l["fair"] for l in ls], [l.get("sigma") or 0.03 for l in ls], e["pay"])
+            found.append({"app": app_cfg["key"], "entry": name, "n": n, "pay": e["pay"], "legs": ls, "dist": d, "ev": ev,
+                          "var": mathx.payout_var(d, e["pay"]), "sigma": sigma, "correlated": True,
+                          "cash": sum(d[h] for h in e["pay"] if e["pay"][h] >= 1), "kelly": mathx.kelly_fraction(d, e["pay"]),
+                          "p_joint": d[n], "p_indep": p_ind, "lift": d[n] / p_ind - 1 if p_ind else 0.0,
+                          "rho": min(rho[p] for p in combinations(combo, 2))})
+    found.sort(key=lambda s: s["ev"], reverse=True)
+    chosen, use = [], {}
+    for s in found:
+        ids = [(l["game_id"], norm_name(l["player"]), l["market"]) for l in s["legs"]]
+        if any(use.get(i, 0) >= max_use for i in ids):
+            continue
+        chosen.append(s)
+        for i in ids:
+            use[i] = use.get(i, 0) + 1
+        if len(chosen) == top:
+            break
+    for k, s in enumerate(chosen, 1):
+        s["num"] = k
+    return chosen
+
+
 def candidates(legs, app_cfg, corr, pool_size=18, per_entry=6, max_per_game=2):
     """Best entries for each of the app's entry types. Each comes back with ev, sigma, kelly."""
     pool = sorted([l for l in legs if eligible(l) and l["fair"] > 0.5], key=lambda l: l["fair"], reverse=True)[:pool_size]

@@ -227,9 +227,17 @@ def build_board(conn, cfg, now, legs, apps=None):
         p["pick_ids"] = ids
         p["system_id"] = tracking.log_system_entry(conn, now, p["app"], p["entry"], ids, p["stake_pct"], p["ev"], p["sigma"])
     flex = track_flex(conn, cfg, now, all_cands)
+    stack_list = []
+    for key in cfg.dfs_apps:
+        a = apps.get(key)
+        if a and a["entries"]:
+            stack_list += slips.stacks([l for l in legs if l["app"] == key and l["edge"] is not None], a, corr)
+    stack_list.sort(key=lambda s: s["ev"], reverse=True)
     board = {"generated_at": iso(now), "model_version": MODEL_VERSION, "flex_logged": flex,
              "plays": [_entry_json(p, apps) for p in plays],
              "entries": [_entry_json(c, apps) for c in sorted(all_cands, key=lambda c: c["ev"], reverse=True)[:40]],
+             "stacks": [{**_entry_json(s, apps), "p_joint": round(s["p_joint"], 4), "p_indep": round(s["p_indep"], 4),
+                         "lift": round(s["lift"], 4), "rho": round(s["rho"], 3)} for s in stack_list[:15]],
              "legs": [_leg_json(l) for l in sorted([l for l in legs if not l["tier"] and l["edge"] is not None],
                                                    key=lambda l: l["edge"], reverse=True)[:200]],
              "alts": [_leg_json(l) for l in sorted([l for l in legs if l["tier"]], key=lambda l: l["fair"], reverse=True)[:80]],
@@ -355,6 +363,7 @@ def run_once(conn, cfg, now=None, export_path=None):
 
 def _after_poll(conn, cfg, now, apps, injury_changes, export_path):
     legs, n_logged = price_all(conn, cfg, now, apps)
+    tracking.record_moves(conn, legs, now)
     tracking.update_closing(conn, now)
     board, plays = build_board(conn, cfg, now, legs, apps)
     n_graded = tracking.grade(conn, now)

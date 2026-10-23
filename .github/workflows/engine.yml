@@ -60,6 +60,9 @@ jobs:
           PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/results.html
         run: |
           edge import-csv history/picks.csv   # keeps the old script's picks as a labeled legacy set (safe to repeat)
+          # Load recent box scores (ESPN, free) for projections, learned correlations and player pages.
+          # Games already stored are skipped, so after the first run this only adds the latest days.
+          edge backfill --days 30 || true
           # Grade yesterday's games and refit the models first (box scores are free; no Odds API credits).
           edge grade && edge fit && edge backtest || true
           edge once --export site/index.json --results site/results.html

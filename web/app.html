@@ -108,6 +108,16 @@ button.btn.sm{min-height:36px;padding:4px 10px;font-size:.8rem}
 .pool li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
 .pool .who{font-weight:600}.pool .meta{font-size:.78rem;color:var(--muted)}
 .card.locked{border-color:var(--warn)}
+.mv{font:600 .72rem var(--mono);white-space:nowrap}.mv.up{color:var(--good)}.mv.down{color:var(--bad)}
+button.plink{appearance:none;border:0;background:none;padding:0;margin:0;font:inherit;font-weight:600;color:inherit;cursor:pointer;text-align:left;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+dialog.sheet{border:1px solid var(--line);border-radius:14px;padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 48px);background:var(--panel);color:var(--ink)}
+dialog.sheet::backdrop{background:rgba(0,0,0,.45)}
+.sheet .sh{position:sticky;top:0;background:var(--panel);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.sheet .sb{padding:14px 16px;display:flex;flex-direction:column;gap:14px}
+.games{display:flex;flex-wrap:wrap;gap:6px}
+.games span{font:500 .8rem var(--mono);padding:4px 7px;border-radius:6px;background:var(--panel2)}
+.games .hit{background:var(--good-bg);color:var(--good)}.games .miss{background:var(--bad-bg);color:var(--bad)}
+.promo{border:1px solid var(--gold);background:var(--gold-bg);color:var(--gold);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-weight:600}
 .betside{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 button.btn.delquick{min-height:36px;padding:4px 10px;font-size:.8rem}
 .betleg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
@@ -182,6 +192,13 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
       <textarea id="pasteIn" placeholder="Paste the contents of index.json or picks.csv"></textarea>
       <div class="row"><button class="btn primary" id="pasteBtn">Load pasted data</button><span class="muted small" id="importNote"></span></div>
     </div></details>
+    <details class="panel" id="promoBox"><summary style="cursor:pointer;font-weight:600">Have a payout boost today?</summary>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <p class="note" style="margin:0">Enter the boosted payouts exactly as PrizePicks shows them. Every play, stack and lineup using that entry type is re-priced against them for the rest of today, and entries you log are settled at the boosted payouts.</p>
+        <div class="fields"><label class="f">Entry type<select id="prEntry"></select></label>
+          <label class="f">Boosted payouts (hits:multiplier)<input class="num" id="prPay" placeholder="5:12, 4:2, 3:0.4"></label></div>
+        <div class="row"><button class="btn primary" id="prApply">Apply for today</button><span class="small" id="prNote" style="color:var(--warn)"></span></div>
+      </div></details>
     <div id="boardOut"></div>
   </section>
 
@@ -293,6 +310,7 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
   <footer>Expected value is an estimate built on sportsbook prices; real results swing a lot over small samples. Bet only what you can afford to lose. Problem gambling help: <span class="num">1-800-GAMBLER</span>.</footer>
 </main>
 <div class="toast" id="toast" hidden></div>
+<dialog class="sheet" id="playerSheet" aria-labelledby="psName"><div class="sh"><h3 id="psName" style="margin:0"></h3><button class="btn sm" id="psClose">Close</button></div><div class="sb" id="psBody"></div></dialog>
 
 <script>
 "use strict";
@@ -342,11 +360,15 @@ function hitDist(ps){ let d = [1]; for(const p of ps){ const n = new Array(d.len
 /* Entry types the day's picks use (Underdog, promos) come with their payouts, so an entry this
    viewer hasn't set up yet still prices. Your own settings win when you have that entry. */
 function boardTables(){ const m = {}; const B = S.board; if(!B) return m;
-  for(const s of [...(B.plays||[]), ...(B.slips||[])]) if(s && s.name && s.pay && !m[s.name])
+  for(const s of [...(B.plays||[]), ...(B.slips||[]), ...(B.stacks||[])]) if(s && s.name && s.pay && !m[s.name])
     m[s.name] = {n: +s.n || Object.keys(s.pay).reduce((a,k)=>Math.max(a,+k),0), pay: Object.fromEntries(Object.entries(s.pay).map(([h,v])=>[h,+v])),
                  family: s.name.replace(/\s*\d+-Pick\s*/," ").trim(), custom: true};
   return m; }
-function payTable(name){ return (S.settings.payouts || PAYOUTS)[name] || PAYOUTS[name] || boardTables()[name]; }
+function basePay(name){ return (S.settings.payouts || PAYOUTS)[name] || PAYOUTS[name] || boardTables()[name]; }
+function promoOn(){ const p = S.settings.promo; return p && p.day === today() && basePay(p.entry) ? p : null; }
+/* Today's payout boost, if one is set, replaces the normal payouts for that entry type everywhere it's priced. */
+function payTable(name, noPromo){ const t = basePay(name), p = !noPromo && promoOn();
+  return t && p && p.entry === name ? {...t, pay: p.pay, promo: true} : t; }
 async function adoptBoardTables(){
   if(!S.canSave || !S.board) return;
   const add = Object.entries(boardTables()).filter(([k]) => !S.settings.payouts[k] && !PAYOUTS[k]);
@@ -374,15 +396,16 @@ const Phi = z => 0.5*(1+erf(z/Math.SQRT2));
 /* A pushed or void leg drops out and the entry pays as the smaller entry of the same family
    (PrizePicks Flex, PrizePicks Power, or a family you named). With no smaller entry, the stake comes back. */
 function familyOf(name){ const t = payTable(name) || {}; return t.family || (/Flex/.test(name) ? "PrizePicks Flex" : /Power/.test(name) ? "PrizePicks Power" : "Custom: " + name); }
-function ppReturnMult(name, legs){
-  const t = payTable(name);
+function ppReturnMult(name, legs, payOverride){
+  // Settles with the payouts saved on the entry (a promo it was logged under), else the normal ones.
+  const base = payTable(name, true), t = payOverride ? {...base, pay: payOverride} : base;
   const live = legs.filter(l => l.result === "hit" || l.result === "miss");
   const hits = live.filter(l => l.result === "hit").length;
   if(live.length === t.n) return +(t.pay[hits] || 0);
   const n = live.length, fam = familyOf(name), pays = S.settings.payouts;
   let alt = n >= 2 ? Object.keys(pays).find(k => familyOf(k) === fam && pays[k].n === n) : null;
   if(!alt && fam === "PrizePicks Flex" && n === 2) alt = "2-Pick Power";
-  const at = alt ? payTable(alt) : null;
+  const at = alt ? payTable(alt, true) : null;
   if(!at) return 1;
   return +(at.pay[hits] || 0);
 }
@@ -402,7 +425,7 @@ function watchLegs(){
 function finalize(b){
   if(b.kind === "pp"){
     const done = b.legs.length && b.legs.every(l => GRADED.includes(l.result));
-    if(done){ b.ret = ppReturnMult(b.entry, b.legs); }
+    if(done){ b.ret = ppReturnMult(b.entry, b.legs, b.pay); }
     else { b.ret = null; }
   } else {
     const r = b.result;
@@ -592,7 +615,7 @@ async function importText(text, label, quiet){
       const d = JSON.parse(text);
       if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
       if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
-      const board = {generated_at:d.generated_at, entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[],
+      const board = {generated_at:d.generated_at, entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[], stacks:d.stacks||[], logs:d.logs||{},
         alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
       await store.saveBoard(board);
       const n = await importHistory(d.history || []);
@@ -650,6 +673,7 @@ async function restoreBackup(d){
 /* ============================== logging bets ============================== */
 async function logEntry(b){
   b.id = b.id || uid(); b.placedAt = new Date().toISOString(); b.date = today(); b.status = "open";
+  if(b.kind === "pp"){ const t = payTable(b.entry); if(t && t.promo){ b.pay = clone(t.pay); b.promo = true; } }
   finalize(b);
   try { await store.saveBet(b); toast(`Logged ${betTitle(b)} for ${money(b.stake)}`); } catch(e){ dbError(e); toast("Couldn't save that entry. Try again."); }
 }
@@ -671,7 +695,7 @@ function renderAll(){
   renderDataNote();
   $("#hdrBank").textContent = money(A.bank); $("#hdrRisk").textContent = money(A.risk);
   if(S.tab === "dash") renderDash(A);
-  if(S.tab === "picks") renderBoard();
+  if(S.tab === "picks"){ renderPromo(); renderBoard(); }
   if(S.tab === "build") renderBuild();
   if(S.tab === "bets") renderBets();
   if(S.tab === "settings") renderSettings();
@@ -930,9 +954,15 @@ function drawChart(el, pts){
 }
 
 /* ---------- board ---------- */
-function slipKey(s){ return (S.board?.generated_at||"") + "|" + s.name + "|" + s.num; }
+function slipKey(s){ return (S.board?.generated_at||"") + "|" + s.name + "|" + s.num + (s.lift != null ? "|stack" : ""); }
 const legOpen = l => !l.start || new Date(l.start).getTime() > Date.now();
-function legLine(l){ return `<li><span class="side ${l.side}">${l.side}</span><span>${esc(l.player)}</span><span class="meta">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span>${l.exact===0?' · est. line':''}${l.sharp===false?' · no sharp':''}</span>${l.injury?`<span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${legOpen(l)?"":'<span class="chip warn">Started</span>'}</li>`; }
+function moveTag(l){
+  if(l.fair_open == null || !fin(+l.fair_open) || !fin(+l.fair)) return "";
+  const d = +l.fair - +l.fair_open; if(Math.abs(d) < 0.005) return "";
+  return `<span class="mv ${d > 0 ? "up" : "down"}" title="Fair % moved from ${pct(+l.fair_open)} since ${esc(timeOf(l.opened_at))}">${d > 0 ? "▲" : "▼"} ${(Math.abs(d)*100).toFixed(1)}</span>`;
+}
+function plink(l){ return `<button class="plink" data-player="${esc((l.sport||"") + "|" + (l.player_key||""))}" data-pname="${esc(l.player)}">${esc(l.player)}</button>`; }
+function legLine(l){ return `<li><span class="side ${l.side}">${l.side}</span><span>${plink(l)}</span><span class="meta">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span> ${moveTag(l)}${l.exact===0?' · est. line':''}${l.sharp===false?' · no sharp':''}</span>${l.injury?`<span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${legOpen(l)?"":'<span class="chip warn">Started</span>'}</li>`; }
 function renderBoard(){
   const el = $("#boardOut"), B = S.board;
   if(!B){ el.innerHTML = S.mode === "db" && !S.isOwner ? `<div class="panel empty"><h3>No picks yet</h3><p class="muted" style="margin:0">The app owner hasn't loaded today's picks. Check back later.</p></div>` : (S.mode !== "db" ? `<div class="panel empty"><h3>Loading today's picks…</h3><p class="muted" style="margin:0;max-width:56ch">They come from your site's latest run. If this doesn't fill in, check your connection and reopen the app.</p></div>` : `<div class="panel empty"><h3>No picks loaded</h3><p class="muted" style="margin:0;max-width:56ch">Open your daily report, click <b>Download app data (JSON)</b> under the track record, then choose that file above. Your daily GitHub run creates it each time it runs.</p></div>`); return; }
@@ -942,7 +972,8 @@ function renderBoard(){
     return `<div class="card ${done?"logged":""} ${locked?"locked":""}" data-slip="${esc(k)}"><div class="hd"><b>${esc(s.name)} <span class="muted">#${s.num}</span></b><span class="chip ${es.E>1?"good":"bad"}">${pct(es.E-1,1,true)} EV</span></div>
       <ol class="legs">${s.legs.map(legLine).join("")}</ol>
       <div class="statgrid small"><div><span class="l">Profit</span><span class="v">${pct(es.profit,0)}</span></div><div><span class="l">Stake back</span><span class="v">${pct(es.cash,0)}</span></div><div><span class="l">Kelly</span><span class="v">${pct(es.kelly,1)}</span></div></div>
-      ${s.corr?'<p class="note" style="margin:0">Same-game correlation included in the odds.</p>':""}
+      ${s.lift != null ? `<p class="small" style="margin:0"><b>Hit together ${pct(+s.p_joint,0)}</b> <span class="muted">vs ${pct(+s.p_indep,0)} if they were independent (${pct(+s.lift,0,true)}).</span></p>`
+        : s.corr?'<p class="note" style="margin:0">Same-game correlation included in the odds.</p>':""}
       ${locked ? `<div class="alert warn">${icon.warn}<span>${locked === 1 ? "1 leg has" : locked + " legs have"} already started, so PrizePicks won't take this slip as is.</span></div>` : smallNote(sg)}
       <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num stakeIn" inputmode="decimal" value="${sg.stake}"></label>
       <button class="btn ${done||locked?"":"primary"} logBtn" style="align-self:flex-end" ${locked?"disabled":""}>${locked?"Swap started legs first":done?"Log again":"Log entry"}</button></div>
@@ -959,11 +990,15 @@ function renderBoard(){
     ${B.tuning && B.tuning.applied ? `<p class="note" style="margin:0">Discounts tuned from ${B.tuning.n} of your graded legs: legs with no sharp book keep ${pct(B.tuning.no_sharp,0)} of their edge, estimated lines ${pct(B.tuning.est_only,0)}.</p>` : ""}
     ${B.plays.length ? `<div class="cards">${B.plays.slice().sort((a,b)=>a.legs.filter(l=>!legOpen(l)).length - b.legs.filter(l=>!legOpen(l)).length).map(s=>card(s,true)).join("")}</div>` : `<div class="panel"><p style="margin:0">No positive plays in this run. Sitting out is the right call.</p></div>`}
     <p class="note" style="margin:0">Suggested stakes use your current bankroll and limits, not the report's. Recheck each line in PrizePicks before entering; if a line moved, the EV here no longer applies.</p>
+    <div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0">Correlated stacks</h3>
+      <p class="note" style="margin:0">Same-game legs that tend to hit together. PrizePicks prices every leg as if it were independent, so a stack can be worth more than its legs look. PrizePicks blocks some same-game combos; if it won't take one, swap a leg.</p></div>
+    ${(B.stacks||[]).length ? `<div class="cards">${B.stacks.map(s=>card(s,false)).join("")}</div>` : `<p class="note" style="margin:0">No same-game stack beats its payout in this run. Stacks get sharper as the engine learns real correlations from box scores.</p>`}
+    ${movers(B)}
     ${B.slips.length?`<details class="panel"><summary style="cursor:pointer;font-weight:600">Other slips (${B.slips.length})</summary><div class="cards" style="margin-top:12px">${B.slips.map(s=>card(s,false)).join("")}</div></details>`:""}
     <div class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Top props by edge</h3>
       <label class="f" style="flex-direction:row;align-items:center;gap:8px">Sport<select id="propSport"><option value="">All</option>${sports.map(s=>`<option ${s===sf?"selected":""} value="${esc(s)}">${esc(s.toUpperCase())}</option>`).join("")}</select></label></div>
       <div class="scroll"><table><thead><tr><th>Prop</th><th>Pick</th><th class="r">Fair</th><th class="r">Edge</th><th class="r">Books</th></tr></thead><tbody>
-      ${props.map(p=>`<tr><td><b>${esc(p.player)}</b><div class="muted small">${esc(p.sport.toUpperCase())} · ${esc(p.stat)} ${+p.line} · ${esc(timeOf(p.start))}</div></td><td class="side ${p.side}">${p.side}</td><td class="r num">${pct(+p.fair)}</td><td class="r"><span class="chip ${p.edge>=0.01?"good":p.edge>=0?"warn":"bad"}">${pct(p.edge,1,true)}</span></td><td class="r num">${p.books}${p.sharp?"":" <span class='muted small'>no sharp</span>"}</td></tr>`).join("")}
+      ${props.map(p=>`<tr><td>${plink(p)}<div class="muted small">${esc(p.sport.toUpperCase())} · ${esc(p.stat)} ${+p.line} · ${esc(timeOf(p.start))}</div></td><td class="side ${p.side}">${p.side}</td><td class="r num">${pct(+p.fair)}<div>${moveTag(p)}</div></td><td class="r"><span class="chip ${p.edge>=0.01?"good":p.edge>=0?"warn":"bad"}">${pct(p.edge,1,true)}</span></td><td class="r num">${p.books}${p.sharp?"":" <span class='muted small'>no sharp</span>"}</td></tr>`).join("")}
       </tbody></table></div></div>
     ${(B.alts||[]).length ? `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">Goblins and demons</h3>
       <p class="note" style="margin:0">Alternate lines, MORE only. Their payouts change with the entry, so add the payout PrizePicks shows you as a custom entry under Bankroll &amp; settings, then price it in the EV calculator. Compare each fair % with that entry's break-even.</p>
@@ -971,7 +1006,7 @@ function renderBoard(){
       ${B.alts.slice(0,40).map(a=>`<tr><td><span class="chip ${a.tier==="goblin"?"good":"warn"}">${esc(a.tier)}</span></td><td><b>${esc(a.player)}</b><div class="muted small">${esc(a.sport.toUpperCase())} · ${esc(a.stat)} ${+a.line} · ${esc(timeOf(a.start))}</div></td><td class="r num">${pct(+a.fair)}</td><td class="r num">${a.books}</td></tr>`).join("")}
       </tbody></table></div></div>` : ""}`;
   el.querySelectorAll("[data-slip]").forEach(c => {
-    const k = c.dataset.slip; const s = [...B.plays, ...B.slips].find(x => slipKey(x) === k); const inp = c.querySelector(".stakeIn"), w = c.querySelector(".warnOut"), btn = c.querySelector(".logBtn");
+    const k = c.dataset.slip; const s = [...B.plays, ...B.slips, ...(B.stacks||[])].find(x => slipKey(x) === k); const inp = c.querySelector(".stakeIn"), w = c.querySelector(".warnOut"), btn = c.querySelector(".logBtn");
     const upd = () => { if(btn.disabled) return; const ws = stakeWarnings(num(inp.value)||0); w.textContent = ws.join(" "); btn.dataset.armed = ""; btn.textContent = c.classList.contains("logged") ? "Log again" : "Log entry"; };
     inp.addEventListener("input", upd); upd();
     btn.addEventListener("click", async () => {
@@ -986,6 +1021,77 @@ function renderBoard(){
   el.querySelector("#propSport")?.addEventListener("change", renderBoard);
 }
 
+/* ---------- moving lines ---------- */
+function movers(B){
+  const seen = new Set(), rows = [];
+  for(const l of (B.props||[])){ if(l.fair_open == null || !fin(+l.fair_open) || !legOpen(l)) continue; const k = poolKey(l); if(seen.has(k)) continue; seen.add(k);
+    const d = +l.fair - +l.fair_open; if(Math.abs(d) >= 0.005) rows.push({l, d}); }
+  rows.sort((a,b) => Math.abs(b.d) - Math.abs(a.d));
+  const top = rows.slice(0, 8);
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3 style="margin:0">Moving lines</h3>
+    <p class="note" style="margin:0">How each prop's fair % has changed since the engine first priced it. Sharp books moving toward a pick is a good sign; moving away is a warning. It fills in as props are priced on more than one run.</p>
+    ${top.length ? `<ul class="pool">${top.map(({l,d}) => `<li><div><span class="side ${l.side}">${l.side}</span> ${plink(l)}
+      <div class="meta">${esc(l.sport.toUpperCase())} · ${esc(l.stat)} ${+l.line} · ${esc(timeOf(l.start))} · was ${pct(+l.fair_open)} at ${esc(timeOf(l.opened_at))}</div></div>
+      <div style="text-align:right"><span class="num">${pct(+l.fair)}</span><div>${moveTag(l)}</div></div></li>`).join("")}</ul>`
+      : `<p class="muted small" style="margin:0">No moves yet. Props priced on only one run have nothing to compare against.</p>`}</div>`;
+}
+
+/* ---------- player pages ---------- */
+function openPlayer(key, name){
+  const [sport, pkey] = key.split("|"); const nn = normName(name);
+  const props = [...legPool().values()].filter(l => (pkey && l.player_key === pkey) || normName(l.player) === nn);
+  const logs = (S.board && S.board.logs) || {};
+  const byMarket = new Map(); for(const l of props) if(!byMarket.has(l.market)) byMarket.set(l.market, l);
+  const graded = S.histLegs.filter(h => normName(h.player) === nn && (h.result === "hit" || h.result === "miss"));
+  const hits = graded.filter(h => h.result === "hit").length, exp = graded.reduce((a,h) => a + (+h.fair||0), 0);
+  let minutes = null;
+  const sections = [...byMarket.values()].map(l => {
+    const g = logs[`${l.sport}|${l.player_key}|${l.market}`] || [];
+    if(!minutes && g.some(x => fin(x.min))) minutes = g;
+    const line = +l.line, res = g.map(x => x.v === line ? "push" : ((x.v > line) === (l.side === "MORE") ? "hit" : "miss"));
+    const nH = res.filter(r => r === "hit").length, nD = res.filter(r => r !== "push").length;
+    const avg = g.length ? g.reduce((a,x) => a + x.v, 0) / g.length : null;
+    return `<div style="display:flex;flex-direction:column;gap:6px"><div class="row" style="justify-content:space-between">
+        <span><span class="side ${l.side}">${l.side}</span> <b>${+l.line} ${esc(l.stat)}</b> <span class="muted small">${esc(l.app === "underdog" ? "Underdog" : "PrizePicks")}</span></span>
+        <span class="num">${pct(+l.fair)} ${moveTag(l)}</span></div>
+      ${g.length ? `<div class="small muted">Last ${g.length} games: ${l.side} would have hit <b>${nH} of ${nD}</b> · average ${avg.toFixed(1)}</div>
+        <div class="games">${g.map((x,i) => `<span class="${res[i]}" title="${esc(x.d)}${x.opp ? " vs " + esc(x.opp) : ""}">${x.v % 1 ? x.v.toFixed(1) : x.v}</span>`).join("")}</div>
+        <div class="small muted">Newest first. Green games beat today's line on the ${l.side} side.</div>`
+      : `<div class="small muted">No game logs yet. They fill in once the engine has loaded box scores for this player.</div>`}</div>`;
+  }).join("");
+  $("#psName").textContent = name;
+  $("#psBody").innerHTML = `${sections || `<p class="muted" style="margin:0">No props for this player in today's run.</p>`}
+    ${minutes ? `<div><h3 style="margin:0 0 6px">Minutes</h3><div class="games">${minutes.filter(x => fin(x.min)).map(x => `<span>${Math.round(x.min)}</span>`).join("")}</div>
+      <div class="small muted" style="margin-top:4px">Newest first. A rising trend usually means a bigger role.</div></div>` : ""}
+    <div><h3 style="margin:0 0 6px">Model's record on ${esc(name)}</h3>${graded.length
+      ? `<p class="small" style="margin:0">${hits} of ${graded.length} picks hit (${pct(hits/graded.length,0)}), against ${pct(exp/graded.length,0)} expected.${graded.length < 20 ? " Too few to read much into yet." : ""}</p>`
+      : `<p class="small muted" style="margin:0">No graded picks on this player yet.</p>`}</div>`;
+  const d = $("#playerSheet"); if(d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+document.addEventListener("click", e => { const b = e.target.closest("button.plink"); if(!b) return; e.preventDefault(); e.stopPropagation(); openPlayer(b.dataset.player, b.dataset.pname); }, true);
+$("#psClose").addEventListener("click", () => { const d = $("#playerSheet"); if(d.close) d.close(); else d.removeAttribute("open"); });
+$("#playerSheet").addEventListener("click", e => { if(e.target === e.currentTarget && e.currentTarget.close) e.currentTarget.close(); });
+
+/* ---------- promo ---------- */
+function renderPromo(){
+  const sel = $("#prEntry"); if(!sel) return; const p = promoOn();
+  const names = Object.keys(S.settings.payouts).filter(k => basePay(k));
+  const cur = p ? p.entry : (sel.value || "5-Pick Flex");
+  sel.innerHTML = names.map(k => `<option ${k===cur?"selected":""}>${esc(k)}</option>`).join("");
+  if(p && document.activeElement !== $("#prPay")) $("#prPay").value = Object.entries(p.pay).sort((a,b)=>b[0]-a[0]).map(([h,m])=>h+":"+m).join(", ");
+  let banner = $("#promoBanner");
+  if(p){ if(!banner){ banner = document.createElement("div"); banner.id = "promoBanner"; banner.className = "promo"; $("#promoBox").before(banner); }
+    banner.innerHTML = `<span>Boost on today: ${esc(p.entry)} pays ${Object.entries(p.pay).sort((a,b)=>b[0]-a[0]).filter(([,m])=>+m>0).map(([h,m])=>`${h} hits ${m}×`).join(", ")}</span><button class="btn sm" id="prEnd">End boost</button>`;
+  } else if(banner) banner.remove();
+}
+$("#prApply").addEventListener("click", async () => {
+  const entry = $("#prEntry").value, t = basePay(entry), pay = parsePay($("#prPay").value), note = $("#prNote");
+  if(!t){ note.textContent = "Pick an entry type."; return; }
+  if(!Object.keys(pay).length || Object.keys(pay).some(h => +h > t.n)){ note.textContent = `Enter payouts like ${t.n}:12, with hits no higher than ${t.n}.`; return; }
+  note.textContent = ""; S.settings.promo = {entry, pay, day: today()}; await store.saveSettings().catch(dbError); renderAll(); toast(`Boost applied to ${entry} for today`);
+});
+document.addEventListener("click", async e => { if(!e.target.closest("#prEnd")) return; delete S.settings.promo; await store.saveSettings().catch(dbError); renderAll(); toast("Boost ended"); });
+
 /* ---------- lineup builder ---------- */
 const BK = "edgefinder.build";
 S.build = (() => { try { return JSON.parse(localStorage.getItem(BK) || "null") || {entry:"5-Pick Flex", legs:[]}; } catch(e){ return {entry:"5-Pick Flex", legs:[]}; } })();
@@ -994,7 +1100,7 @@ const appOf = name => /^Underdog/i.test(name) ? "underdog" : "prizepicks";
 const poolKey = l => (l.app || "prizepicks") + "|" + legKey(l);
 function legPool(){
   const B = S.board, m = new Map(); if(!B) return m;
-  for(const l of [...(B.props||[]), ...(B.plays||[]).flatMap(s=>s.legs), ...(B.slips||[]).flatMap(s=>s.legs)])
+  for(const l of [...(B.props||[]), ...(B.plays||[]).flatMap(s=>s.legs), ...(B.slips||[]).flatMap(s=>s.legs), ...(B.stacks||[]).flatMap(s=>s.legs)])
     if(l && !l.tier && fin(+l.fair) && !m.has(poolKey(l))) m.set(poolKey(l), l);
   return m;
 }
@@ -1034,7 +1140,7 @@ function renderBuild(){
     <div class="panel" style="display:flex;flex-direction:column;gap:10px">
       <div class="row" style="justify-content:space-between"><label class="f">Entry type<select id="bEntry">${names.map(k=>`<option ${k===name?"selected":""}>${esc(k)}</option>`).join("")}</select></label>
         <span class="muted small">Break-even per leg <span class="num">${pct(be,2)}</span></span></div>
-      <div>${slots.map((l,i) => l ? `<div class="build-slot"><div><span class="side ${l.side}">${l.side}</span> <b>${esc(l.player)}</b> ${legOpen(l)?"":'<span class="chip warn">Started</span>'}
+      <div>${slots.map((l,i) => l ? `<div class="build-slot"><div><span class="side ${l.side}">${l.side}</span> ${plink(l)} ${moveTag(l)} ${legOpen(l)?"":'<span class="chip warn">Started</span>'}
           <div class="small muted">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span> · ${esc(timeOf(l.start))}</div></div>
           <div class="acts"><button class="btn sm ${legOpen(l)?"":"primary"}" data-swap="${esc(poolKey(l))}">Swap</button><button class="btn sm danger" data-drop="${esc(poolKey(l))}" aria-label="Remove ${esc(l.player)}">✕</button></div></div>`
         : `<div class="build-slot empty"><span>Leg ${i+1}: tap Add on a prop below</span></div>`).join("")}</div>
@@ -1053,7 +1159,7 @@ function renderBuild(){
       <div class="row" style="justify-content:space-between"><h3 style="margin:0">${app === "underdog" ? "Underdog" : "PrizePicks"} props</h3>
         <label class="f" style="flex-direction:row;align-items:center;gap:8px">Sport<select id="bSport"><option value="">All</option>${sports.map(x=>`<option ${x===sf?"selected":""} value="${esc(x)}">${esc(x.toUpperCase())}</option>`).join("")}</select></label></div>
       ${avail.length ? `<ul class="pool">${avail.slice(0, shown).map(l => { const k = poolKey(l), on = inSlip.has(k), dup = !on && players.has(normName(l.player));
-          return `<li><div><span class="side ${l.side}">${l.side}</span> <span class="who">${esc(l.player)}</span>
+          return `<li><div><span class="side ${l.side}">${l.side}</span> <span class="who">${plink(l)}</span> ${moveTag(l)}
             <div class="meta">${esc(l.sport.toUpperCase())} · ${esc(l.stat)} ${+l.line} · ${esc(timeOf(l.start))}</div></div>
             <div style="display:flex;align-items:center;gap:8px"><span class="chip ${+l.fair-be>=0.01?"good":+l.fair>=be?"warn":"plain"}">${pct(+l.fair)}</span>
             <button class="btn sm ${on?"":"primary"}" data-add="${esc(k)}" ${!on&&(full||dup)?"disabled":""}>${on?"Added":dup?"Same player":"Add"}</button></div></li>`; }).join("")}</ul>
@@ -1080,7 +1186,7 @@ function renderBuild(){
   }
 }
 function buildFromSlip(k){
-  const s = [...(S.board?.plays||[]), ...(S.board?.slips||[])].find(x => slipKey(x) === k); if(!s) return;
+  const s = [...(S.board?.plays||[]), ...(S.board?.slips||[]), ...(S.board?.stacks||[])].find(x => slipKey(x) === k); if(!s) return;
   S.build.entry = payTable(s.name) ? s.name : "5-Pick Flex"; S.build.legs = s.legs.map(poolKey); saveBuild(); setTab("build");
 }
 document.addEventListener("click", e => {

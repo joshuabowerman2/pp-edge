@@ -51,6 +51,9 @@ CREATE TABLE IF NOT EXISTS flex_slips (
   status TEXT DEFAULT 'open', hits INTEGER, ret REAL, settled_at TEXT);
 CREATE INDEX IF NOT EXISTS flex_day ON flex_slips (day, app, entry);
 
+-- Each prop's fair % whenever it changes, for the line-move tracker.
+CREATE TABLE IF NOT EXISTS prop_moves (key TEXT, ts TEXT, fair REAL, PRIMARY KEY (key, ts));
+
 CREATE TABLE IF NOT EXISTS boxscores (
   sport TEXT, event_id TEXT, game_date TEXT, team TEXT, opp TEXT, player_key TEXT, player TEXT,
   minutes REAL, stats TEXT, PRIMARY KEY (sport, event_id, player_key));

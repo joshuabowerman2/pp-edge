@@ -5,7 +5,8 @@ from datetime import timedelta
 
 from .db import meta_get
 from .tracking import iso
-from . import results
+from . import projections, results
+from .tracking import moves_for, prop_key
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
                "close_fair", "clv", "in_play", "home", "away", "start", "result", "actual", "graded_at",
@@ -16,8 +17,13 @@ def _name(e):
     return e["entry"] if e["app"] == "prizepicks" else f"{e['app_label']} {e['entry']}"
 
 
+_MOVES = {}
+
+
 def _leg(l):
-    return {"sport": l["sport"], "player": l["player"], "market": l["market"], "stat": l["stat"], "line": l["line"],
+    mv = _MOVES.get(prop_key(l)) if l.get("game_id") is not None and not l.get("tier") else None
+    return {"sport": l["sport"], "player": l["player"], "player_key": l.get("player_key") or "",
+            "fair_open": round(mv[0], 4) if mv else None, "opened_at": mv[1] if mv else None, "moves": mv[2] if mv else 0, "market": l["market"], "stat": l["stat"], "line": l["line"],
             "side": l["side"], "fair": l["fair"], "game": f"{l['away']} @ {l['home']}", "start": l["start"],
             "books": l["books"], "sharp": bool(l["sharp"]), "exact": l["exact"], "injury": l.get("injury") or "",
             "team": l.get("team") or "", "tier": l.get("tier") or "", "app": l["app"],
@@ -25,7 +31,8 @@ def _leg(l):
 
 
 def _slip(e, play):
-    return {"name": _name(e), "num": e["num"], "n": e["n"], "pay": e["pay"], "mult": e["ev"], "cash": e["cash"],
+    extra = {k: e[k] for k in ("p_joint", "p_indep", "lift", "rho") if k in e}
+    return {**extra, "name": _name(e), "num": e["num"], "n": e["n"], "pay": e["pay"], "mult": e["ev"], "cash": e["cash"],
             "kelly": e["kelly"], "dist": e["dist"], "corr": e["correlated"], "stake_pct": e["stake_pct"],
             "play": play, "app": e["app"], "legs": [_leg(l) for l in e["legs"]]}
 
@@ -44,6 +51,18 @@ def app_json(conn, cfg, now, days=60):
             full = name if k == "prizepicks" else f"{a['label']} {name}"
             payouts[full] = {"n": e["n"], "pay": {str(h): m for h, m in e["pay"].items()}}
     play_keys = {(p["app"], p["entry"], p["num"]) for p in board["plays"]}
+    all_legs = [l for e in board["plays"] + board["entries"] + board.get("stacks", []) for l in e["legs"]] + board["legs"]
+    _MOVES.clear()
+    _MOVES.update(moves_for(conn, all_legs))
+    # Recent games for every player and stat on the board, for the app's player pages.
+    logs = {}
+    for l in all_legs:
+        k = f"{l['sport']}|{l.get('player_key')}|{l['market']}"
+        if l.get("player_key") and k not in logs:
+            h = projections.history(conn, l["sport"], l["player_key"], l["market"], limit=10)
+            if h:
+                logs[k] = [{"d": g["date"], "v": round(g["v"], 2), "min": None if g["minutes"] is None else round(g["minutes"], 1),
+                            "opp": g["opp"] or ""} for g in h]
     cutoff = iso(now - timedelta(days=days))
     hist = []
     for p in conn.execute("SELECT * FROM picks WHERE created_at >= ? ORDER BY seq", (cutoff,)):
@@ -72,6 +91,8 @@ def app_json(conn, cfg, now, days=60):
                        "start": w["start"], "why": w["why"]} for w in board["watch"]],
             "tuning": {"blend": board.get("blend")}, "history": hist,
             # The model's own record for each Flex size (1 unit per slip), for the app's you-vs-the-model view.
+            "stacks": [_slip(e, False) for e in board.get("stacks", [])],
+            "logs": logs,
             "flex": [{k: s[k] for k in ("entry", "n", "slips", "open", "settled", "cashed", "profit", "exp_profit", "roi",
                                          "cash_rate")} for s in results.flex_data(conn)]}
 

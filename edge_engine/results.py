@@ -282,6 +282,36 @@ def flex_html(conn, tz, days=14):
             f'<div class="fsizes">{cards}</div>{"".join(blocks)}</div>')
 
 
+def daily(conn, tz, days=30):
+    """Per game day: picks graded, hits vs expected, and average closing line value."""
+    out = {}
+    for r in conn.execute("SELECT start, fair, clv, result FROM picks"):
+        day = _local(r["start"], tz, "%Y-%m-%d")
+        if not day:
+            continue
+        g = out.setdefault(day, {"day": day, "n": 0, "hits": 0, "exp": 0.0, "clv": [], "picks": 0})
+        g["picks"] += 1
+        if r["result"] in ("hit", "miss"):
+            g["n"] += 1
+            g["hits"] += r["result"] == "hit"
+            g["exp"] += r["fair"]
+        if r["clv"] is not None and r["result"]:
+            g["clv"].append(r["clv"])
+    rows = sorted(out.values(), key=lambda g: g["day"], reverse=True)[:days]
+    for g in rows:
+        g["clv"] = sum(g["clv"]) / len(g["clv"]) if g["clv"] else None
+    return rows
+
+
+def clv_curve(conn):
+    """Running average CLV across finished picks, in start order."""
+    vals, out = [], []
+    for r in conn.execute("SELECT clv FROM picks WHERE clv IS NOT NULL AND result != '' ORDER BY start, seq"):
+        vals.append(r["clv"] * 100)
+        out.append(sum(vals) / len(vals))
+    return out
+
+
 def html(conn, nav=None, tz=None):
     tz = tz or ZoneInfo("America/Chicago")
     d = data(conn)
@@ -340,11 +370,26 @@ at the stakes it recommended, starting from 100. Staked {pct(p["staked_pct"])} o
 {line_chart(p["index"], lambda v: f"{v:.0f}", "Model portfolio value, start 100", "Now", baseline=100)}</div>
 </div>
 {bt_html}
+<div class="grid2">
+<div class="panel"><h2>Closing line value over time</h2><p class="muted small" style="margin:0 0 8px">Running average, in points, across
+every finished pick. Staying above zero means the sharp market keeps moving toward the picks after they're made.</p>
+{line_chart(clv_curve(conn), lambda v: f"{v:+.1f}", "Running average closing line value", "Avg", baseline=0)}</div>
+<div class="panel"><h2>Day by day</h2><div class="scroll"><table style="min-width:0"><thead><tr><th>Game day</th><th class="r">Graded</th>
+<th class="r">Hit rate</th><th class="r">Expected</th><th class="r">CLV</th></tr></thead><tbody>
+{"".join(f'<tr><td>{esc(_local(g["day"] + "T12:00:00+00:00", tz, "%a %b %d"))}</td><td class="r num">{g["n"]}<span class="muted small"> of {g["picks"]}</span></td>'
+         f'<td class="r num">{pct(g["hits"] / g["n"]) if g["n"] else "–"}</td><td class="r num">{pct(g["exp"] / g["n"]) if g["n"] else "–"}</td>'
+         f'<td class="r num {cls(g["clv"])}">{pts(g["clv"], 1)}</td></tr>' for g in daily(conn, tz)) or '<tr><td colspan="5" class="muted">No picks yet.</td></tr>'}
+</tbody></table></div></div>
+</div>
 <div class="panel"><h2>By sport, app and stat</h2><div class="scroll"><table><thead><tr><th>Group</th><th></th><th class="r">Graded</th>
 <th class="r">Hit rate</th><th class="r">Expected</th><th class="r">CLV (pts)</th></tr></thead><tbody>{grows or '<tr><td colspan="6" class="muted">No picks yet.</td></tr>'}</tbody></table></div></div>
 <div class="panel"><h2>Check it yourself</h2><p class="small" style="margin:0 0 6px">Latest pick #{ch["head_seq"]:,}, chain hash:</p>
-<p class="hash">{esc(ch["head_hash"])}</p><p class="small" style="margin:6px 0 0"><a href="picks.csv">Download every pick (CSV)</a>.
-Each row's hash is SHA-256 of the previous hash plus that pick's fields.</p></div>"""
+<p class="hash">{esc(ch["head_hash"])}</p>
+<ol class="small" style="margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px">
+<li><a href="picks.csv">Download every pick (CSV)</a>. Each pick was written before its game started, with its fair price at that moment.</li>
+<li>Each row's hash is SHA-256 of the previous row's hash plus that pick's fields, so changing or removing any old pick breaks every hash after it.</li>
+<li>Run <span class="num">edge verify --csv picks.csv</span> from the open-source engine, or recompute the hashes yourself, and compare the last one with the hash above.</li>
+<li>Copies of this hash posted publicly over time pin the record down, so it can't be rebuilt from scratch either.</li></ol></div>"""
     return page("Edge Engine Track Record", body, nav, "/results")
 
 

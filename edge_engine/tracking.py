@@ -211,6 +211,40 @@ def backfill(conn, sport, days, now=None):
     return n
 
 
+# ------------------------------------------------------------- line moves
+def prop_key(leg):
+    return f"{leg['game_id']}|{leg['app']}|{leg['player_key']}|{leg['market']}|{float(leg['line']):g}|{leg['side']}"
+
+
+def record_moves(conn, legs, now, min_change=0.001):
+    """Store each prop's fair % when it is first seen and whenever it changes."""
+    n = 0
+    for l in legs:
+        if l.get("tier") or l.get("fair") is None:
+            continue
+        k = prop_key(l)
+        last = conn.execute("SELECT fair FROM prop_moves WHERE key=? ORDER BY ts DESC LIMIT 1", (k,)).fetchone()
+        if last is None or abs(last["fair"] - l["fair"]) >= min_change:
+            conn.execute("INSERT OR REPLACE INTO prop_moves(key, ts, fair) VALUES(?,?,?)", (k, iso(now), l["fair"]))
+            n += 1
+    return n
+
+
+def moves_for(conn, legs):
+    """{prop key: (first fair, first time, number of changes)} for these legs."""
+    out = {}
+    for l in legs:
+        if l.get("tier") or l.get("game_id") is None:
+            continue
+        k = prop_key(l)
+        if k in out:
+            continue
+        rows = conn.execute("SELECT ts, fair FROM prop_moves WHERE key=? ORDER BY ts", (k,)).fetchall()
+        if rows:
+            out[k] = (rows[0]["fair"], rows[0]["ts"], len(rows) - 1)
+    return out
+
+
 # ------------------------------------------------------------- system entries
 def entry_return(app_cfg, entry, results):
     """Payout multiple for an entry given leg results; voids step down within the entry's family."""
