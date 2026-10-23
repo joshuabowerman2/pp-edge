@@ -36,7 +36,7 @@ jobs:
           EDGE_DB: data/edge.db
         run: |
           mkdir -p site
-          export SPORTS="${{ vars.SPORTS || 'nba nhl' }}"
+          export SPORTS="${{ vars.SPORTS || 'nba nfl nhl' }} mlb"
           edge rosters || true          # jersey numbers and team colors (ESPN, free)
           edge backfill --days 30 || true   # recent box scores for game logs and projections (ESPN, free)
           edge results --out site/results.html

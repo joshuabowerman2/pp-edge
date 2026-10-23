@@ -12,8 +12,13 @@ KEEP = {
                    "fieldGoalsMade", "fieldGoalsAttempted", "freeThrowsMade", "freeThrowsAttempted",
                    "steals", "blocks", "turnovers"],
     "hockey": ["goals", "assists", "shotsTotal", "blockedShots", "saves", "shotsAgainst"],
-    "football": ["passingYards", "passingTouchdowns", "completions", "passingAttempts", "rushingYards",
-                 "rushingAttempts", "receptions", "receivingYards"],
+    "football": ["passingYards", "passingTouchdowns", "completions", "passingAttempts", "interceptions", "rushingYards",
+                 "rushingAttempts", "rushingTouchdowns", "receptions", "receivingYards", "receivingTargets",
+                 "receivingTouchdowns"],
+    "baseball": ["batting.hits", "batting.runs", "batting.rbi", "batting.homeRuns", "batting.totalBases",
+                 "batting.atBats", "batting.baseOnBalls", "batting.strikeOuts", "batting.stolenBases",
+                 "pitching.strikeOuts", "pitching.outs", "pitching.hits", "pitching.earnedRuns",
+                 "pitching.baseOnBalls", "pitching.numberOfPitches"],
 }
 
 

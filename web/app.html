@@ -225,6 +225,9 @@ input,select,textarea{background:var(--panel2)}
 .home-main{display:flex;flex-direction:column;gap:18px;min-width:0}
 .rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:76px}
 .rail .panel{display:flex;flex-direction:column;gap:12px;scroll-margin-top:84px}
+.chipbtn{position:relative}
+@media (max-width:600px){.chips{gap:6px;width:100%;box-sizing:border-box}.chipbtn .cnt{top:3px;right:4px;font-size:.58rem}.chipbtn{flex:1 1 0!important;min-width:0!important;padding:10px 4px!important}}.chipbtn .cnt{position:absolute;top:4px;right:5px;font:600 .62rem var(--mono);font-style:normal;color:var(--muted)}
+.chipbtn.none{opacity:.55}.chipbtn[aria-pressed=true] .cnt{color:var(--accent)}
 .minedge{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--muted);margin-left:auto}
 .minedge input{width:110px;accent-color:var(--accent)}
 .minedge .num{color:var(--ink);min-width:3.6em}
@@ -1422,23 +1425,33 @@ function loadPlayers(){
     .then(d => { S.players = d && d.players ? d : {players: {}, stat_keys: {}}; S.plFor = ver; plLoading = null; return S.players; });
   return plLoading;
 }
-const TEAM_ABBR = {"atlanta hawks":"ATL","boston celtics":"BOS","brooklyn nets":"BKN","charlotte hornets":"CHA","chicago bulls":"CHI","cleveland cavaliers":"CLE","dallas mavericks":"DAL","denver nuggets":"DEN","detroit pistons":"DET","golden state warriors":"GSW","houston rockets":"HOU","indiana pacers":"IND","la clippers":"LAC","los angeles clippers":"LAC","los angeles lakers":"LAL","memphis grizzlies":"MEM","miami heat":"MIA","milwaukee bucks":"MIL","minnesota timberwolves":"MIN","new orleans pelicans":"NOP","new york knicks":"NYK","oklahoma city thunder":"OKC","orlando magic":"ORL","philadelphia 76ers":"PHI","phoenix suns":"PHX","portland trail blazers":"POR","sacramento kings":"SAC","san antonio spurs":"SAS","toronto raptors":"TOR","utah jazz":"UTA","washington wizards":"WAS",
-  "anaheim ducks":"ANA","boston bruins":"BOS","buffalo sabres":"BUF","calgary flames":"CGY","carolina hurricanes":"CAR","chicago blackhawks":"CHI","colorado avalanche":"COL","columbus blue jackets":"CBJ","dallas stars":"DAL","detroit red wings":"DET","edmonton oilers":"EDM","florida panthers":"FLA","los angeles kings":"LAK","minnesota wild":"MIN","montreal canadiens":"MTL","montréal canadiens":"MTL","nashville predators":"NSH","new jersey devils":"NJD","new york islanders":"NYI","new york rangers":"NYR","ottawa senators":"OTT","philadelphia flyers":"PHI","pittsburgh penguins":"PIT","san jose sharks":"SJS","seattle kraken":"SEA","st. louis blues":"STL","tampa bay lightning":"TBL","toronto maple leafs":"TOR","utah hockey club":"UTA","utah mammoth":"UTA","vancouver canucks":"VAN","vegas golden knights":"VGK","washington capitals":"WSH","winnipeg jets":"WPG"};
-function teamAbbr(t){
+const TEAM_ABBR = {
+  nba: {"atlanta hawks":"ATL","boston celtics":"BOS","brooklyn nets":"BKN","charlotte hornets":"CHA","chicago bulls":"CHI","cleveland cavaliers":"CLE","dallas mavericks":"DAL","denver nuggets":"DEN","detroit pistons":"DET","golden state warriors":"GSW","houston rockets":"HOU","indiana pacers":"IND","la clippers":"LAC","los angeles clippers":"LAC","los angeles lakers":"LAL","memphis grizzlies":"MEM","miami heat":"MIA","milwaukee bucks":"MIL","minnesota timberwolves":"MIN","new orleans pelicans":"NOP","new york knicks":"NYK","oklahoma city thunder":"OKC","orlando magic":"ORL","philadelphia 76ers":"PHI","phoenix suns":"PHX","portland trail blazers":"POR","sacramento kings":"SAC","san antonio spurs":"SAS","toronto raptors":"TOR","utah jazz":"UTA","washington wizards":"WAS"},
+  nhl: {"anaheim ducks":"ANA","boston bruins":"BOS","buffalo sabres":"BUF","calgary flames":"CGY","carolina hurricanes":"CAR","chicago blackhawks":"CHI","colorado avalanche":"COL","columbus blue jackets":"CBJ","dallas stars":"DAL","detroit red wings":"DET","edmonton oilers":"EDM","florida panthers":"FLA","los angeles kings":"LAK","minnesota wild":"MIN","montreal canadiens":"MTL","montréal canadiens":"MTL","nashville predators":"NSH","new jersey devils":"NJD","new york islanders":"NYI","new york rangers":"NYR","ottawa senators":"OTT","philadelphia flyers":"PHI","pittsburgh penguins":"PIT","san jose sharks":"SJS","seattle kraken":"SEA","st. louis blues":"STL","tampa bay lightning":"TBL","toronto maple leafs":"TOR","utah hockey club":"UTA","utah mammoth":"UTA","vancouver canucks":"VAN","vegas golden knights":"VGK","washington capitals":"WSH","winnipeg jets":"WPG"},
+  nfl: {"arizona cardinals":"ARI","atlanta falcons":"ATL","baltimore ravens":"BAL","buffalo bills":"BUF","carolina panthers":"CAR","chicago bears":"CHI","cincinnati bengals":"CIN","cleveland browns":"CLE","dallas cowboys":"DAL","denver broncos":"DEN","detroit lions":"DET","green bay packers":"GB","houston texans":"HOU","indianapolis colts":"IND","jacksonville jaguars":"JAX","kansas city chiefs":"KC","las vegas raiders":"LV","los angeles chargers":"LAC","los angeles rams":"LAR","miami dolphins":"MIA","minnesota vikings":"MIN","new england patriots":"NE","new orleans saints":"NO","new york giants":"NYG","new york jets":"NYJ","philadelphia eagles":"PHI","pittsburgh steelers":"PIT","san francisco 49ers":"SF","seattle seahawks":"SEA","tampa bay buccaneers":"TB","tennessee titans":"TEN","washington commanders":"WSH"},
+  mlb: {"arizona diamondbacks":"ARI","athletics":"ATH","oakland athletics":"ATH","atlanta braves":"ATL","baltimore orioles":"BAL","boston red sox":"BOS","chicago cubs":"CHC","chicago white sox":"CWS","cincinnati reds":"CIN","cleveland guardians":"CLE","colorado rockies":"COL","detroit tigers":"DET","houston astros":"HOU","kansas city royals":"KC","los angeles angels":"LAA","los angeles dodgers":"LAD","miami marlins":"MIA","milwaukee brewers":"MIL","minnesota twins":"MIN","new york mets":"NYM","new york yankees":"NYY","philadelphia phillies":"PHI","pittsburgh pirates":"PIT","san diego padres":"SD","san francisco giants":"SF","seattle mariners":"SEA","st. louis cardinals":"STL","tampa bay rays":"TB","texas rangers":"TEX","toronto blue jays":"TOR","washington nationals":"WSH"},
+};
+function teamAbbr(t, sport){
   const k = String(t || "").toLowerCase().trim(); if(!k) return "";
-  if(TEAM_ABBR[k]) return TEAM_ABBR[k];
-  const hit = Object.keys(TEAM_ABBR).find(n => n.endsWith(" " + k) || n.includes(k)); if(hit) return TEAM_ABBR[hit];
+  const map = TEAM_ABBR[sport] || Object.assign({}, ...Object.values(TEAM_ABBR));
+  if(map[k]) return map[k];
+  const hit = Object.keys(map).find(n => n.endsWith(" " + k)) || Object.keys(map).find(n => n.includes(k)); if(hit) return map[hit];
   const w = k.split(/\s+/); return (w.length > 1 ? w.map(x => x[0]).join("") : k.slice(0, 3)).toUpperCase();
 }
-const PV_FAMILY = {nba: "b", wnba: "b", nhl: "h", nfl: "f", cfb: "f"};
+const PV_FAMILY = {nba: "b", wnba: "b", nhl: "h", nfl: "f", cfb: "f", mlb: "m"};
 // Game log columns per sport: [label, market it stands for, box keys summed]
 const PV_COLS = {
   b: [["PTS", "player_points", ["points"]], ["REB", "player_rebounds", ["rebounds"]], ["AST", "player_assists", ["assists"]], ["3PM", "player_threes", ["threePointFieldGoalsMade"]]],
   h: [["G", "", ["goals"]], ["A", "player_assists", ["assists"]], ["PTS", "player_points", ["goals", "assists"]], ["SOG", "player_shots_on_goal", ["shotsTotal"]]],
-  f: [["PASS", "player_pass_yds", ["passingYards"]], ["RUSH", "player_rush_yds", ["rushingYards"]], ["REC", "player_receptions", ["receptions"]], ["REC YDS", "player_reception_yds", ["receivingYards"]]],
+  f: [["CMP", "player_pass_completions", ["completions"]], ["PASS YDS", "player_pass_yds", ["passingYards"]], ["PASS TD", "player_pass_tds", ["passingTouchdowns"]],
+      ["CAR", "player_rush_attempts", ["rushingAttempts"]], ["RUSH YDS", "player_rush_yds", ["rushingYards"]],
+      ["REC", "player_receptions", ["receptions"]], ["REC YDS", "player_reception_yds", ["receivingYards"]], ["TD", "", ["rushingTouchdowns"]]],
+  m: [["H", "batter_hits", ["batting.hits"]], ["R", "", ["batting.runs"]], ["RBI", "", ["batting.rbi"]], ["HR", "", ["batting.homeRuns"]], ["TB", "batter_total_bases", ["batting.totalBases"]]],
+  mp: [["K", "pitcher_strikeouts", ["pitching.strikeOuts"]], ["OUTS", "pitcher_outs", ["pitching.outs"]], ["H", "pitcher_hits_allowed", ["pitching.hits"]], ["ER", "", ["pitching.earnedRuns"]], ["BB", "", ["pitching.baseOnBalls"]]],
 };
 const PV_SHORT = {player_points_rebounds_assists: "PRA", player_points_rebounds: "P+R", player_points_assists: "P+A", player_rebounds_assists: "R+A",
-  player_blocks: "BLK", player_steals: "STL", player_turnovers: "TO", player_total_saves: "SV", player_blocked_shots: "BLK", player_rush_reception_yds: "R+R YDS"};
+  player_blocks: "BLK", player_steals: "STL", player_turnovers: "TO", player_total_saves: "SV", player_blocked_shots: "BLK", player_rush_reception_yds: "RUSH+REC",
+  player_pass_attempts: "ATT", batter_hits_runs_rbis: "H+R+RBI"};
 function pvPlayer(l){ const P = S.players; const p = P && P.players && P.players[`${l.sport}|${l.player_key}`]; return p && p.games && p.games.length ? p : null; }
 function sumKeys(g, keys){ let t = 0; for(const k of keys || []){ const v = g.s[k]; if(v == null) return null; t += +v; } return keys && keys.length ? t : null; }
 function pvVal(l, g){ return sumKeys(g, (S.players.stat_keys[l.sport] || {})[l.market]); }
@@ -1448,14 +1461,21 @@ function pvGames(l, p, sh){
   const minf = +sh.pvMin || 0;
   return p.games.filter(g => pvVal(l, g) != null && (!minf || (fin(g.m) && g.m >= minf)));
 }
-function pvCols(l){
-  const cols = (PV_COLS[PV_FAMILY[l.sport]] || []).slice();
+function pvFam(l, p){
+  const fam = PV_FAMILY[l.sport];
+  if(fam === "m" && (String(l.market).startsWith("pitcher_") || (p && p.games.some(g => (g.s["pitching.outs"] || 0) > 0) && !p.games.some(g => g.s["batting.atBats"] > 0)))) return "mp";
+  return fam;
+}
+function pvHasMin(p){ return p.games.some(g => fin(g.m) && g.m > 0); }
+function pvCols(l, p){
+  let cols = (PV_COLS[pvFam(l, p)] || []).slice();
+  if(p && (PV_FAMILY[l.sport] === "f" || PV_FAMILY[l.sport] === "m")) cols = cols.filter(c => c[1] === l.market || p.games.some(g => sumKeys(g, c[2]) != null && sumKeys(g, c[2]) !== 0));
   if(!cols.some(c => c[1] === l.market)){ const keys = (S.players.stat_keys[l.sport] || {})[l.market]; if(keys) cols.push([PV_SHORT[l.market] || l.stat, l.market, keys]); }
   return cols;
 }
 function pvAverages(l, p){
   const g = p.games, avg = f => { const v = g.map(f).filter(fin); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
-  const fam = PV_FAMILY[l.sport], out = [["Minutes", num1(avg(x => x.m))]];
+  const fam = PV_FAMILY[l.sport], out = pvHasMin(p) ? [["Minutes", num1(avg(x => x.m))]] : [];
   if(fam === "b"){
     const fgm = avg(x => x.s.fieldGoalsMade), fga = avg(x => x.s.fieldGoalsAttempted);
     out.push(["Points", num1(avg(x => x.s.points))], ["Rebounds", num1(avg(x => x.s.rebounds))], ["Assists", num1(avg(x => x.s.assists))],
@@ -1463,7 +1483,7 @@ function pvAverages(l, p){
   } else if(fam === "h"){
     out.push(["Goals", num1(avg(x => x.s.goals))], ["Assists", num1(avg(x => x.s.assists))], ["Shots", num1(avg(x => x.s.shotsTotal))]);
     if(g.some(x => x.s.saves != null)) out.push(["Saves", num1(avg(x => x.s.saves))]);
-  } else for(const c of PV_COLS[fam] || []) out.push([c[0], num1(avg(x => sumKeys(x, c[2])))]);
+  } else for(const c of pvCols(l, p)) out.push([c[0], num1(avg(x => sumKeys(x, c[2])))]);
   return out;
 }
 function pvChart(l, games, line){
@@ -1474,9 +1494,9 @@ function pvChart(l, games, line){
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Last ${g.length} games of ${esc(l.stat)} against ${line}" style="width:100%;height:auto;display:block">
     ${ticks.map(v => `<text x="${L - 6}" y="${(Y(v) + 3).toFixed(1)}" font-size="10" fill="var(--muted)" text-anchor="end">${v}</text>`).join("")}
     ${g.map((x, i) => { const v = vals[i], hit = v !== line && ((v > line) === (l.side !== "LESS")), y = Y(v), bx = L + i * bw + bw * .14, w = bw * .72;
-      return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1.5, Y(0) - y).toFixed(1)}" rx="3" fill="${v === line ? "var(--muted)" : hit ? "var(--good)" : "var(--pink,#f0508c)"}"><title>${esc(pvShort(x.d))} vs ${esc(teamAbbr(x.o))}: ${v}</title></rect>
+      return `<rect x="${bx.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(1.5, Y(0) - y).toFixed(1)}" rx="3" fill="${v === line ? "var(--muted)" : hit ? "var(--good)" : "var(--pink,#f0508c)"}"><title>${esc(pvShort(x.d))} vs ${esc(teamAbbr(x.o, l.sport))}: ${v}</title></rect>
         ${g.length <= 12 ? `<text x="${(bx + w / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" font-size="10" fill="var(--ink)" text-anchor="middle" font-weight="600">${v % 1 ? v.toFixed(1) : v}</text>` : ""}
-        <text x="${(bx + w / 2).toFixed(1)}" y="${H - 8}" font-size="${g.length > 12 ? 7 : 9}" fill="var(--muted)" text-anchor="middle">${esc(teamAbbr(x.o))}</text>`; }).join("")}
+        <text x="${(bx + w / 2).toFixed(1)}" y="${H - 8}" font-size="${g.length > 12 ? 7 : 9}" fill="var(--muted)" text-anchor="middle">${esc(teamAbbr(x.o, l.sport))}</text>`; }).join("")}
     <line x1="${L}" x2="${W - R}" y1="${Y(line).toFixed(1)}" y2="${Y(line).toFixed(1)}" stroke="var(--ink)" stroke-opacity=".7" stroke-dasharray="2 4"/>
     <text x="${W - R + 4}" y="${(Y(line) + 4).toFixed(1)}" font-size="11" fill="var(--ink)" font-weight="700">${line}</text></svg>`;
 }
@@ -1491,16 +1511,16 @@ function pvDynamic(l, p, sh){
       <div><span>Line</span><b>${line}</b><span>${line === +l.line ? esc(appName(l.app)) : `${esc(appName(l.app))} is ${+l.line}`}</span></div></div>`;
 }
 function pvLog(l, p, sh){
-  const cols = pvCols(l), lines = pvLines(sh), keep = new Set(pvGames(l, p, sh).map(g => g.d));
+  const cols = pvCols(l, p), lines = pvLines(sh), keep = new Set(pvGames(l, p, sh).map(g => g.d)), hasMin = pvHasMin(p);
   const cls = (v, ln, isAvg) => v == null || ln == null || v === ln ? "n" : (v > ln ? "o" : "u") + (isAvg ? " a" : "");
   const avgOf = keys => { const v = p.games.map(g => sumKeys(g, keys)).filter(fin); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; };
   for(const c of cols) if(lines[c[1]] == null && c[1] !== l.market) c.avg = avgOf(c[2]);
-  const rows = p.games.slice(0, 20).map(g => `<tr class="${keep.has(g.d) ? "" : "dim"}"><td>${esc(pvShort(g.d))} ${g.h === 0 ? "@" : "vs"} ${esc(teamAbbr(g.o))}</td>
-      <td class="n">${fin(g.m) ? Math.round(g.m) : "–"}</td>
+  const rows = p.games.slice(0, 20).map(g => `<tr class="${keep.has(g.d) ? "" : "dim"}"><td>${esc(pvShort(g.d))} ${g.h === 0 ? "@" : "vs"} ${esc(teamAbbr(g.o, l.sport))}</td>
+      ${hasMin ? `<td class="n">${fin(g.m) ? Math.round(g.m) : "–"}</td>` : ""}
       ${cols.map(c => { const v = sumKeys(g, c[2]), useAvg = c.avg != null, ln = c[1] === l.market ? sh.pvLine : useAvg ? c.avg : lines[c[1]];
         return `<td class="${cls(v, ln, useAvg)}${c[1] === l.market ? " sel" : ""}">${v == null ? "–" : v % 1 ? v.toFixed(1) : v}</td>`; }).join("")}</tr>`).join("");
-  return `<div class="scroll"><table><thead><tr><th>Games</th><th>Min</th>${cols.map(c => `<th class="${c[1] === l.market ? "sel" : ""}" title="${c[1] === l.market ? `Line ${sh.pvLine}` : lines[c[1]] != null ? `Line ${lines[c[1]]}` : c.avg != null ? `No line today; compared with his average ${num1(c.avg)}` : ""}">${esc(c[0])}${c[1] !== l.market && lines[c[1]] == null && c.avg != null ? "*" : ""}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="small muted" style="margin:0">Green beat that stat's line today, pink fell short. Columns marked * have no line today, so they're compared with the player's own average (in italics). Faded rows are outside your minutes filter.</p>`;
+  return `<div class="scroll"><table><thead><tr><th>Games</th>${hasMin ? "<th>Min</th>" : ""}${cols.map(c => `<th class="${c[1] === l.market ? "sel" : ""}" title="${c[1] === l.market ? `Line ${sh.pvLine}` : lines[c[1]] != null ? `Line ${lines[c[1]]}` : c.avg != null ? `No line today; compared with his average ${num1(c.avg)}` : ""}">${esc(c[0])}${c[1] !== l.market && lines[c[1]] == null && c.avg != null ? "*" : ""}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="small muted" style="margin:0">Green beat that stat's line today, pink fell short. Columns marked * have no line today, so they're compared with the player's own average (in italics). ${hasMin ? " Faded rows are outside your minutes filter." : ""}</p>`;
 }
 function gameLogHTML(l, sh){
   if(!S.players || S.plFor !== ((S.board && (S.board.exported_at || S.board.generated_at)) || "")){
@@ -1512,6 +1532,7 @@ function gameLogHTML(l, sh){
   if(sh.pvFor !== poolKey(l)){ sh.pvFor = poolKey(l); sh.pvLine = +l.line; sh.pvN = sh.pvN || "10"; }
   const vals = p.games.map(g => pvVal(l, g)).filter(fin), hi = Math.max(+l.line * 2, ...vals, 1);
   const fam = PV_FAMILY[l.sport], mins = fam === "h" ? [10, 15, 20] : [20, 25, 30, 35];
+  if(!pvHasMin(p)) sh.pvMin = 0;
   const avgs = pvAverages(l, p);
   return `<div class="pv">
     <div class="pv-box pv-log"><h4>Game log</h4>${pvLog(l, p, sh)}</div>
@@ -1520,7 +1541,7 @@ function gameLogHTML(l, sh){
         <input type="range" id="pvRange" min="0" max="${Math.ceil(hi) + 0.5}" step="0.5" value="${sh.pvLine}" aria-label="Line for ${esc(l.stat)}">
         <button class="pvb" id="pvPlus" aria-label="Raise the line">+</button><output id="pvOut">${sh.pvLine}</output></div></div>
     <div class="pv-box"><div class="pv-filt"><div class="pv-seg" role="group" aria-label="Games shown">${["5", "10", "20", "all"].map(x => `<button data-pvn="${x}" aria-pressed="${sh.pvN === x}">${x === "all" ? "All" : "L" + x}</button>`).join("")}</div>
-        <select id="pvMin" aria-label="Minutes filter"><option value="0">All minutes</option>${mins.map(m => `<option value="${m}" ${+sh.pvMin === m ? "selected" : ""}>${m}+ minutes</option>`).join("")}</select></div>
+        ${pvHasMin(p) ? `<select id="pvMin" aria-label="Minutes filter"><option value="0">All minutes</option>${mins.map(m => `<option value="${m}" ${+sh.pvMin === m ? "selected" : ""}>${m}+ minutes</option>`).join("")}</select>` : ""}</div>
       <div id="pvDyn">${pvDynamic(l, p, sh)}</div></div>
     <div class="pv-box pv-card">${avatar(l, true)}<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px"><b>${esc(p.name)}</b>
       <div class="pv-avg">${avgs.map(([k, v]) => `<div><span>${esc(k)}</span><b>${v}</b></div>`).join("")}</div>
@@ -1891,6 +1912,11 @@ const SPORT_ICON = {
   mlb: '<circle cx="12" cy="12" r="8"/><path d="M8 5.2c1.6 2 1.6 11.6 0 13.6M16 5.2c-1.6 2-1.6 11.6 0 13.6"/>',
 };
 const SPORT_NAME = {nba:"NBA", wnba:"WNBA", nfl:"NFL", cfb:"College FB", nhl:"NHL", mlb:"MLB"};
+const SPORT_ORDER = ["nba", "nfl", "nhl", "mlb"];
+const SPORT_OFF = {
+  nfl: "Most NFL games are on Sunday, with one Thursday and one Monday night. The Saturday run prices Sunday's games, so NFL props fill in here the day before.",
+  mlb: "MLB is down to the World Series. Props show up here the day before each game; after the Series ends, MLB is off until spring.",
+};
 const sportIcon = sp => `<svg class="spi" viewBox="0 0 24 24" aria-hidden="true">${SPORT_ICON[sp] || '<circle cx="12" cy="12" r="8"/>'}</svg>`;
 function initials(n){ return String(n||"?").replace(/[^A-Za-z\s'-]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase() || "?"; }
 const HUES = [152, 200, 222, 262, 290, 330, 12, 34, 180, 240];
@@ -1942,7 +1968,10 @@ function renderHome(){
   const main = $("#homeMain"), rail = $("#homeRail"); if(!main) return;
   const B = S.board, all = B ? homeLegs() : [];
   const sports = [...new Set(all.map(l => l.sport))].sort();
-  if(S.home.sport && !sports.includes(S.home.sport)) S.home.sport = "";
+  const chipSports = [...new Set([...SPORT_ORDER, ...sports])];
+  if(S.home.sport && !chipSports.includes(S.home.sport)) S.home.sport = "";
+  const nBy = {}; for(const l of all) nBy[l.sport] = (nBy[l.sport] || 0) + 1;
+  const emptySport = S.home.sport && !nBy[S.home.sport];
   const list = sorted(all.slice()), inSlip = new Set(S.build.legs);
   const games = new Set(all.map(l => l.game)).size, best = all.reduce((m,l) => Math.max(m, +l.edge), -1);
   const apps = [...new Set([...legPool().values()].map(l => l.app || "prizepicks"))];
@@ -1957,9 +1986,10 @@ function renderHome(){
     ${B ? feedHTML(all) : ""}
     <div class="chips" role="group" aria-label="Sport">
       <button class="chipbtn" aria-pressed="${!S.home.sport}" data-hsport=""><svg class="spi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span>All</span></button>
-      ${sports.map(sp => `<button class="chipbtn" aria-pressed="${S.home.sport===sp}" data-hsport="${esc(sp)}">${sportIcon(sp)}<span>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</span></button>`).join("")}
+      ${chipSports.map(sp => `<button class="chipbtn${nBy[sp] ? "" : " none"}" aria-pressed="${S.home.sport===sp}" data-hsport="${esc(sp)}">${sportIcon(sp)}<span>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</span><i class="cnt">${nBy[sp] || 0}</i></button>`).join("")}
     </div>
-    ${!B ? `<div class="panel empty"><h3>Loading today's props…</h3><p class="muted" style="margin:0">They come from your site's latest run.</p></div>` : `
+    ${!B ? `<div class="panel empty"><h3>Loading today's props…</h3><p class="muted" style="margin:0">They come from your site's latest run.</p></div>`
+      : emptySport ? `<div class="panel empty"><h3>No ${esc(SPORT_NAME[S.home.sport] || S.home.sport.toUpperCase())} props right now</h3><p class="muted" style="margin:0;max-width:60ch">${esc(SPORT_OFF[S.home.sport] || "They show up here once PrizePicks posts lines and the daily run prices them, usually the day before games.")}</p></div>` : `
     <div class="sech"><h3><span class="flame" aria-hidden="true">▲</span> Top props right now</h3></div>
     ${top.length ? `<div class="topcards">${top.map(l => `<div class="pcard">
         <div class="pc-top">${avatar(l, true)}<span class="sport-tag">${sportIcon(l.sport)}${esc(SPORT_NAME[l.sport] || l.sport.toUpperCase())}</span></div>

@@ -18,7 +18,11 @@ def _float(name, default):
 
 
 def _list(name, default):
-    return [x.strip() for x in _env(name, default).replace(",", " ").split() if x.strip()]
+    out = []
+    for x in _env(name, default).replace(",", " ").split():
+        if x.strip() and x.strip() not in out:
+            out.append(x.strip())   # keeps order, drops repeats ("nba nfl nhl mlb mlb")
+    return out
 
 
 @dataclass

@@ -53,7 +53,7 @@ jobs:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           NTFY_TOPIC: ${{ vars.NTFY_TOPIC }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          SPORTS: ${{ vars.SPORTS || 'nba nhl' }}
+          SPORTS: ${{ vars.SPORTS || 'nba nfl nhl' }} mlb
           ALT_LINES: ${{ vars.ALT_LINES }}
           BANKROLL: ${{ vars.BANKROLL }}
           EDGE_DB: data/edge.db
