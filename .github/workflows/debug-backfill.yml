@@ -1,0 +1,36 @@
+name: Debug backfill (temporary)
+on:
+  push:
+    branches: [debug-backfill]
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[fast]"
+      - name: Try backfill
+        env:
+          EDGE_DB: /tmp/dbg.db
+          SPORTS: nba nhl
+        run: |
+          cp data/edge.db /tmp/dbg.db
+          ( set -x; edge backfill --days 4; python - <<'PY'
+          import sqlite3; c = sqlite3.connect('/tmp/dbg.db')
+          print("boxscores:", c.execute("select sport, count(*), count(distinct event_id) from boxscores group by sport").fetchall())
+          PY
+          python - <<'PY'
+          from edge_engine.sources import espn
+          g = espn.scoreboard("nba", "20261021"); print("scoreboard 10/21:", len(g), g[:2])
+          if g:
+              r = espn.box("nba", g[0]["id"]); print("box rows:", len(r), r[:2])
+          PY
+          ) > debug.txt 2>&1 || true
+          cat debug.txt
+      - run: |
+          git config user.name "debug"; git config user.email "debug@users.noreply.github.com"
+          git add -f debug.txt && git commit -qm "debug output" && git push -q origin HEAD:debug-backfill
