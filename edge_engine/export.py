@@ -5,6 +5,7 @@ from datetime import timedelta
 
 from .db import meta_get
 from .tracking import iso
+from . import results
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
                "close_fair", "clv", "in_play", "home", "away", "start", "result", "actual", "graded_at",
@@ -65,11 +66,14 @@ def app_json(conn, cfg, now, days=60):
             "payouts": payouts,
             "plays": [_slip(e, True) for e in board["plays"]],
             "slips": [_slip(e, False) for e in board["entries"] if (e["app"], e["entry"], e["num"]) not in play_keys][:30],
-            "props": [{**_leg(l), "edge": l["edge"]} for l in board["legs"]][:150],
+            "props": [{**_leg(l), "edge": l["edge"]} for l in board["legs"]][:200],
             "alts": [_leg(l) for l in board["alts"]],
             "watch": [{"player": w["player"], "stat": w["stat"], "line": f"{w['line']:g}", "side": w["side"],
                        "start": w["start"], "why": w["why"]} for w in board["watch"]],
-            "tuning": {"blend": board.get("blend")}, "history": hist}
+            "tuning": {"blend": board.get("blend")}, "history": hist,
+            # The model's own record for each Flex size (1 unit per slip), for the app's you-vs-the-model view.
+            "flex": [{k: s[k] for k in ("entry", "n", "slips", "open", "settled", "cashed", "profit", "exp_profit", "roi",
+                                         "cash_rate")} for s in results.flex_data(conn)]}
 
 
 def write_app_json(conn, cfg, path, now):

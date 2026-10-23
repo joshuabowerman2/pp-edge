@@ -100,6 +100,14 @@ label.f{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--m
 .bet summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;padding:12px 14px;align-items:center}
 .bet summary::-webkit-details-marker{display:none}
 .bet .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:12px}
+.build-slot{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.build-slot:last-child{border-bottom:0}.build-slot .acts{display:flex;gap:6px}
+.build-slot.empty{color:var(--muted);font-style:italic}
+button.btn.sm{min-height:36px;padding:4px 10px;font-size:.8rem}
+.pool{list-style:none;margin:0;padding:0}
+.pool li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.pool .who{font-weight:600}.pool .meta{font-size:.78rem;color:var(--muted)}
+.card.locked{border-color:var(--warn)}
 .betside{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 button.btn.delquick{min-height:36px;padding:4px 10px;font-size:.8rem}
 .betleg{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
@@ -146,6 +154,7 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
     <nav class="tabs" role="tablist" aria-label="Sections">
       <button role="tab" id="tab-dash" aria-selected="true" data-tab="dash">Dashboard</button>
       <button role="tab" id="tab-picks" aria-selected="false" data-tab="picks">Today's picks</button>
+      <button role="tab" id="tab-build" aria-selected="false" data-tab="build">Build</button>
       <button role="tab" id="tab-bets" aria-selected="false" data-tab="bets">Bet log</button>
       <button role="tab" id="tab-calc" aria-selected="false" data-tab="calc">EV calculator</button>
       <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings">Bankroll &amp; settings</button>
@@ -174,6 +183,12 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
       <div class="row"><button class="btn primary" id="pasteBtn">Load pasted data</button><span class="muted small" id="importNote"></span></div>
     </div></details>
     <div id="boardOut"></div>
+  </section>
+
+  <!-- BUILD -->
+  <section id="view-build" role="tabpanel" aria-labelledby="tab-build" hidden>
+    <div><h2>Build a lineup</h2><p class="lead">Pick legs from today's priced props, or start from one of the plays. Games that have started are left out, and Swap finds the best replacement for any leg.</p></div>
+    <div id="buildOut"></div>
   </section>
 
   <!-- BETS -->
@@ -233,6 +248,7 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
         <label class="f">Max staked per day (% of bankroll)<input class="num" id="sDay" inputmode="decimal"></label>
         <label class="f">Daily stop-loss (% of bankroll)<input class="num" id="sDStop" inputmode="decimal"></label>
         <label class="f">Weekly stop-loss (% of bankroll)<input class="num" id="sWStop" inputmode="decimal"></label>
+        <label class="f">Minimum entry ($)<input class="num" id="sMin" inputmode="decimal"></label>
       </div>
       <p class="note" style="margin:0">Bankroll here is your starting amount. The app adds your settled profit and loss to it. If you deposit or withdraw, change the starting amount by the same figure.</p>
     </div>
@@ -288,7 +304,7 @@ const PAYOUTS = {
   "3-Pick Flex": {n:3, pay:{3:3, 2:1}}, "4-Pick Flex": {n:4, pay:{4:6, 3:1.5}},
   "5-Pick Flex": {n:5, pay:{5:10, 4:2, 3:0.4}}, "6-Pick Flex": {n:6, pay:{6:25, 5:2, 4:0.4}},
 };
-const DEFAULTS = {startBankroll:500, kellyMult:0.25, maxPct:0.02, dayCapPct:0.08, dailyStop:0.05, weeklyStop:0.12, payouts:PAYOUTS};
+const DEFAULTS = {startBankroll:500, minStake:1, kellyMult:0.25, maxPct:0.02, dayCapPct:0.08, dailyStop:0.05, weeklyStop:0.12, payouts:PAYOUTS};
 const GRADED = ["hit","miss","push","void"];
 
 /* ============================== state ============================== */
@@ -432,13 +448,20 @@ function limitState(A){
 }
 function suggestStake(kelly){ const A = analyze(); const L = limitState(A);
   const raw = Math.min(kelly*S.settings.kellyMult, S.settings.maxPct) * Math.max(A.bank, 0);
-  let s = raw >= 1 ? Math.round(raw) : (raw > 0 ? 1 : 0);
-  return {stake: s, raw, A, L}; }
+  const min = minStake();
+  // Kelly often says less than the app's minimum on a small bankroll: suggest the minimum and say so.
+  const s = raw > 0 ? Math.max(raw >= 1 ? Math.round(raw) : Math.round(raw*100)/100, min) : 0;
+  return {stake: s, raw, below: raw > 0 && raw < min - 0.005, min, A, L}; }
+function minStake(){ const m = +S.settings.minStake; return fin(m) && m > 0 ? m : 1; }
+function smallNote(sg){
+  if(!sg.below) return "";
+  return `<p class="note" style="margin:0;color:var(--warn)">Kelly says ${money(sg.raw)}, under the ${money(sg.min)} minimum, so the minimum is ${(sg.min/Math.max(sg.raw,0.01)).toFixed(1)}× the right size. On a small bankroll, play only your best one or two entries a day.</p>`;
+}
 function stakeWarnings(stake){
   const A = analyze(), L = limitState(A), w = [];
   if(L.weekStopHit) w.push("You've hit your weekly stop-loss.");
   else if(L.dayStopHit) w.push("You've hit your daily stop-loss.");
-  if(stake > L.maxStake + 0.005) w.push(`This is more than your ${pct(S.settings.maxPct,1)} per-entry limit (${money(L.maxStake)}).`);
+  if(stake > Math.max(L.maxStake, minStake()) + 0.005) w.push(`This is more than your ${pct(S.settings.maxPct,1)} per-entry limit (${money(L.maxStake)}).`);
   if(A.todayStaked + stake > L.dayCap + 0.005) w.push(`This puts today's total at ${money(A.todayStaked + stake)}, over your ${money(L.dayCap)} daily limit.`);
   if(stake > A.bank - A.risk) w.push("This is more than your bankroll not already at risk.");
   return w;
@@ -569,7 +592,7 @@ async function importText(text, label, quiet){
       const d = JSON.parse(text);
       if(d.app === "edge-finder-backup"){ await restoreBackup(d); note.textContent = `Restored ${d.bets.length} bets and your settings.`; return; }
       if(d.app !== "edge-finder") throw new Error("This JSON isn't an Edge Finder data file. Use index.json from your daily report.");
-      const board = {generated_at:d.generated_at, entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,150),
+      const board = {generated_at:d.generated_at, entry:d.entry, breakeven:d.breakeven, notes:d.notes||"", plays:d.plays||[], slips:(d.slips||[]).slice(0,30), props:(d.props||[]).slice(0,200), flex:d.flex||[],
         alts:(d.alts||[]).slice(0,80), watch:d.watch||[], tuning:d.tuning||{}, loadedAt:new Date().toISOString(), loadedBy: quiet ? "sync" : "you"};
       await store.saveBoard(board);
       const n = await importHistory(d.history || []);
@@ -649,6 +672,7 @@ function renderAll(){
   $("#hdrBank").textContent = money(A.bank); $("#hdrRisk").textContent = money(A.risk);
   if(S.tab === "dash") renderDash(A);
   if(S.tab === "picks") renderBoard();
+  if(S.tab === "build") renderBuild();
   if(S.tab === "bets") renderBets();
   if(S.tab === "settings") renderSettings();
   if(S.tab === "calc") { renderCalcOut(); renderBookOut(); }
@@ -685,7 +709,7 @@ function renderDash(A){
   const verdict = edgeVerdict(A);
   el.innerHTML = `
     <div><h2>Dashboard</h2><p class="lead">${A.n} settled ${A.n===1?"entry":"entries"}, ${A.open.length} open. Expected profit uses the fair odds at the moment you logged each entry.</p></div>
-    <div class="alerts">${alerts.map(([k,i,t])=>`<div class="alert ${k}">${i}<span>${esc(t)}</span></div>`).join("")}</div>
+    <div class="alerts">${needBackup() ? `<div class="alert warn">${icon.warn}<span style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">${S.settings.lastBackup ? `Your last backup was ${esc(ago(S.settings.lastBackup))}.` : "You haven't backed up your bets yet."} They're saved only on this device, so clearing your browser would erase them.<button class="btn sm" data-backup="1">Download backup</button></span></div>` : ""}${alerts.map(([k,i,t])=>`<div class="alert ${k}">${i}<span>${esc(t)}</span></div>`).join("")}</div>
     <div class="kpis">
       ${kpi("Bankroll", money(A.bank), `Started at ${money(st.startBankroll)}`)}
       ${kpi("Profit", `<span class="${cls(A.cum)}">${money(A.cum,true)}</span>`, `on ${money(A.staked)} staked`)}
@@ -714,6 +738,7 @@ function renderDash(A){
       ${limitsPanel(A, L)}
     </div>
     ${simPanel()}
+    ${vsModelPanel(A)}
     ${breakdownPanel(A)}
     ${legPanel(LS2)}`;
   drawChart($("#pChart"), A.series);
@@ -829,6 +854,28 @@ function limitsPanel(A, L){
       <div class="bar ${v>=cap&&cap>0?"over":""}"><span style="width:${(f*100).toFixed(1)}%"></span></div></div>`; }).join("")}
     <p class="note" style="margin:0">Max per entry ${money(L.maxStake)} (${pct(st.maxPct,1)}). Suggested stakes use ${st.kellyMult===0.25?"quarter":st.kellyMult===0.5?"half":"one-tenth"} Kelly, capped at that limit. <button class="btn" data-go="settings" style="min-height:36px;padding:4px 10px;margin-left:4px">Change limits</button></p></div>`;
 }
+function vsModelPanel(A){
+  const flex = (S.board && S.board.flex) || [];
+  const mine = new Map();
+  for(const b of A.settled){ if(b.kind !== "pp") continue; const g = mine.get(b.entry) || {n:0, staked:0, profit:0, exp:0};
+    g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); mine.set(b.entry, g); }
+  const names = [...new Set([...flex.map(f => f.entry), ...mine.keys()])].sort((a,b) => (payTable(a)?.n||0) - (payTable(b)?.n||0) || a.localeCompare(b));
+  const src = new Map();
+  for(const b of A.settled){ const k = b.source === "report" ? "Model's plays as suggested" : b.source === "builder" ? "Your own lineups (builder)" : "EV calculator";
+    const g = src.get(k) || {n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); src.set(k, g); }
+  const roi = (p, s) => s ? pct(p/s, 1, true) : "–";
+  if(!names.length && !src.size) return "";
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3 style="margin:0">You vs the model</h3>
+    <p class="muted small" style="margin:0">The model locks in its best Flex slip of each size every day and tracks it at 1 unit each. Compare its return with yours on the same entry types. Both swing a lot until there are dozens of entries.</p>
+    <div class="scroll"><table><thead><tr><th>Entry</th><th class="r">Your entries</th><th class="r">Your ROI</th><th class="r">Model slips</th><th class="r">Model ROI</th></tr></thead><tbody>
+    ${names.map(k => { const m = mine.get(k), f = flex.find(x => x.entry === k);
+      return `<tr><td>${esc(k)}</td><td class="r num">${m ? m.n : 0}</td><td class="r num ${m?cls(m.profit):""}">${m ? roi(m.profit, m.staked) : "–"}</td>
+        <td class="r num">${f ? f.settled : 0}${f && f.open ? ` <span class="muted small">+${f.open} open</span>` : ""}</td><td class="r num ${f&&f.settled?cls(f.profit):""}">${f && f.settled ? pct(f.roi,1,true) : "–"}</td></tr>`; }).join("")}
+    </tbody></table></div>
+    ${src.size ? `<div class="scroll"><table><thead><tr><th>Where your entries came from</th><th class="r">Entries</th><th class="r">ROI</th><th class="r">Expected ROI</th></tr></thead><tbody>
+      ${[...src.entries()].map(([k,g]) => `<tr><td>${esc(k)}</td><td class="r num">${g.n}</td><td class="r num ${cls(g.profit)}">${roi(g.profit, g.staked)}</td><td class="r num">${roi(g.exp, g.staked)}</td></tr>`).join("")}
+    </tbody></table></div>` : ""}</div>`;
+}
 function breakdownPanel(A){
   const groups = (keyFn) => { const m = new Map(); for(const b of A.settled){ const k = keyFn(b); const g = m.get(k) || {k, n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); m.set(k,g);} return [...m.values()].sort((a,b)=>b.staked-a.staked); };
   const table = (title, rows) => `<div class="scroll"><table><thead><tr><th>${title}</th><th class="r">Entries</th><th class="r">Staked</th><th class="r">Profit</th><th class="r">ROI</th><th class="r">Expected ROI</th></tr></thead><tbody>
@@ -884,18 +931,22 @@ function drawChart(el, pts){
 
 /* ---------- board ---------- */
 function slipKey(s){ return (S.board?.generated_at||"") + "|" + s.name + "|" + s.num; }
-function legLine(l){ return `<li><span class="side ${l.side}">${l.side}</span><span>${esc(l.player)}</span><span class="meta">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span>${l.exact===0?' · est. line':''}${l.sharp===false?' · no sharp':''}</span>${l.injury?`<span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}</li>`; }
+const legOpen = l => !l.start || new Date(l.start).getTime() > Date.now();
+function legLine(l){ return `<li><span class="side ${l.side}">${l.side}</span><span>${esc(l.player)}</span><span class="meta">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span>${l.exact===0?' · est. line':''}${l.sharp===false?' · no sharp':''}</span>${l.injury?`<span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${legOpen(l)?"":'<span class="chip warn">Started</span>'}</li>`; }
 function renderBoard(){
   const el = $("#boardOut"), B = S.board;
   if(!B){ el.innerHTML = S.mode === "db" && !S.isOwner ? `<div class="panel empty"><h3>No picks yet</h3><p class="muted" style="margin:0">The app owner hasn't loaded today's picks. Check back later.</p></div>` : (S.mode !== "db" ? `<div class="panel empty"><h3>Loading today's picks…</h3><p class="muted" style="margin:0;max-width:56ch">They come from your site's latest run. If this doesn't fill in, check your connection and reopen the app.</p></div>` : `<div class="panel empty"><h3>No picks loaded</h3><p class="muted" style="margin:0;max-width:56ch">Open your daily report, click <b>Download app data (JSON)</b> under the track record, then choose that file above. Your daily GitHub run creates it each time it runs.</p></div>`); return; }
   const logged = new Set(S.bets.map(b => b.sourceKey).filter(Boolean));
   const card = (s, isPlay) => { const es = entryStats(s.name, s.legs.map(l=>+l.fair), s.dist); const sg = suggestStake(es.kelly); const k = slipKey(s); const done = logged.has(k);
-    return `<div class="card ${done?"logged":""}" data-slip="${esc(k)}"><div class="hd"><b>${esc(s.name)} <span class="muted">#${s.num}</span></b><span class="chip ${es.E>1?"good":"bad"}">${pct(es.E-1,1,true)} EV</span></div>
+    const locked = s.legs.filter(l => !legOpen(l)).length;
+    return `<div class="card ${done?"logged":""} ${locked?"locked":""}" data-slip="${esc(k)}"><div class="hd"><b>${esc(s.name)} <span class="muted">#${s.num}</span></b><span class="chip ${es.E>1?"good":"bad"}">${pct(es.E-1,1,true)} EV</span></div>
       <ol class="legs">${s.legs.map(legLine).join("")}</ol>
       <div class="statgrid small"><div><span class="l">Profit</span><span class="v">${pct(es.profit,0)}</span></div><div><span class="l">Stake back</span><span class="v">${pct(es.cash,0)}</span></div><div><span class="l">Kelly</span><span class="v">${pct(es.kelly,1)}</span></div></div>
       ${s.corr?'<p class="note" style="margin:0">Same-game correlation included in the odds.</p>':""}
+      ${locked ? `<div class="alert warn">${icon.warn}<span>${locked === 1 ? "1 leg has" : locked + " legs have"} already started, so PrizePicks won't take this slip as is.</span></div>` : smallNote(sg)}
       <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num stakeIn" inputmode="decimal" value="${sg.stake}"></label>
-      <button class="btn ${done?"":"primary"} logBtn" style="align-self:flex-end">${done?"Log again":"Log entry"}</button></div>
+      <button class="btn ${done||locked?"":"primary"} logBtn" style="align-self:flex-end" ${locked?"disabled":""}>${locked?"Swap started legs first":done?"Log again":"Log entry"}</button></div>
+      <div class="row"><button class="btn ${locked?"primary":""} sm" data-edit="${esc(k)}">${locked?"Fix it in the builder":"Edit in the builder"}</button></div>
       <div class="warnOut small" style="color:var(--warn)"></div>
       ${done?'<span class="chip gold" style="align-self:flex-start">Logged</span>':""}</div>`; };
   const sports = [...new Set(B.props.map(p=>p.sport))];
@@ -906,7 +957,7 @@ function renderBoard(){
     ${(Date.now() - new Date(B.generated_at)) > 18*36e5 ? `<div class="alert warn">${icon.warn}<span>These picks are from ${esc(timeOf(B.generated_at))}. Load the latest file before playing them.</span></div>` : ""}
     ${B.loadedBy === "sync" ? `<p class="note" style="margin:0">Loaded automatically from your GitHub repo ${esc(timeOf(B.loadedAt))}.</p>` : ""}
     ${B.tuning && B.tuning.applied ? `<p class="note" style="margin:0">Discounts tuned from ${B.tuning.n} of your graded legs: legs with no sharp book keep ${pct(B.tuning.no_sharp,0)} of their edge, estimated lines ${pct(B.tuning.est_only,0)}.</p>` : ""}
-    ${B.plays.length ? `<div class="cards">${B.plays.map(s=>card(s,true)).join("")}</div>` : `<div class="panel"><p style="margin:0">No positive plays in this run. Sitting out is the right call.</p></div>`}
+    ${B.plays.length ? `<div class="cards">${B.plays.slice().sort((a,b)=>a.legs.filter(l=>!legOpen(l)).length - b.legs.filter(l=>!legOpen(l)).length).map(s=>card(s,true)).join("")}</div>` : `<div class="panel"><p style="margin:0">No positive plays in this run. Sitting out is the right call.</p></div>`}
     <p class="note" style="margin:0">Suggested stakes use your current bankroll and limits, not the report's. Recheck each line in PrizePicks before entering; if a line moved, the EV here no longer applies.</p>
     ${B.slips.length?`<details class="panel"><summary style="cursor:pointer;font-weight:600">Other slips (${B.slips.length})</summary><div class="cards" style="margin-top:12px">${B.slips.map(s=>card(s,false)).join("")}</div></details>`:""}
     <div class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="row" style="justify-content:space-between"><h3 style="margin:0">Top props by edge</h3>
@@ -921,7 +972,7 @@ function renderBoard(){
       </tbody></table></div></div>` : ""}`;
   el.querySelectorAll("[data-slip]").forEach(c => {
     const k = c.dataset.slip; const s = [...B.plays, ...B.slips].find(x => slipKey(x) === k); const inp = c.querySelector(".stakeIn"), w = c.querySelector(".warnOut"), btn = c.querySelector(".logBtn");
-    const upd = () => { const ws = stakeWarnings(num(inp.value)||0); w.textContent = ws.join(" "); btn.dataset.armed = ""; btn.textContent = c.classList.contains("logged") ? "Log again" : "Log entry"; };
+    const upd = () => { if(btn.disabled) return; const ws = stakeWarnings(num(inp.value)||0); w.textContent = ws.join(" "); btn.dataset.armed = ""; btn.textContent = c.classList.contains("logged") ? "Log again" : "Log entry"; };
     inp.addEventListener("input", upd); upd();
     btn.addEventListener("click", async () => {
       const stake = num(inp.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
@@ -934,6 +985,117 @@ function renderBoard(){
   });
   el.querySelector("#propSport")?.addEventListener("change", renderBoard);
 }
+
+/* ---------- lineup builder ---------- */
+const BK = "edgefinder.build";
+S.build = (() => { try { return JSON.parse(localStorage.getItem(BK) || "null") || {entry:"5-Pick Flex", legs:[]}; } catch(e){ return {entry:"5-Pick Flex", legs:[]}; } })();
+function saveBuild(){ try { localStorage.setItem(BK, JSON.stringify(S.build)); } catch(e){} }
+const appOf = name => /^Underdog/i.test(name) ? "underdog" : "prizepicks";
+const poolKey = l => (l.app || "prizepicks") + "|" + legKey(l);
+function legPool(){
+  const B = S.board, m = new Map(); if(!B) return m;
+  for(const l of [...(B.props||[]), ...(B.plays||[]).flatMap(s=>s.legs), ...(B.slips||[]).flatMap(s=>s.legs)])
+    if(l && !l.tier && fin(+l.fair) && !m.has(poolKey(l))) m.set(poolKey(l), l);
+  return m;
+}
+function buildLegs(){ const pool = legPool(); return S.build.legs.map(k => pool.get(k)).filter(Boolean); }
+function bestFor(slipLegs, n, app, skipKey){
+  // Highest fair % leg for this app that hasn't started, with a new player and at most 2 legs per game.
+  const players = new Set(slipLegs.filter(l => poolKey(l) !== skipKey).map(l => normName(l.player)));
+  const games = {}; for(const l of slipLegs) if(poolKey(l) !== skipKey) games[l.game] = (games[l.game]||0) + 1;
+  let best = null;
+  for(const l of legPool().values()){
+    if((l.app||"prizepicks") !== app || !legOpen(l) || players.has(normName(l.player)) || (games[l.game]||0) >= 2) continue;
+    if(+l.fair <= 0.5) continue;
+    if(!best || +l.fair > +best.fair) best = l;
+  }
+  return best;
+}
+function renderBuild(){
+  const el = $("#buildOut"); if(!el) return;
+  if(!S.board){ el.innerHTML = `<div class="panel empty"><h3>No picks yet</h3><p class="muted" style="margin:0">Today's props appear here once the picks load.</p></div>`; return; }
+  const names = Object.keys(S.settings.payouts).filter(k => payTable(k));
+  if(!payTable(S.build.entry)) S.build.entry = "5-Pick Flex";
+  const name = S.build.entry, t = payTable(name), app = appOf(name), be = breakeven(name);
+  const pool = legPool();
+  S.build.legs = S.build.legs.filter(k => pool.has(k)).slice(0, t.n);
+  const legs = buildLegs(), locked = legs.filter(l => !legOpen(l));
+  const slots = Array.from({length: t.n}, (_, i) => legs[i]);
+  const full = legs.length === t.n;
+  const es = full ? entryStats(name, legs.map(l => +l.fair)) : null;
+  const sg = es ? suggestStake(es.kelly) : null;
+  const sf = S.build.sport || "";
+  const avail = [...pool.values()].filter(l => (l.app||"prizepicks") === app && legOpen(l) && (!sf || l.sport === sf))
+    .sort((a,b) => +b.fair - +a.fair);
+  const shown = S.build.more ? 80 : 25, moreLeft = Math.min(avail.length, 80) - shown;
+  const inSlip = new Set(S.build.legs), players = new Set(legs.map(l => normName(l.player)));
+  const sports = [...new Set([...pool.values()].map(l => l.sport))].sort();
+  el.innerHTML = `<div class="grid2">
+    <div class="panel" style="display:flex;flex-direction:column;gap:10px">
+      <div class="row" style="justify-content:space-between"><label class="f">Entry type<select id="bEntry">${names.map(k=>`<option ${k===name?"selected":""}>${esc(k)}</option>`).join("")}</select></label>
+        <span class="muted small">Break-even per leg <span class="num">${pct(be,2)}</span></span></div>
+      <div>${slots.map((l,i) => l ? `<div class="build-slot"><div><span class="side ${l.side}">${l.side}</span> <b>${esc(l.player)}</b> ${legOpen(l)?"":'<span class="chip warn">Started</span>'}
+          <div class="small muted">${esc(l.stat)} ${+l.line} · <span class="num">${pct(+l.fair)}</span> · ${esc(timeOf(l.start))}</div></div>
+          <div class="acts"><button class="btn sm ${legOpen(l)?"":"primary"}" data-swap="${esc(poolKey(l))}">Swap</button><button class="btn sm danger" data-drop="${esc(poolKey(l))}" aria-label="Remove ${esc(l.player)}">✕</button></div></div>`
+        : `<div class="build-slot empty"><span>Leg ${i+1}: tap Add on a prop below</span></div>`).join("")}</div>
+      <div class="row"><button class="btn sm" id="bFill" ${full?"disabled":""}>Fill with best legs</button><button class="btn sm" id="bClear" ${legs.length?"":"disabled"}>Clear</button></div>
+      ${es ? `<div class="statgrid"><div><span class="l">Expected return</span><span class="v ${cls(es.E-1)}">${pct(es.E-1,1,true)}</span></div>
+          <div><span class="l">Stake back</span><span class="v">${pct(es.cash,0)}</span></div><div><span class="l">Profit</span><span class="v">${pct(es.profit,0)}</span></div></div>
+        <p class="note" style="margin:0">Treats the legs as independent, so same-game legs may be a little off.</p>
+        ${locked.length ? `<div class="alert warn">${icon.warn}<span>Swap out the started ${locked.length===1?"leg":"legs"} before entering.</span></div>`
+          : es.E <= 1 ? `<p class="small neg" style="margin:0">This lineup loses money on average. Swap a leg or try a different entry type.</p>` : smallNote(sg)}
+        <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num" id="bStakeIn" inputmode="decimal" value="${sg.stake||""}"></label>
+          <button class="btn primary" id="bLogBtn" style="align-self:flex-end" ${locked.length?"disabled":""}>Log entry</button></div>
+        <div class="small" id="bWarnOut" style="color:var(--warn)"></div>`
+      : `<p class="muted small" style="margin:0">Add ${t.n - legs.length} more ${t.n - legs.length === 1 ? "leg" : "legs"} to see the expected return.</p>`}
+    </div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:8px">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">${app === "underdog" ? "Underdog" : "PrizePicks"} props</h3>
+        <label class="f" style="flex-direction:row;align-items:center;gap:8px">Sport<select id="bSport"><option value="">All</option>${sports.map(x=>`<option ${x===sf?"selected":""} value="${esc(x)}">${esc(x.toUpperCase())}</option>`).join("")}</select></label></div>
+      ${avail.length ? `<ul class="pool">${avail.slice(0, shown).map(l => { const k = poolKey(l), on = inSlip.has(k), dup = !on && players.has(normName(l.player));
+          return `<li><div><span class="side ${l.side}">${l.side}</span> <span class="who">${esc(l.player)}</span>
+            <div class="meta">${esc(l.sport.toUpperCase())} · ${esc(l.stat)} ${+l.line} · ${esc(timeOf(l.start))}</div></div>
+            <div style="display:flex;align-items:center;gap:8px"><span class="chip ${+l.fair-be>=0.01?"good":+l.fair>=be?"warn":"plain"}">${pct(+l.fair)}</span>
+            <button class="btn sm ${on?"":"primary"}" data-add="${esc(k)}" ${!on&&(full||dup)?"disabled":""}>${on?"Added":dup?"Same player":"Add"}</button></div></li>`; }).join("")}</ul>
+        ${moreLeft > 0 ? `<button class="btn sm" id="bMore">Show ${moreLeft} more</button>` : ""}`
+        : `<p class="muted small" style="margin:0">No props left for games that haven't started.</p>`}
+    </div></div>`;
+  $("#bEntry").addEventListener("change", e => { S.build.entry = e.target.value; saveBuild(); renderBuild(); });
+  $("#bSport").addEventListener("change", e => { S.build.sport = e.target.value; S.build.more = false; saveBuild(); renderBuild(); });
+  $("#bFill")?.addEventListener("click", () => { const cur = buildLegs();
+    while(cur.length < t.n){ const l = bestFor(cur, t.n, app); if(!l) break; cur.push(l); }
+    if(cur.length < t.n) toast("Not enough open legs to fill every slot.");
+    S.build.legs = cur.map(poolKey); saveBuild(); renderBuild(); });
+  $("#bMore")?.addEventListener("click", () => { S.build.more = true; renderBuild(); });
+  $("#bClear")?.addEventListener("click", () => { S.build.legs = []; saveBuild(); renderBuild(); });
+  const si = $("#bStakeIn"), lb = $("#bLogBtn"), w = $("#bWarnOut");
+  if(si && lb){
+    const upd = () => { w.textContent = stakeWarnings(num(si.value)||0).join(" "); lb.dataset.armed = ""; lb.textContent = "Log entry"; };
+    si.addEventListener("input", upd); upd();
+    lb.addEventListener("click", async () => { const stake = num(si.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
+      const ws = stakeWarnings(stake); if(ws.length && !lb.dataset.armed){ lb.dataset.armed = "1"; lb.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
+      await logEntry({kind:"pp", entry:name, stake, E:es.E, V:es.V, cash:es.cash, source:"builder",
+        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||""}))});
+      lb.dataset.armed = ""; lb.textContent = "Logged"; });
+  }
+}
+function buildFromSlip(k){
+  const s = [...(S.board?.plays||[]), ...(S.board?.slips||[])].find(x => slipKey(x) === k); if(!s) return;
+  S.build.entry = payTable(s.name) ? s.name : "5-Pick Flex"; S.build.legs = s.legs.map(poolKey); saveBuild(); setTab("build");
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("button"); if(!t) return;
+  if(t.dataset.edit){ buildFromSlip(t.dataset.edit); return; }
+  if(t.dataset.add){ const k = t.dataset.add;
+    if(S.build.legs.includes(k)) S.build.legs = S.build.legs.filter(x => x !== k); else S.build.legs.push(k);
+    saveBuild(); renderBuild(); return; }
+  if(t.dataset.drop){ S.build.legs = S.build.legs.filter(x => x !== t.dataset.drop); saveBuild(); renderBuild(); return; }
+  if(t.dataset.swap){ const k = t.dataset.swap, cur = buildLegs(), old = cur.find(l => poolKey(l) === k);
+    const l = bestFor(cur, cur.length, appOf(S.build.entry), k);
+    if(!l){ toast("No open leg to swap in."); return; }
+    S.build.legs = S.build.legs.map(x => x === k ? poolKey(l) : x); saveBuild(); renderBuild();
+    toast(`Swapped in ${l.player} ${l.side} ${+l.line} (${pct(+l.fair)})` + (old ? ` for ${old.player}` : "")); return; }
+});
 
 /* ---------- bets ---------- */
 function renderBets(){
@@ -1060,7 +1222,7 @@ $("#calcMode").addEventListener("click", e => { const b = e.target.closest("butt
   $("#calcMode").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); $("#calcPP").hidden = S.calcMode !== "pp"; $("#calcBook").hidden = S.calcMode !== "book"; renderBookOut(); });
 
 /* ---------- settings ---------- */
-const SET_FIELDS = [["#sBank","startBankroll",1],["#sMax","maxPct",100],["#sDay","dayCapPct",100],["#sDStop","dailyStop",100],["#sWStop","weeklyStop",100]];
+const SET_FIELDS = [["#sBank","startBankroll",1],["#sMin","minStake",1],["#sMax","maxPct",100],["#sDay","dayCapPct",100],["#sDStop","dailyStop",100],["#sWStop","weeklyStop",100]];
 function renderSettings(force){
   const box = $("#view-settings"); if(!force && box.contains(document.activeElement) && document.activeElement.matches("input,select")) return;
   const st = S.settings; for(const [sel,k,mul] of SET_FIELDS) $(sel).value = +(st[k]*mul).toFixed(2); $("#sKelly").value = String(st.kellyMult);
@@ -1103,6 +1265,9 @@ async function saveFile(filename, data){
   const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
+function needBackup(){ return S.mode !== "db" && S.bets.length > 0 && (!S.settings.lastBackup || Date.now() - new Date(S.settings.lastBackup) > 7*864e5); }
+document.addEventListener("click", e => { const t = e.target.closest("button[data-backup]"); if(t) $("#exportBtn").click(); });
+$("#exportBtn").addEventListener("click", () => { S.settings.lastBackup = new Date().toISOString(); store.saveSettings().catch(dbError); });
 $("#exportBtn").addEventListener("click", () => saveFile(`edge-finder-backup-${today()}.json`, JSON.stringify({app:"edge-finder-backup", exportedAt:new Date().toISOString(), settings:S.settings, bets:S.bets}, null, 1)));
 $("#exportCsv").addEventListener("click", () => {
   const q = v => `"${String(v??"").replace(/"/g,'""')}"`;
@@ -1134,7 +1299,7 @@ async function renderPeople(){
 }
 
 /* ---------- tabs ---------- */
-const TABS = ["dash","picks","bets","calc","settings","people"];
+const TABS = ["dash","picks","build","bets","calc","settings","people"];
 function setTab(t){ if(!TABS.includes(t) || (t === "people" && !S.isOwner)) t = "dash"; S.tab = t;
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
   TABS.forEach(x => $("#view-"+x).hidden = x !== t); renderAll(); window.scrollTo(0,0); }
