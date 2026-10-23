@@ -73,6 +73,40 @@ def roster_details(sport, team_names):
     return out
 
 
+def all_rosters(sport, pause=0.05):
+    """Every player on every team's roster: {player_key: {name, team, jersey, pos, color, alt}}.
+    For the app's player directory (past-bet entry), so it isn't limited to teams playing today."""
+    import time
+    path = ESPN_PATH.get(sport)
+    if not path:
+        return {}
+    data, _ = http.get_json(f"{ESPN_BASE}/{path}/teams?limit=100")
+    teams = [d["team"] for d in _walk(data)
+             if isinstance(d.get("team"), dict) and d["team"].get("id") and d["team"].get("displayName")]
+    out, seen = {}, set()
+    for tm in teams:
+        if tm["id"] in seen:
+            continue
+        seen.add(tm["id"])
+        try:
+            r, _ = http.get_json(f"{ESPN_BASE}/{path}/teams/{tm['id']}/roster")
+        except Exception:
+            continue
+        color, alt = _hex(tm.get("color")), _hex(tm.get("alternateColor"))
+        for a in r.get("athletes", []):
+            group = a.get("items") if isinstance(a, dict) and isinstance(a.get("items"), list) else [a]
+            for p in group:
+                if isinstance(p, dict) and p.get("displayName"):
+                    pos = p.get("position")
+                    pos = (pos.get("abbreviation") or "") if isinstance(pos, dict) else ""
+                    out[http.norm_name(p["displayName"])] = {"name": p["displayName"], "team": tm["displayName"],
+                                                             "jersey": str(p.get("jersey") or ""), "pos": pos,
+                                                             "color": color, "alt": alt}
+        if pause:
+            time.sleep(pause)
+    return out
+
+
 def scoreboard(sport, ymd):
     path = ESPN_PATH[sport]
     extra = "&groups=80&limit=400" if sport == "cfb" else "&limit=200"

@@ -437,6 +437,11 @@ def run_once(conn, cfg, now=None, export_path=None):
         refresh_events(conn, cfg, s, now)
         refresh_rosters(conn, s, now)
         injury_changes += refresh_injuries(conn, cfg, s, now)
+    try:   # full rosters for the app's player directory; ESPN, free, once a day
+        from . import directory
+        directory.refresh(conn, cfg.sports, now)
+    except Exception as e:
+        print(f"   player directory: {e}")
     games = conn.execute("SELECT * FROM games WHERE start > ? AND start < ?",
                          (iso(now), iso(now + timedelta(hours=cfg.window_hours)))).fetchall()
     poll_games(conn, cfg, [g for g in games if g["sport"] in cfg.sports], now)

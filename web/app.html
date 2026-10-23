@@ -288,12 +288,24 @@ input,select,textarea{background:var(--panel2)}
 .add.on{background:var(--panel2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-size:1rem}
 .chip.own{background:var(--own-bg);color:var(--own)}.chip.sugg{background:var(--gold-bg);color:var(--gold)}
 dialog.sheet.wide{width:min(760px,calc(100% - 24px))}
-.pl-row{display:grid;grid-template-columns:minmax(120px,1.6fr) minmax(100px,1.2fr) 74px 86px 100px 70px;gap:6px;align-items:end}
+.pl-row{display:grid;grid-template-columns:42px 78px minmax(140px,1.7fr) minmax(100px,1.2fr) 64px 80px 100px 64px;gap:6px;align-items:end;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .pl-row input,.pl-row select{width:100%;min-width:0}
-@media (max-width:640px){.pl-row{grid-template-columns:1fr 1fr 1fr;padding-bottom:8px;border-bottom:1px solid var(--line)}}
+.pl-jer{align-self:center;display:flex;justify-content:center;padding-top:16px}
+.pl-name{position:relative}.pl-tag{min-height:1.1em;font-size:.72rem}
+.ac{position:absolute;left:0;top:100%;z-index:20;margin:2px 0 0;padding:4px;list-style:none;min-width:260px;width:max-content;max-width:340px;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.ac li{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:8px;cursor:pointer}
+.ac li>span{display:flex;flex-direction:column;line-height:1.25}.ac li .jer{width:32px;height:30px}.ac li .av{width:30px;height:30px;font-size:.7rem}
+.ac li:hover,.ac li[aria-selected="true"]{background:var(--panel2)}
+.promo-box{border:1px dashed var(--gold);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+@media (max-width:640px){
+  .pl-row{grid-template-columns:42px 1fr 1fr 1fr;grid-template-areas:"jer name name name" "jer sport stat stat" "line line pick pick" "res res act act"}
+  .pl-row>:nth-child(1){grid-area:jer;align-self:start}.pl-row>:nth-child(2){grid-area:sport}.pl-row>:nth-child(3){grid-area:name}.pl-row>:nth-child(4){grid-area:stat}
+  .pl-row>:nth-child(5){grid-area:line}.pl-row>:nth-child(6){grid-area:pick}.pl-row>:nth-child(7){grid-area:res}.pl-row>:nth-child(8){grid-area:act}
+  .ac{min-width:0;width:100%;max-width:none}}
 .rv-verdict{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2)}
 .rv-verdict .big{font:700 1.25rem var(--display);line-height:1.1}
-.rv-leg td{vertical-align:top}
+.bl-jer{display:inline-block;vertical-align:middle;margin-right:6px}.bl-jer .jer{width:28px;height:26px}
+.rv-leg td{vertical-align:top}.rv-who{display:flex;gap:10px;align-items:flex-start}.rv-who .jer{width:34px;height:32px}
 @media (max-width:640px){.rv-wrap{border:0;background:none}.rv-wrap table.rv-table{min-width:0}.rv-table thead{display:none}
   .rv-table tr{display:grid;grid-template-columns:1fr auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line)}
   .rv-table td{border:0;padding:0}.rv-table td:nth-child(4){grid-row:1;grid-column:2}.rv-table td:nth-child(2),.rv-table td:nth-child(3){grid-column:1/-1}}.rv-take{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
@@ -550,7 +562,7 @@ footer{border-top:1px solid var(--line)}
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="alertSheet" aria-labelledby="alName"><div class="sh"><h3 id="alName" style="margin:0">Alerts</h3><div class="row"><button class="btn sm" id="alRead">Mark all read</button><button class="btn sm" id="alClose">Close</button></div></div><div class="sb" id="alBody"></div></dialog>
 <dialog class="sheet" id="injSheet" aria-labelledby="injName"><div class="sh"><h3 id="injName" style="margin:0">Injury and lineup center</h3><button class="btn sm" id="injClose">Close</button></div><div class="sb" id="injBody"></div></dialog>
-<dialog class="sheet" id="pastSheet" aria-labelledby="pastName"><div class="sh"><h3 id="pastName" style="margin:0">Add a past bet</h3><button class="btn sm" id="pastClose">Close</button></div><div class="sb" id="pastBody"></div></dialog>
+<dialog class="sheet wide" id="pastSheet" aria-labelledby="pastName"><div class="sh"><h3 id="pastName" style="margin:0">Add a past bet</h3><button class="btn sm" id="pastClose">Close</button></div><div class="sb" id="pastBody"></div></dialog>
 <dialog class="sheet wide" id="revSheet" aria-labelledby="revName"><div class="sh"><h3 id="revName" style="margin:0">Bet review</h3><button class="btn sm" id="revClose">Close</button></div><div class="sb" id="revBody"></div></dialog>
 <dialog class="sheet" id="cmpSheet" aria-labelledby="cmpName"><div class="sh"><h3 id="cmpName" style="margin:0">Compare</h3><div class="row"><button class="btn sm" id="cmpAsk">Ask Claude</button><button class="btn sm" id="cmpClose">Close</button></div></div><div class="sb" id="cmpBody"></div></dialog>
 <dialog class="sheet" id="playerSheet" aria-labelledby="psName"><div class="sh"><h3 id="psName" style="margin:0"></h3><button class="btn sm" id="psClose">Close</button></div><div class="sb" id="psBody"></div></dialog>
@@ -675,7 +687,7 @@ function finalize(b){
     b.ret = r === "win" ? americanToDec(b.odds) : r === "loss" ? 0 : (r === "push" || r === "void") ? 1 : null;
   }
   if(b.ret == null){ b.status = "open"; b.profit = null; b.settledAt = null; }
-  else { b.status = "settled"; b.profit = Math.round(b.stake*(b.ret-1)*100)/100; b.settledAt = b.settledAt || new Date().toISOString(); }
+  else { b.status = "settled"; b.profit = Math.round(b.stake*(b.free ? b.ret : b.ret-1)*100)/100; b.settledAt = b.settledAt || new Date().toISOString(); }
   return b;
 }
 
@@ -686,17 +698,17 @@ function analyze(){
   const open = bets.filter(b => b.status !== "settled");
   let cum=0, cumE=0, varSum=0, staked=0, peak=0, maxDD=0; const series=[{label:"Start", a:0, e:0}];
   for(const b of settled){
-    cum += b.profit; cumE += b.stake*(b.E-1); varSum += b.stake*b.stake*b.V; staked += b.stake;
+    cum += b.profit; cumE += b.stake*(b.E-1); varSum += b.stake*b.stake*b.V; staked += cost(b);
     peak = Math.max(peak, cum); maxDD = Math.max(maxDD, peak - cum);
     series.push({label: shortDate(dayOf(b.settledAt || b.placedAt)), a: cum, e: cumE, name: betTitle(b)});
   }
-  const bank = st.startBankroll + cum, risk = open.reduce((s,b)=>s+b.stake, 0);
+  const bank = st.startBankroll + cum, risk = open.reduce((s,b)=>s+cost(b), 0);
   const sd = Math.sqrt(varSum), n = settled.length;
   const z = sd > 0 ? (cum - cumE)/sd : null, conf = sd > 0 ? Phi(cum/sd) : null;
   const meanE = n ? cumE/n : 0, meanSd = n ? Math.sqrt(varSum/n) : 0;
   const need = meanE > 0 && meanSd > 0 ? Math.ceil((2*meanSd/meanE)**2) : null;
   const t = today(), wk = daysAgo(6);
-  const todayStaked = bets.filter(b => b.date === t).reduce((s,b)=>s+b.stake, 0);
+  const todayStaked = bets.filter(b => b.date === t).reduce((s,b)=>s+cost(b), 0);
   const todayPL = settled.filter(b => dayOf(b.settledAt) === t).reduce((s,b)=>s+b.profit, 0);
   const weekPL = settled.filter(b => dayOf(b.settledAt) >= wk).reduce((s,b)=>s+b.profit, 0);
   const openEV = open.reduce((s,b)=> s + b.stake*(b.E-1), 0);
@@ -749,6 +761,7 @@ function legStats(){
   return {n, hits, exp, z: v>0 ? (hits-exp)/Math.sqrt(v) : null, buckets, clvN: clvs.length,
           clv: clvs.length ? clvs.reduce((a,b)=>a+b,0)/clvs.length : null, beat: clvs.length ? clvs.filter(x=>x>0).length/clvs.length : null};
 }
+const cost = b => b.free ? 0 : b.stake;
 function betTitle(b){ return b.kind === "pp" ? b.entry : (b.label || "Sportsbook bet"); }
 /* Suggested = the model's own plays (or a builder lineup identical to one); own = anything you put together yourself. */
 function legSig(legs){ return legs.map(l => legKey(l)).sort().join("~"); }
@@ -927,7 +940,7 @@ async function restoreBackup(d){
 async function logEntry(b){
   if(!b.origin) b.origin = b.source === "report" || b.source === "teams" ? "suggested" : b.kind === "pp" && b.legs && matchesSuggestion(b.legs) ? "suggested" : "own";
   b.id = b.id || uid(); b.placedAt = new Date().toISOString(); b.date = today(); b.status = "open";
-  if(b.kind === "pp"){ const t = payTable(b.entry); if(t && t.promo){ b.pay = clone(t.pay); b.promo = true; } }
+  if(b.kind === "pp" && !b.pay){ const t = payTable(b.entry); if(t && t.promo){ b.pay = clone(t.pay); b.promo = true; } }
   finalize(b);
   try { await store.saveBet(b); toast(`Logged ${betTitle(b)} for ${money(b.stake)}`); } catch(e){ dbError(e); toast("Couldn't save that entry. Try again."); }
 }
@@ -1204,7 +1217,7 @@ function vsModelPanel(A){
 S.vsMetric = "profit";
 function originStats(bets){
   const g = {n:0, staked:0, profit:0, exp:0, hits:0, legs:0, fair:0};
-  for(const b of bets){ g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1);
+  for(const b of bets){ g.n++; g.staked += cost(b); g.profit += b.profit; g.exp += b.stake*(b.E-1);
     if(b.kind === "pp") for(const l of b.legs){ if(l.result !== "hit" && l.result !== "miss") continue; g.legs++; if(l.result === "hit") g.hits++; if(fin(+l.fair)) g.fair += +l.fair; } }
   return g;
 }
@@ -1215,7 +1228,7 @@ function vsSeries(A){
   const run = {suggested: {staked:0, profit:0, n:0}, own: {staked:0, profit:0, n:0}};
   const pts = [];
   for(const d of [...days.keys()].sort()){
-    for(const b of days.get(d)){ const r = run[betOrigin(b)]; r.staked += b.stake; r.profit += b.profit; r.n++; }
+    for(const b of days.get(d)){ const r = run[betOrigin(b)]; r.staked += cost(b); r.profit += b.profit; r.n++; }
     const v = k => ({profit: run[k].n ? run[k].profit : null, roi: run[k].staked ? run[k].profit/run[k].staked : null, n: run[k].n});
     pts.push({day: d, label: shortDate(d), s: v("suggested"), o: v("own")});
   }
@@ -1308,7 +1321,7 @@ function drawVsChart(A){
   svg.addEventListener("pointerleave", () => { tip.hidden = true; vx.setAttribute("visibility","hidden"); });
 }
 function breakdownPanel(A){
-  const groups = (keyFn) => { const m = new Map(); for(const b of A.settled){ const k = keyFn(b); const g = m.get(k) || {k, n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += b.stake; g.profit += b.profit; g.exp += b.stake*(b.E-1); m.set(k,g);} return [...m.values()].sort((a,b)=>b.staked-a.staked); };
+  const groups = (keyFn) => { const m = new Map(); for(const b of A.settled){ const k = keyFn(b); const g = m.get(k) || {k, n:0, staked:0, profit:0, exp:0}; g.n++; g.staked += cost(b); g.profit += b.profit; g.exp += b.stake*(b.E-1); m.set(k,g);} return [...m.values()].sort((a,b)=>b.staked-a.staked); };
   const table = (title, rows) => `<div class="scroll"><table><thead><tr><th>${title}</th><th class="r">Entries</th><th class="r">Staked</th><th class="r">Profit</th><th class="r">ROI</th><th class="r">Expected ROI</th></tr></thead><tbody>
     ${rows.map(g=>`<tr><td>${esc(g.k)}</td><td class="r num">${g.n}</td><td class="r num">${money(g.staked)}</td><td class="r num ${cls(g.profit)}">${money(g.profit,true)}</td><td class="r num ${cls(g.profit)}">${pct(g.profit/g.staked,1,true)}</td><td class="r num">${pct(g.exp/g.staked,1,true)}</td></tr>`).join("") || `<tr><td colspan="6" class="muted">Nothing settled yet.</td></tr>`}</tbody></table></div>`;
   return `<div class="grid2"><div class="panel"><h3>By entry type</h3>${table("Entry", groups(betTitle))}</div><div class="panel"><h3>By sport</h3>${table("Sport", groups(betSport))}</div></div>`;
@@ -2398,7 +2411,8 @@ function renderBuild(){
   const legs = buildLegs(), locked = legs.filter(l => !legOpen(l));
   const slots = Array.from({length: t.n}, (_, i) => legs[i]);
   const full = legs.length === t.n;
-  const es = full ? entryStats(name, legs.map(l => +l.fair)) : null;
+  const bpr = S.build.promo && S.build.promo.type ? S.build.promo : null;
+  const es = full ? promoStats(name, legs.map(l => +l.fair), bpr) : null;
   const sg = es ? suggestStake(es.kelly) : null;
   const sf = S.build.sport || "", showAll = !!S.build.all, q = normName(S.build.q || "");
   // Drop custom legs that are no longer in the slip.
@@ -2419,11 +2433,12 @@ function renderBuild(){
           <div class="acts">${l.custom ? "" : `<button class="btn sm ${legOpen(l)?"":"primary"}" data-swap="${esc(poolKey(l))}">Swap</button>`}<button class="btn sm danger" data-drop="${esc(poolKey(l))}" aria-label="Remove ${esc(l.player)}">✕</button></div></div>`
         : `<div class="build-slot empty"><span>Leg ${i+1}: tap Add on a prop below</span></div>`).join("")}</div>
       <div class="row"><button class="btn sm" id="bFill" ${full?"disabled":""}>Fill with best legs</button><button class="btn sm" id="bClear" ${legs.length?"":"disabled"}>Clear</button></div>
-      ${es ? `<div class="statgrid"><div><span class="l">Expected return</span><span class="v ${cls(es.E-1)}">${pct(es.E-1,1,true)}</span></div>
+      ${es ? `<div class="statgrid">${bpr && bpr.type === "free" ? `<div><span class="l">Expected payout</span><span class="v pos">${(es.E-1).toFixed(2)}x stake</span></div>` : `<div><span class="l">Expected return</span><span class="v ${cls(es.E-1)}">${pct(es.E-1,1,true)}</span></div>`}
           <div><span class="l">Stake back</span><span class="v">${pct(es.cash,0)}</span></div><div><span class="l">Profit</span><span class="v">${pct(es.profit,0)}</span></div></div>
         <p class="note" style="margin:0">Treats the legs as independent, so same-game legs may be a little off.</p>
         ${locked.length ? `<div class="alert warn">${icon.warn}<span>Swap out the started ${locked.length===1?"leg":"legs"} before entering.</span></div>`
           : es.E <= 1 ? `<p class="small neg" style="margin:0">This lineup loses money on average. Swap a leg or try a different entry type.</p>` : smallNote(sg)}
+        ${promoUI("build", name, S.build.promo)}
         <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num" id="bStakeIn" inputmode="decimal" value="${sg.stake||""}"></label>
           <button class="btn primary" id="bLogBtn" style="align-self:flex-end" ${locked.length?"disabled":""}>Log entry</button></div>
         <div class="small" id="bWarnOut" style="color:var(--warn)"></div>`
@@ -2454,7 +2469,8 @@ function renderBuild(){
         <div class="row" style="margin-top:8px"><button class="btn sm primary" id="cAdd" ${full?"disabled":""}>${full?"Slip is full":"Add to slip"}</button><span class="small" id="cMsg" style="color:var(--warn)"></span></div>
       </details>
     </div></div>`;
-  $("#bEntry").addEventListener("change", e => { S.build.entry = e.target.value; saveBuild(); renderBuild(); });
+  $("#bEntry").addEventListener("change", e => { S.build.entry = e.target.value; S.build.promo = null; saveBuild(); renderBuild(); });
+  wirePromo(el, "build", () => S.build.promo, v => { S.build.promo = v; saveBuild(); }, renderBuild);
   $("#bSport").addEventListener("change", e => { S.build.sport = e.target.value; S.build.more = false; saveBuild(); renderBuild(); });
   $("#bFill")?.addEventListener("click", () => { const cur = buildLegs();
     while(cur.length < t.n){ const l = bestFor(cur, t.n, app); if(!l) break; cur.push(l); }
@@ -2486,9 +2502,11 @@ function renderBuild(){
     si.addEventListener("input", upd); upd();
     lb.addEventListener("click", async () => { const stake = num(si.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
       const ws = stakeWarnings(stake); if(ws.length && !lb.dataset.armed){ lb.dataset.armed = "1"; lb.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
-      await logEntry({kind:"pp", entry:name, stake, E:es.E, V:es.V, cash:es.cash, source:"builder",
-        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||"", ...(l.custom ? {custom:true, assumed:!!l.assumed} : {})}))});
-      lb.dataset.armed = ""; lb.textContent = "Logged"; });
+      if(bpr && (bpr.type === "boost" || bpr.type === "profit") && !(+bpr.value > 0)){ w.textContent = bpr.type === "boost" ? "Enter the boosted payout." : "Enter the profit boost %."; return; }
+      await logEntry({kind:"pp", entry:name, stake, E:es.E, V:es.V, cash:es.cash, source:"builder", ...(bpr ? promoFields(name, bpr) : {}),
+        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||"",
+          team:l.team||"", jersey:l.jersey||"", pos:l.pos||"", color:l.color||"", alt:l.alt||"", ...(l.custom ? {custom:true, assumed:!!l.assumed} : {})}))});
+      S.build.promo = null; saveBuild(); lb.dataset.armed = ""; lb.textContent = "Logged"; });
   }
 }
 function buildFromSlip(k){
@@ -2524,10 +2542,10 @@ function renderBets(){
   el.innerHTML = list.map(b => {
     const ev = b.stake*(b.E-1); const graded = b.kind==="pp" ? b.legs.filter(l=>GRADED.includes(l.result)).length : (b.result?1:0); const total = b.kind==="pp" ? b.legs.length : 1;
     const status = b.status==="settled" ? `<span class="chip ${b.profit>0?"good":b.profit<0?"bad":"plain"}">${money(b.profit,true)}</span>` : `<span class="chip plain">${graded}/${total} graded</span>`;
-    const legsHtml = b.kind==="pp" ? b.legs.map((l,i)=>`<div class="betleg"><div><span class="side ${l.side}">${l.side}</span> ${esc(l.player)} <span class="muted small">${esc(l.stat||"")} ${l.line??""} · fair ${pct(+l.fair)}${l.actual!==undefined&&l.actual!==""?` · actual ${esc(l.actual)}`:""}${l.clv!=null&&l.clv!==""?` · CLV ${(l.clv>0?"+":"")+(l.clv*100).toFixed(1)}`:""}${l.auto?" · auto-graded":""}</span>${!GRADED.includes(l.result)&&l.injury?` <span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${!GRADED.includes(l.result)&&l.ppLineNow?` <span class="chip warn">line now ${esc(l.ppLineNow)}</span>`:""}</div>
+    const legsHtml = b.kind==="pp" ? b.legs.map((l,i)=>`<div class="betleg"><div>${l.jersey || l.color ? `<span class="bl-jer">${avatar(l)}</span>` : ""}<span class="side ${l.side}">${l.side}</span> ${esc(l.player)} <span class="muted small">${esc(l.stat||"")} ${l.line??""} · fair ${pct(+l.fair)}${l.actual!==undefined&&l.actual!==""?` · actual ${esc(l.actual)}`:""}${l.clv!=null&&l.clv!==""?` · CLV ${(l.clv>0?"+":"")+(l.clv*100).toFixed(1)}`:""}${l.auto?" · auto-graded":""}</span>${!GRADED.includes(l.result)&&l.injury?` <span class="chip ${injuryLevel(l.injury)>=2?"bad":"warn"}">${esc(l.injury)}</span>`:""}${!GRADED.includes(l.result)&&l.ppLineNow?` <span class="chip warn">line now ${esc(l.ppLineNow)}</span>`:""}</div>
         <div class="res" role="group" aria-label="Result for ${esc(l.player)}">${GRADED.map(r=>`<button class="${r}" aria-pressed="${l.result===r}" data-bet="${b.id}" data-leg="${i}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`).join("")
       : `<div class="betleg"><div>${esc(b.label)} <span class="muted small">at ${b.odds>0?"+":""}${b.odds} · fair ${pct(b.fair)}</span></div><div class="res" role="group" aria-label="Result">${["win","loss","push"].map(r=>`<button class="${r}" aria-pressed="${b.result===r}" data-bet="${b.id}" data-r="${r}">${r[0].toUpperCase()+r.slice(1)}</button>`).join("")}</div></div>`;
-    return `<details class="bet" ${S.openBet===b.id?"open":""} data-id="${b.id}"><summary><div><b>${esc(betTitle(b))}</b> ${originChip(b)} <span class="muted small">${shortDate(b.date)} · ${esc(betSport(b))}</span><div class="small muted num">${money(b.stake)} stake · EV ${money(ev,true)} (${pct(b.E-1,1,true)})</div></div><div class="betside">${status}<button class="btn danger delquick" data-del="${b.id}" data-label="Delete" aria-label="Delete ${esc(betTitle(b))} from ${shortDate(b.date)}">Delete</button></div></summary>
+    return `<details class="bet" ${S.openBet===b.id?"open":""} data-id="${b.id}"><summary><div><b>${esc(betTitle(b))}</b> ${originChip(b)}${b.promoInfo ? ` <span class="chip gold">${esc(b.promoInfo.label)}</span>` : ""} <span class="muted small">${shortDate(b.date)} · ${esc(betSport(b))}</span><div class="small muted num">${money(b.stake)} stake · EV ${money(ev,true)} (${pct(b.E-1,1,true)})</div></div><div class="betside">${status}<button class="btn danger delquick" data-del="${b.id}" data-label="Delete" aria-label="Delete ${esc(betTitle(b))} from ${shortDate(b.date)}">Delete</button></div></summary>
       <div class="body">${b.kind==="pp" ? `<div class="row"><button class="btn sm" data-review="${b.id}">${b.status==="settled" ? "Review: what went right and wrong" : "Review this entry"}</button>${b.past ? '<span class="chip plain">Added afterwards</span>' : ""}</div>` : ""}${legsHtml}
       <div class="row" style="justify-content:space-between"><label class="f" style="flex-direction:row;align-items:center;gap:8px">Stake ($)<input class="num" style="width:110px" data-stake="${b.id}" value="${b.stake}" inputmode="decimal"></label>
       <button class="btn danger" data-del="${b.id}">Delete entry</button></div></div></details>`;
@@ -2557,7 +2575,7 @@ document.addEventListener("click", async e => {
 document.addEventListener("change", async e => {
   const i = e.target.closest("[data-stake]"); if(!i) return;
   const b = clone(S.bets.find(x=>x.id===i.dataset.stake)); const v = num(i.value); if(!b || !(v>0)) return;
-  b.stake = v; S.openBet = b.id; finalize(b); if(b.status==="settled") b.profit = Math.round(b.stake*(b.ret-1)*100)/100; await store.saveBet(b).catch(dbError);
+  b.stake = v; S.openBet = b.id; finalize(b); await store.saveBet(b).catch(dbError);
 });
 document.addEventListener("toggle", e => { const d = e.target; if(d.classList?.contains("bet") && d.open) S.openBet = d.dataset.id; }, true);
 
@@ -2565,7 +2583,8 @@ document.addEventListener("toggle", e => { const d = e.target; if(d.classList?.c
 function statIndex(){
   // Stat label -> market key, from every leg the app knows about.
   const m = new Map();
-  for(const l of [...S.histLegs, ...(S.board ? boardLegs(S.board) : [])]) if(l && l.stat && l.market && !m.has(String(l.stat).toLowerCase())) m.set(String(l.stat).toLowerCase(), {stat: l.stat, market: l.market});
+  for(const l of [...S.histLegs, ...(S.board ? boardLegs(S.board) : [])]) if(l && l.stat && l.market){ const k = String(l.stat).toLowerCase();
+    if(!m.has(k)) m.set(k, {stat: l.stat, market: l.market}); if(l.sport && !m.has(l.sport + "|" + k)) m.set(l.sport + "|" + k, {stat: l.stat, market: l.market}); }
   return m;
 }
 function judgeLeg(actual, line, side){ actual = +actual; line = +line; if(!fin(actual) || !fin(line)) return ""; return actual === line ? "push" : (actual > line) === (side === "MORE") ? "hit" : "miss"; }
@@ -2580,36 +2599,216 @@ function modelView(l, date){
   const sameLine = +h.line === +l.line, agree = h.side === l.side;
   return {h, sameLine, agree, fair: sameLine && fin(+h.fair) ? (agree ? +h.fair : 1 - +h.fair) : null};
 }
-function pastLegRow(i, l){ l = l || {};
+/* ---------- player directory (names, teams, jerseys) ---------- */
+const SPORT_STATS = {
+  nba: ["Points","Rebounds","Assists","3-PT Made","Pts+Rebs+Asts","Pts+Rebs","Pts+Asts","Rebs+Asts","Blocks","Steals","Turnovers"],
+  wnba: ["Points","Rebounds","Assists","Pts+Rebs+Asts"],
+  nfl: ["Pass Yards","Rush Yards","Receiving Yards","Receptions","Pass TDs","Pass Completions","Pass Attempts","Rush Attempts","Rush+Rec Yds"],
+  cfb: ["Pass Yards","Rush Yards","Receiving Yards","Receptions"],
+  nhl: ["Shots on Goal","Points","Assists","Goalie Saves","Blocked Shots"],
+  mlb: ["Pitcher Ks","Total Bases","Hits","Hits Allowed","Pitching Outs","Hits+Runs+RBIs"],
+};
+const PAST_SPORTS = ["nba","nfl","nhl","mlb","wnba","cfb"];
+let rosterLoading = null;
+function loadRoster(){
+  if(S.roster) return Promise.resolve(S.roster);
+  if(rosterLoading) return rosterLoading;
+  rosterLoading = (location.protocol === "file:" ? Promise.resolve({}) : fetch("roster.json", {cache: "no-store"}).then(r => r.ok ? r.json() : {}).catch(() => ({})))
+    .then(d => {
+      const list = [], seen = new Set();
+      const add = (sport, name, team, jersey, pos, color, alt) => { const nn = normName(name), k = sport + "|" + nn; if(!nn || seen.has(k)) return; seen.add(k);
+        list.push({sport, player: name, nn, flat: nn.replace(/ /g, ""), words: nn.split(" "), team: team || "", jersey: jersey || "", pos: pos || "", color: color || "", alt: alt || ""}); };
+      // Today's board first: it has the freshest team and jersey.
+      for(const l of (S.board ? boardLegs(S.board) : [])) add(l.sport, l.player, l.team, l.jersey, l.pos, l.color, l.alt);
+      for(const [sport, rows] of Object.entries((d && d.sports) || {})) for(const r of rows) add(sport, ...r);
+      for(const h of S.histLegs) add(h.sport, h.player, "", "", "", "", "");
+      S.roster = list; rosterLoading = null; return list; });
+  return rosterLoading;
+}
+function editDist(a, b, max){
+  // Levenshtein distance, giving up past `max`.
+  if(Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({length: b.length + 1}, (_, j) => j);
+  for(let i = 1; i <= a.length; i++){ const cur = [i]; let best = i;
+    for(let j = 1; j <= b.length; j++){ cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1)); best = Math.min(best, cur[j]); }
+    if(best > max) return max + 1; prev = cur; }
+  return prev[b.length];
+}
+function rosterSearch(q, sport, limit = 6){
+  q = normName(q); if(q.length < 2 || !S.roster) return [];
+  const qw = q.split(" "), qf = q.replace(/ /g, ""), tol = q.length >= 7 ? 2 : q.length >= 4 ? 1 : 0, out = [];
+  for(const p of S.roster){
+    if(sport && p.sport !== sport) continue;
+    let sc = null;
+    if(p.nn === q) sc = 0;
+    else if(p.nn.startsWith(q)) sc = 1;
+    else if(p.words.some(w => w.startsWith(q))) sc = 2;
+    else if(qw.length > 1 && qw.every((w, i) => p.words.some(x => x.startsWith(w)))) sc = 2.5;
+    else if(p.nn.includes(q)) sc = 3;
+    else if(qf.length >= 3 && p.flat.startsWith(qf)) sc = 3.5;   // spaces and punctuation ignored: "jamarr" finds Ja'Marr
+    else if(tol){ // close spellings: each typed word against the start of a name word, allowing a letter or two off
+      const wd = (w, x) => Math.min(editDist(w, x.slice(0, w.length), 2), editDist(w, x.slice(0, w.length + 1), 2), editDist(w, x.slice(0, Math.max(1, w.length - 1)), 2));
+      const allow = w => w.length >= 8 ? 2 : w.length >= 4 ? 1 : 0;
+      if(qw.length > 1){ let tot = 0, ok = true;
+        for(const w of qw){ const d = Math.min(...p.words.map(x => wd(w, x))); if(d > allow(w)){ ok = false; break; } tot += d; }
+        if(ok) sc = 4 + tot; }
+      else { const d = Math.min(wd(q, p.nn), ...p.words.map(x => wd(q, x))); if(d <= tol) sc = 4 + d; }
+      if(sc == null && qf.length >= 5){ const d = wd(qf, p.flat); if(d <= tol) sc = 4.5 + d; }
+    }
+    if(sc != null) out.push([sc + (p.jersey ? 0 : 0.2), p]);
+  }
+  return out.sort((a, b) => a[0] - b[0] || a[1].player.localeCompare(b[1].player)).slice(0, limit).map(x => x[1]);
+}
+const teamShort = (t, sport) => t ? (teamAbbr(t, sport) || teamName(t)) : "";
+function playerTag(p){ return [teamShort(p.team, p.sport), p.jersey ? "#" + p.jersey : "", p.pos].filter(Boolean).join(" · "); }
+
+/* ---------- promotions ---------- */
+const PROMO_TYPES = [["", "No promo"], ["boost", "Payout boost"], ["profit", "Profit boost"], ["refund0", "Money back if it pays nothing"],
+  ["refund1", "Money back if one pick misses"], ["free", "Free entry (promo credit)"], ["custom", "Custom payouts"]];
+function promoPay(name, pr){
+  const t = payTable(name, true); if(!t) return null;
+  const pay = {}; for(let k = 0; k <= t.n; k++) pay[k] = +(t.pay[k] || 0);
+  const v = +pr?.value;
+  switch(pr?.type){
+    case "boost": if(fin(v) && v > 0) pay[t.n] = v; break;
+    case "profit": if(fin(v) && v > 0) for(const k in pay) if(pay[k] > 1) pay[k] = Math.round((1 + (pay[k] - 1) * (1 + v/100)) * 1000) / 1000; break;
+    case "refund0": for(const k in pay) if(pay[k] === 0) pay[k] = 1; break;
+    case "refund1": pay[t.n - 1] = Math.max(pay[t.n - 1] || 0, 1); break;
+    case "custom": for(const k in pay) if(pr.pay && fin(+pr.pay[k])) pay[k] = +pr.pay[k]; break;
+  }
+  return pay;
+}
+function statsWithPay(n, pay, ps){
+  const d = hitDist(ps); let E = 0, E2 = 0, cash = 0, profit = 0; const outs = [];
+  d.forEach((p, k) => { const m = +(pay[k] || 0); E += p*m; E2 += p*m*m; if(m >= 1) cash += p; if(m > 1) profit += p; outs.push({p, r: m - 1}); });
+  return {d, E, V: Math.max(E2 - E*E, 0), cash, profit, outs, kelly: kellyFrac(outs)};
+}
+function promoStats(name, ps, pr){
+  // Entry stats with a promo applied. A free entry risks nothing, so its "return" is the payout itself, plus the stake.
+  const t = payTable(name, true); if(!pr || !pr.type) return entryStats(name, ps);
+  const es = statsWithPay(t.n, promoPay(name, pr), ps);
+  if(pr.type === "free") return {...es, E: es.E + 1, cash: 1, kelly: 1};
+  return es;
+}
+function promoLabel(pr, name){
+  if(!pr || !pr.type) return "";
+  const t = payTable(name, true), v = +pr.value;
+  return pr.type === "boost" ? `Payout boost: ${t ? t.n + "/" + t.n : "top"} pays ${fin(v) ? v + "x" : "?"}` : pr.type === "profit" ? `Profit boost +${fin(v) ? v : "?"}%`
+    : pr.type === "refund0" ? "Money back if it pays nothing" : pr.type === "refund1" ? "Money back if one pick misses" : pr.type === "free" ? "Free entry" : "Custom payouts";
+}
+function promoUI(id, name, pr){
+  pr = pr || {}; const t = payTable(name, true); if(!t) return "";
+  const pay = promoPay(name, pr);
+  const tiers = Object.keys(pay).map(Number).sort((a, b) => b - a).filter(k => pay[k] > 0 || (pr.type === "custom" && +t.pay[k] > 0));
+  return `<div class="promo-box" data-promo="${id}">
+    <div class="row" style="align-items:flex-end"><label class="f" style="flex:1;min-width:180px">Promo<select data-pk="type">${PROMO_TYPES.map(([k, l]) => `<option value="${k}" ${k === (pr.type || "") ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      ${pr.type === "boost" ? `<label class="f">${t.n}/${t.n} pays (x)<input data-pk="value" class="num" inputmode="decimal" style="width:96px" value="${esc(pr.value ?? "")}" placeholder="${+t.pay[t.n] || ""}"></label>` : ""}
+      ${pr.type === "profit" ? `<label class="f">Boost (%)<input data-pk="value" class="num" inputmode="decimal" style="width:90px" value="${esc(pr.value ?? "")}" placeholder="25"></label>` : ""}</div>
+    ${pr.type === "custom" ? `<div class="row">${Object.keys(pay).map(Number).sort((a, b) => b - a).filter(k => k >= Math.max(0, t.n - 3)).map(k => `<label class="f">${k}/${t.n} (x)<input data-pk="pay" data-hit="${k}" class="num" inputmode="decimal" style="width:76px" value="${pay[k]}"></label>`).join("")}</div>` : ""}
+    ${pr.type ? `<p class="small muted" style="margin:0">${pr.type === "free" ? "Your stake was promo money: a loss costs you nothing and any payout is profit. " : ""}Pays ${tiers.map(k => `${k}/${t.n} <b class="num">${pay[k]}x</b>`).join(" · ")}</p>` : ""}</div>`;
+}
+function wirePromo(root, id, get, set, onChange){
+  const box = root.querySelector(`[data-promo="${id}"]`); if(!box) return;
+  box.addEventListener("change", e => { const el = e.target, pr = {...(get() || {})};
+    if(el.dataset.pk === "type"){ set(el.value ? {type: el.value} : null); onChange(); return; }
+    if(el.dataset.pk === "value") pr.value = num(el.value);
+    if(el.dataset.pk === "pay"){ pr.pay = {...(pr.pay || {}), [el.dataset.hit]: num(el.value)}; }
+    set(pr); onChange(); });
+}
+
+/* ---------- past bets ---------- */
+function pastLegRow(i, l, sport){ l = l || {}; const info = l.info;
+  const sp = l.sport || sport || "nba";
   return `<div class="pl-row" data-pl="${i}">
-    <label class="f">Player<input data-k="player" autocomplete="off" value="${esc(l.player||"")}"></label>
-    <label class="f">Stat<input data-k="stat" list="pastStats" autocomplete="off" placeholder="Points" value="${esc(l.stat||"")}"></label>
-    <label class="f">Line<input data-k="line" class="num" inputmode="decimal" value="${esc(l.line??"")}"></label>
-    <label class="f">Pick<select data-k="side"><option ${l.side!=="LESS"?"selected":""}>MORE</option><option ${l.side==="LESS"?"selected":""}>LESS</option></select></label>
-    <label class="f">Result<select data-k="result"><option value="">Look it up</option>${[["hit","Hit"],["miss","Miss"],["push","Push"],["void","DNP / void"]].map(([v,t]) => `<option value="${v}" ${l.result===v?"selected":""}>${t}</option>`).join("")}</select></label>
-    <label class="f">Actual<input data-k="actual" class="num" inputmode="decimal" placeholder="opt." value="${esc(l.actual??"")}"></label></div>`;
+    <div class="pl-jer">${info ? avatar({...info, player: l.player, sport: sp}) : `<span class="av" style="--h:${hue(l.player || "?")}" aria-hidden="true">${esc(initials(l.player || "?"))}</span>`}</div>
+    <label class="f">Sport<select data-k="sport">${PAST_SPORTS.map(x => `<option value="${x}" ${x === sp ? "selected" : ""}>${esc(SPORT_NAME[x] || x.toUpperCase())}</option>`).join("")}</select></label>
+    <label class="f pl-name">Player<input data-k="player" autocomplete="off" spellcheck="false" value="${esc(l.player || "")}" role="combobox" aria-autocomplete="list" aria-expanded="false">
+      <ul class="ac" hidden role="listbox"></ul><span class="small muted pl-tag">${info ? esc(playerTag({...info, sport: sp})) : ""}</span></label>
+    <label class="f">Stat<input data-k="stat" list="pastStats-${sp}" autocomplete="off" placeholder="${esc((SPORT_STATS[sp] || ["Points"])[0])}" value="${esc(l.stat || "")}"></label>
+    <label class="f">Line<input data-k="line" class="num" inputmode="decimal" value="${esc(l.line ?? "")}"></label>
+    <label class="f">Pick<select data-k="side"><option ${l.side !== "LESS" ? "selected" : ""}>MORE</option><option ${l.side === "LESS" ? "selected" : ""}>LESS</option></select></label>
+    <label class="f">Result<select data-k="result"><option value="">Look it up</option>${[["hit","Hit"],["miss","Miss"],["push","Push"],["void","DNP / void"]].map(([v,t]) => `<option value="${v}" ${l.result === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+    <label class="f">Actual<input data-k="actual" class="num" inputmode="decimal" placeholder="opt." value="${esc(l.actual ?? "")}"></label></div>`;
+}
+function pastStatLists(){
+  const idx = statIndex(), out = [];
+  for(const sp of PAST_SPORTS){ const set = new Set(SPORT_STATS[sp] || []);
+    for(const l of [...S.histLegs, ...(S.board ? boardLegs(S.board) : [])]) if(l.sport === sp && l.stat) set.add(l.stat);
+    out.push(`<datalist id="pastStats-${sp}">${[...set].map(x => `<option value="${esc(x)}">`).join("")}</datalist>`); }
+  return out.join("");
 }
 function openPastBet(){
   const names = Object.keys(S.settings.payouts).filter(k => payTable(k) && payTable(k).n >= 2);
-  const st = S.past || {entry: names.includes("5-Pick Flex") ? "5-Pick Flex" : names[0], date: daysAgo(1)};
-  S.past = st;
-  const t = payTable(st.entry), stats = [...statIndex().values()].map(x => x.stat).sort();
-  $("#pastBody").innerHTML = `<p class="muted small" style="margin:0">Log an entry you already played. If you leave a result on <b>Look it up</b>, it's filled from the box scores the model graded that day when it can find them. Each leg is checked against what the model said that day, so the review can show where the bet went right or wrong.</p>
+  const st = S.past || {entry: names.includes("5-Pick Flex") ? "5-Pick Flex" : names[0], date: daysAgo(1), sport: "nba"};
+  S.past = st; st.legs = st.legs || [];
+  const t = payTable(st.entry);
+  const lastSport = i => { for(let j = i - 1; j >= 0; j--) if(st.legs[j]?.sport) return st.legs[j].sport; return st.sport || "nba"; };
+  $("#pastBody").innerHTML = `<p class="muted small" style="margin:0">Log an entry you already played. Start typing a name and pick the player from the list. Results left on <b>Look it up</b> are filled from the box scores the model graded that day when it can find them, and each leg is checked against what the model said that day.</p>
     <div class="row"><label class="f">Date played<input type="date" id="pDate" max="${today()}" value="${esc(st.date)}"></label>
       <label class="f">Entry type<select id="pEntry">${names.map(k => `<option ${k===st.entry?"selected":""}>${esc(k)}</option>`).join("")}</select></label>
       <label class="f">Stake ($)<input id="pStake" class="num" inputmode="decimal" style="width:100px" value="${esc(st.stake||"")}"></label>
       <label class="f">Paid out ($)<input id="pPaid" class="num" inputmode="decimal" style="width:110px" placeholder="optional" value="${esc(st.paid||"")}"></label></div>
     <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pSugg" ${st.sugg?"checked":""}> This was one of the model's suggested plays</label>
-    <datalist id="pastStats">${stats.map(x => `<option value="${esc(x)}">`).join("")}</datalist>
-    <div id="pLegs" style="display:flex;flex-direction:column;gap:8px">${Array.from({length: t.n}, (_, i) => pastLegRow(i, (st.legs||[])[i])).join("")}</div>
-    <p class="note" style="margin:0">Paid out: what PrizePicks actually paid, including your stake back. Leave it blank to use the payout table for ${esc(st.entry)}.</p>
+    ${pastStatLists()}
+    <div id="pLegs" style="display:flex;flex-direction:column;gap:8px">${Array.from({length: t.n}, (_, i) => pastLegRow(i, st.legs[i], lastSport(i))).join("")}</div>
+    ${promoUI("past", st.entry, st.promo)}
+    <p class="note" style="margin:0">Paid out: what PrizePicks actually paid, including your stake back. Leave it blank to use the payout table${st.promo?.type ? " with your promo" : ""}.</p>
     <div class="row"><button class="btn primary" id="pSave">Add and review</button><span class="small" id="pMsg" style="color:var(--warn)"></span></div>`;
+  const body = $("#pastBody");
   const keep = () => { st.date = $("#pDate").value; st.stake = $("#pStake").value; st.paid = $("#pPaid").value; st.sugg = $("#pSugg").checked;
-    st.legs = [...document.querySelectorAll("#pLegs .pl-row")].map(r => Object.fromEntries([...r.querySelectorAll("[data-k]")].map(x => [x.dataset.k, x.value]))); };
-  $("#pastBody").addEventListener("input", keep); $("#pastBody").addEventListener("change", keep);
-  $("#pEntry").addEventListener("change", e => { keep(); st.entry = e.target.value; openPastBet(); });
+    document.querySelectorAll("#pLegs .pl-row").forEach((r, i) => { const prev = st.legs[i] || {};
+      const v = Object.fromEntries([...r.querySelectorAll("[data-k]")].map(x => [x.dataset.k, x.value]));
+      st.legs[i] = {...v, info: prev.info && normName(prev.info.player) === normName(v.player) && prev.sport === v.sport ? prev.info : null}; }); };
+  body.oninput = keep; body.onchange = keep;
+  $("#pEntry").addEventListener("change", e => { keep(); st.entry = e.target.value; st.promo = null; openPastBet(); });
   $("#pSave").addEventListener("click", savePastBet);
+  wirePromo(body, "past", () => st.promo, v => { st.promo = v; }, () => { keep(); openPastBet(); });
+  body.querySelectorAll(".pl-row").forEach(row => wirePastRow(row, st, keep));
+  loadRoster();
   const d = $("#pastSheet"); if(!d.open){ if(d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+}
+function setRowInfo(row, st, p){
+  const i = +row.dataset.pl, leg = st.legs[i] || (st.legs[i] = {});
+  leg.player = p.player; leg.sport = p.sport; leg.info = {player: p.player, team: p.team, jersey: p.jersey, pos: p.pos, color: p.color, alt: p.alt};
+  row.querySelector("[data-k=player]").value = p.player;
+  row.querySelector("[data-k=sport]").value = p.sport;
+  row.querySelector("[data-k=stat]").setAttribute("list", "pastStats-" + p.sport);
+  row.querySelector(".pl-jer").innerHTML = avatar({...leg.info, sport: p.sport});
+  row.querySelector(".pl-tag").textContent = playerTag(p);
+}
+function wirePastRow(row, st, keep){
+  const inp = row.querySelector("[data-k=player]"), ac = row.querySelector(".ac"), sportSel = row.querySelector("[data-k=sport]");
+  let hits = [], at = -1;
+  const close = () => { ac.hidden = true; inp.setAttribute("aria-expanded", "false"); at = -1; };
+  const show = async () => {
+    await loadRoster();
+    hits = rosterSearch(inp.value, sportSel.value);
+    if(hits.length < 3){ const more = rosterSearch(inp.value, "").filter(p => !hits.includes(p)); hits = [...hits, ...more].slice(0, 6); }
+    if(!hits.length || document.activeElement !== inp){ close(); return; }
+    at = -1;
+    ac.innerHTML = hits.map((p, j) => `<li role="option" data-j="${j}">${avatar({...p})}<span><b>${esc(p.player)}</b><span class="small muted">${esc([SPORT_NAME[p.sport] || p.sport.toUpperCase(), playerTag(p)].filter(Boolean).join(" · "))}</span></span></li>`).join("");
+    ac.hidden = false; inp.setAttribute("aria-expanded", "true"); };
+  const pick = j => { const p = hits[j]; if(!p) return; setRowInfo(row, st, p); close(); keep(); st.legs[+row.dataset.pl].info = {player: p.player, team: p.team, jersey: p.jersey, pos: p.pos, color: p.color, alt: p.alt};
+    st.legs[+row.dataset.pl].sport = p.sport; row.querySelector("[data-k=stat]").focus(); };
+  let tmr;
+  inp.addEventListener("input", () => { row.querySelector(".pl-tag").textContent = ""; clearTimeout(tmr); tmr = setTimeout(show, 120); });
+  inp.addEventListener("focus", () => { if(inp.value.length >= 2) show(); });
+  inp.addEventListener("keydown", e => {
+    if(ac.hidden) return;
+    if(e.key === "ArrowDown" || e.key === "ArrowUp"){ e.preventDefault(); at = (at + (e.key === "ArrowDown" ? 1 : -1) + hits.length) % hits.length;
+      ac.querySelectorAll("li").forEach((li, j) => li.setAttribute("aria-selected", j === at)); }
+    else if(e.key === "Enter" || e.key === "Tab"){ if(at >= 0 || (e.key === "Enter" && hits.length)){ e.preventDefault(); pick(at >= 0 ? at : 0); } }
+    else if(e.key === "Escape"){ e.preventDefault(); close(); } });
+  ac.addEventListener("pointerdown", e => { const li = e.target.closest("li"); if(!li) return; e.preventDefault(); pick(+li.dataset.j); });
+  inp.addEventListener("blur", () => setTimeout(() => {
+    close();
+    // Typed a full name without picking: still match it to the roster.
+    const leg = st.legs[+row.dataset.pl]; if(!leg || leg.info || !inp.value.trim() || !S.roster) return;
+    const exact = S.roster.filter(p => p.nn === normName(inp.value) && (p.sport === sportSel.value || !S.roster.some(q => q.nn === p.nn && q.sport === sportSel.value)));
+    if(exact.length === 1) setRowInfo(row, st, exact[0]); }, 150));
+  sportSel.addEventListener("change", () => { row.querySelector("[data-k=stat]").setAttribute("list", "pastStats-" + sportSel.value);
+    const leg = st.legs[+row.dataset.pl]; if(leg){ leg.sport = sportSel.value; leg.info = null; }
+    row.querySelector(".pl-jer").innerHTML = `<span class="av" style="--h:${hue(inp.value || "?")}" aria-hidden="true">${esc(initials(inp.value || "?"))}</span>`; row.querySelector(".pl-tag").textContent = ""; });
 }
 async function savePastBet(){
   const st = S.past, msg = $("#pMsg"), t = payTable(st.entry), idx = statIndex();
@@ -2619,12 +2818,16 @@ async function savePastBet(){
   const rows = (st.legs || []).slice(0, t.n);
   if(rows.length < t.n || rows.some(r => !r.player?.trim() || !r.stat?.trim() || !fin(num(r.line)))){ msg.textContent = `Fill in player, stat and line for all ${t.n} legs.`; return; }
   if(new Set(rows.map(r => normName(r.player))).size < rows.length){ msg.textContent = "Each leg needs a different player."; return; }
+  const pr = st.promo && st.promo.type ? st.promo : null;
+  if(pr && (pr.type === "boost" || pr.type === "profit") && !(+pr.value > 0)){ msg.textContent = pr.type === "boost" ? "Enter the boosted payout." : "Enter the profit boost %."; return; }
   const legs = [], missing = [];
   for(const r of rows){
-    const ref = idx.get(r.stat.trim().toLowerCase());
-    const l = {player: r.player.trim(), stat: ref ? ref.stat : r.stat.trim(), market: ref ? ref.market : "", line: num(r.line), side: r.side, result: r.result || "", actual: r.actual === "" ? "" : r.actual, past: true};
+    const sport = r.sport || "nba";
+    const ref = idx.get(sport + "|" + r.stat.trim().toLowerCase()) || idx.get(r.stat.trim().toLowerCase());
+    const l = {sport, player: r.player.trim(), stat: ref ? ref.stat : r.stat.trim(), market: ref ? ref.market : "", line: num(r.line), side: r.side, result: r.result || "", actual: r.actual === "" ? "" : r.actual, past: true};
+    if(r.info) Object.assign(l, {team: r.info.team, jersey: r.info.jersey, pos: r.info.pos, color: r.info.color, alt: r.info.alt});
     const mv = modelView(l, date);
-    if(mv){ l.sport = mv.h.sport; if(!l.market) l.market = mv.h.market; }
+    if(mv && !l.market) l.market = mv.h.market;
     if(!l.result && l.actual !== "") l.result = judgeLeg(l.actual, l.line, l.side);
     if(!l.result && mv && mv.h.actual !== "" && mv.h.actual != null){ l.actual = mv.h.actual; l.result = judgeLeg(mv.h.actual, l.line, l.side); l.auto = true; }
     if(!l.result && mv && mv.h.result === "void"){ l.result = "void"; l.auto = true; }
@@ -2635,17 +2838,23 @@ async function savePastBet(){
   }
   if(missing.length && !$("#pSave").dataset.armed){ $("#pSave").dataset.armed = "1"; $("#pSave").textContent = "Add it open";
     msg.textContent = `No result found for ${missing.join(", ")}. Pick Hit or Miss for ${missing.length === 1 ? "it" : "them"}, or add it open and grade it in the Bet log.`; return; }
-  const es = entryStats(st.entry, legs.map(l => l.fair));
+  const es = promoStats(st.entry, legs.map(l => l.fair), pr);
   const b = {kind: "pp", entry: st.entry, stake, E: es.E, V: es.V, cash: es.cash, source: "past", origin: st.sugg ? "suggested" : "own", past: true,
     legs, id: uid(), placedAt: date + "T18:00:00Z", date, settledAt: date + "T23:59:00Z", addedAt: new Date().toISOString()};
+  if(pr) Object.assign(b, promoFields(st.entry, pr));
   const paid = num(st.paid); if(fin(paid) && paid >= 0) b.paidOut = paid;
   finalize(b);
   try { await store.saveBet(b); } catch(e){ dbError(e); msg.textContent = "Couldn't save it. Try again."; return; }
-  S.past = {entry: st.entry, date: st.date};
+  S.past = {entry: st.entry, date: st.date, sport: legs[legs.length - 1].sport};
   $("#pastSheet").close?.();
   toast(`Added ${st.entry} from ${shortDate(date)}`);
   openReview(b.id);
 }
+function promoFields(name, pr){
+  // What an entry stores about its promo: the payout table it settles with, a label, and whether the stake was free.
+  return {pay: promoPay(name, pr), promo: true, promoInfo: {type: pr.type, value: pr.value ?? null, label: promoLabel(pr, name)}, ...(pr.type === "free" ? {free: true} : {})};
+}
+
 function reviewHTML(b){
   const t = payTable(b.entry) || {n: b.legs.length, pay: {}}, be = breakeven(b.entry);
   const rows = b.legs.map(l => ({l, mv: modelView(l, legDay(b, l)), date: legDay(b, l)}));
@@ -2666,12 +2875,14 @@ function reviewHTML(b){
     else tag = ["plain", "Not graded"];
     const what = a == null ? (l.result ? l.result[0].toUpperCase() + l.result.slice(1) : "–") : `${a}${margin ? ` · ${l.result === "hit" ? "cleared by" : "missed by"} ${+margin.toFixed(1)}` : ""}`;
     const clv = l.clv != null && l.clv !== "" && fin(+l.clv) ? `<div class="small ${cls(+l.clv)}">Line moved ${+l.clv > 0 ? "your way" : "against you"} ${(Math.abs(+l.clv)*100).toFixed(1)} pts</div>` : "";
-    return {r, tag, close, against, agreed, f, html: `<tr class="rv-leg"><td><span class="side ${l.side}">${l.side}</span> <b>${esc(l.player)}</b><div class="small muted">${esc(l.stat||"")} ${l.line ?? ""}</div></td>
+    return {r, tag, close, against, agreed, f, html: `<tr class="rv-leg"><td><div class="rv-who">${l.jersey || l.color ? avatar(l) : ""}<div><span class="side ${l.side}">${l.side}</span> <b>${esc(l.player)}</b><div class="small muted">${esc([l.stat || "", l.line ?? "", l.team ? teamShort(l.team, l.sport) : "", l.jersey ? "#" + l.jersey : ""].filter(x => x !== "").join(" · ").replace(/^(.+?) · (\d)/, "$1 $2"))}</div></div></div></td>
       <td class="num">${esc(what)}</td><td class="small">${esc(model)}${clv}</td><td><span class="chip ${tag[0]}">${tag[1]}</span></td></tr>`}; });
 
   // Verdict: the decision (was it +EV when placed) vs the outcome.
   let head, body, tone;
-  if(!settled){ tone = plusEV ? "good" : "warn"; head = plusEV ? "A +EV entry, still open" : "A −EV entry, still open"; body = "The review fills in as legs are graded."; }
+  if(b.free){ tone = "good"; head = settled ? (won ? "Free entry, and it paid" : "Free entry, cost you nothing") : "Free entry, still open";
+    body = `Your stake was promo credit, so the entry was worth ${money(b.stake*(b.E-1))} on average with no downside. The best use of a free entry is the legs most likely to cash.`; }
+  else if(!settled){ tone = plusEV ? "good" : "warn"; head = plusEV ? "A +EV entry, still open" : "A −EV entry, still open"; body = "The review fills in as legs are graded."; }
   else if(priced === 0){ tone = won ? "good" : "bad"; head = won ? "Won, but the model can't judge it" : "Lost, and the model can't judge it"; body = "None of these props were priced by the model that day, so there's no fair price to judge the picks against. The leg results below still show how close each one was."; }
   else if(plusEV && won){ tone = "good"; head = "Good bet, and it paid"; body = `It was worth ${pct(b.E-1,1,true)} on average when placed, and it came in.`; }
   else if(plusEV){ tone = "warn"; head = "Good bet, bad luck"; body = `It was worth ${pct(b.E-1,1,true)} on average when placed. A +EV entry like this still loses ${pct(1 - (b.cash ?? 0), 0)} of the time, so the decision was sound even though it lost.`; }
@@ -2681,6 +2892,8 @@ function reviewHTML(b){
 
   // Takeaways.
   const tk = [];
+  if(b.promoInfo && !b.free){ const base = entryStats(b.entry, b.legs.map(l => +l.fair)).E;
+    tk.push(["good", `Promo (${esc(b.promoInfo.label)}): it moved the entry's value from ${pct(base-1,1,true)} to ${pct(b.E-1,1,true)}.${base <= 1 && b.E > 1 ? " The promo is what made this a good bet." : base <= 1 ? " Even with it, the legs weren't strong enough to make it a good bet." : ""}`]); }
   const ag = legRows.filter(x => x.against), agH = ag.filter(x => x.r.l.result === "hit").length, agM = ag.filter(x => x.r.l.result === "miss").length;
   if(ag.length) tk.push(agM && !agH ? [`bad`, `You went against the model on ${ag.length === 1 ? ag[0].r.l.player : ag.length + " legs"} and ${ag.length === 1 ? "it" : "they"} missed. That's the clearest place this bet went wrong.`]
     : agH && !agM ? [`good`, `You went against the model on ${ag.length === 1 ? ag[0].r.l.player : ag.length + " legs"} and won ${ag.length === 1 ? "it" : "them all"}, though on paper ${ag.length === 1 ? "it was" : "they were"} the weakest ${ag.length === 1 ? "pick" : "picks"}. One result doesn't prove an edge, so see if it holds up over more bets.`]
@@ -2721,13 +2934,14 @@ function reviewHTML(b){
       tk.push([tp > (b.profit ?? 0) + b.stake + 0.005 ? "warn" : "plain", `The model's ${top.length} best legs that day (${top.map(h => esc(h.player)).join(", ")}) went ${th} for ${top.length}. As a ${esc(b.entry)} at your stake that paid ${money(tp)}${settled ? ` against your ${money(b.stake + (b.profit ?? 0))}` : ""}, and it was worth ${pct(te-1,1,true)} beforehand vs ${pct(b.E-1,1,true)} for yours.`]); } }
 
   return `<div class="rv-verdict"><div><div class="big ${tone === "good" ? "pos" : tone === "bad" ? "neg" : ""}" style="${tone === "warn" ? "color:var(--warn)" : ""}">${esc(head)}</div><p class="muted small" style="margin:6px 0 0">${esc(body)}</p></div></div>
+    ${b.promoInfo ? `<div><span class="chip gold">${esc(b.promoInfo.label)}</span></div>` : ""}
     <div class="statgrid"><div><span class="l">${esc(b.entry)} · ${esc(shortDate(b.date))}</span><span class="v">${money(b.stake)}</span></div>
       <div><span class="l">Result</span><span class="v ${cls(b.profit)}">${settled ? money(b.profit, true) : "Open"}</span></div>
       <div><span class="l">Value when placed</span><span class="v ${cls(b.E-1)}">${pct(b.E-1,1,true)}</span></div>
       <div><span class="l">Legs hit</span><span class="v">${hits}/${live.length || b.legs.length}</span></div></div>
     <div class="scroll rv-wrap"><table class="rv-table"><thead><tr><th>Leg</th><th>Actual</th><th>What the model said</th><th></th></tr></thead><tbody>${legRows.map(x => x.html).join("")}</tbody></table></div>
     ${tk.length ? `<div><h3 style="margin:0 0 8px">Where it went right and wrong</h3><ul class="rv-take">${tk.map(([c, x]) => `<li class="${c === "good" ? "" : ""}"><span class="chip ${c}" style="margin-right:6px">${c === "good" ? "Right" : c === "bad" ? "Wrong" : c === "warn" ? "Watch" : "Note"}</span>${x}</li>`).join("")}</ul></div>` : ""}
-    ${altRows.length > 1 ? `<div class="scroll"><table><thead><tr><th>Same legs as</th><th class="r">Would have paid</th><th class="r">Value beforehand</th></tr></thead><tbody>${altRows.map(x => `<tr><td>${esc(x.k)}${x.k === b.entry ? ' <span class="chip plain">yours</span>' : ""}</td><td class="r num">${money(x.paid)}</td><td class="r num ${cls(x.E-1)}">${pct(x.E-1,1,true)}</td></tr>`).join("")}</tbody></table></div>` : ""}
+    ${altRows.length > 1 ? `<div class="scroll"><table><thead><tr><th>Same legs as${b.promoInfo ? " (no promo)" : ""}</th><th class="r">Would have paid</th><th class="r">Value beforehand</th></tr></thead><tbody>${altRows.map(x => `<tr><td>${esc(x.k)}${x.k === b.entry ? ' <span class="chip plain">yours</span>' : ""}</td><td class="r num">${money(x.paid)}</td><td class="r num ${cls(x.E-1)}">${pct(x.E-1,1,true)}</td></tr>`).join("")}</tbody></table></div>` : ""}
     <p class="note" style="margin:0">"What the model said" comes from the picks it logged that day at break-even or better. A prop it didn't log either wasn't priced or wasn't worth playing on either side. Judge bets by their value when placed; single results are mostly luck.</p>`;
 }
 function openReview(id){

@@ -91,6 +91,9 @@ def main(argv=None):
     elif a.cmd == "rosters":
         for s in cfg.sports:
             print(f"{s}: {engine.refresh_rosters(conn, s, now)} players")
+        from . import directory
+        for s, n in directory.refresh(conn, cfg.sports, now).items():
+            print(f"{s} directory: {n}" + (" players" if isinstance(n, int) else ""))
     elif a.cmd == "results":
         results.write(conn, cfg, a.out)
         print(f"Wrote {a.out}")

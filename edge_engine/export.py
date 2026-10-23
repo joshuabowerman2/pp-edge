@@ -158,3 +158,6 @@ def write_app_json(conn, cfg, path, now):
     legs = [l for e in board.get("plays", []) + board.get("entries", []) + board.get("stacks", []) for l in e["legs"]] + board.get("legs", [])
     timeline.write(conn, legs, os.path.join(d or ".", "timeline.json"))
     players.write(conn, legs, os.path.join(d or ".", "players.json"))
+    # Everyone on every roster, for the app's past-bet form (names, teams, jerseys).
+    from . import directory
+    directory.write(conn, sorted(set(cfg.sports) | {"nba", "nfl", "nhl", "mlb"}), os.path.join(d or ".", "roster.json"))

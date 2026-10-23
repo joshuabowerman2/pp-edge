@@ -267,6 +267,17 @@ class EndToEndTests(unittest.TestCase):
         self.fake = fakes.Fake(self.start)
         http.fetch = self.fake
 
+    def test_player_directory(self):
+        from edge_engine import directory
+        out = directory.refresh(self.conn, ["nba"], self.now)
+        self.assertGreater(out["nba"], 0)
+        self.assertEqual(directory.refresh(self.conn, ["nba"], self.now), {})   # fresh: no second fetch today
+        rows = directory.build(self.conn, ["nba"])["sports"]["nba"]
+        celtic = next(r for r in rows if r[1] == "Boston Celtics")
+        self.assertEqual((celtic[2], celtic[3], celtic[4]), ("1", "G", "#008348"))
+        names = {r[0] for r in rows}
+        self.assertEqual(len(names), len(rows))   # box-score players already on a roster aren't listed twice
+
     def test_credit_saver_skips_recent_games_and_keeps_reserve(self):
         engine.run_once(self.conn, self.cfg, self.now)
         odds_calls = lambda: sum("/events/ev1/odds" in c for c in self.fake.calls)
