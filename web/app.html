@@ -1268,8 +1268,9 @@ function avatar(l, big){
   const ink = lum(c) > .45 ? "#0b1118" : "#ffffff";
   // A plain jersey shape in the team's two colors: a tank top for basketball, sleeves for everything else.
   const tank = l.sport === "nba" || l.sport === "wnba";
-  const body = tank ? "M11 3h6q5 6 10 0h6q0 9 6 12v27H5V15q6-3 6-12z" : "M15 3h5q4 6 8 0h5l12 7-4 10-6-3v25H13V17l-6 3-4-10z";
-  const neck = tank ? "M17 3q5 6 10 0" : "M20 3q4 6 8 0";
+  // Both shapes are centered on x = 24, the middle of the frame and of the number.
+  const body = tank ? "M13 3h6q5 6 10 0h6q0 9 6 12v27H7V15q6-3 6-12z" : "M15 3h5q4 6 8 0h5l12 7-4 10-6-3v25H13V17l-6 3-4-10z";
+  const neck = tank ? "M19 3q5 6 10 0" : "M20 3q4 6 8 0";
   const sz = label.length > 2 ? 10 : 15;
   return `<span class="jer${big?" big":""}" title="${esc(title)}" aria-hidden="true"><svg viewBox="0 0 48 44"><path d="${body}" fill="${c}" stroke="${trim}" stroke-width="2.2" stroke-linejoin="round"/>`
     + `<path d="${neck}" fill="none" stroke="${trim}" stroke-width="2.6" stroke-linecap="round"/>`
