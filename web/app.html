@@ -151,29 +151,167 @@ button.btn.delquick{min-height:36px;padding:4px 10px;font-size:.8rem}
 .drop{border:2px dashed var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
 .drop.on{border-color:var(--accent);background:var(--good-bg)}
 footer{color:var(--muted);font-size:.78rem;padding-block:24px}
+
+/* ---------- dark sportsbook theme and app shell ---------- */
+:root, :root:not([data-theme="light"]), :root[data-theme="dark"]{
+  --bg:#0A1017; --panel:#0F1822; --panel2:#152131; --line:#1F2D3D; --ink:#E9EEF4; --muted:#8C99AA;
+  --accent:#22D37E; --on-accent:#04170D; --gold:#E8B23A; --gold-bg:#2E240E;
+  --good:#3DDC8E; --good-bg:#0F2E1E; --warn:#F0B85A; --warn-bg:#2F2410; --bad:#F2867B; --bad-bg:#371A18;
+  --s-actual:#22D37E; --s-exp:#6E9BF0; --s1:#22D37E; --s2:#6E9BF0; --grid:#1A2735; --focus:#7FA6F0; color-scheme:dark }
+html,body{background:var(--bg)}
+body{display:grid;grid-template-columns:236px minmax(0,1fr);min-height:100vh}
+body::before{background:var(--bg)}
+aside.side{grid-column:1;grid-row:1;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:18px;padding:22px 14px;border-right:1px solid var(--line);background:linear-gradient(180deg,#0C141D,#0A1017)}
+.logo{display:flex;align-items:center;gap:10px;padding:0 8px}
+.logo svg{width:38px;height:38px;border-radius:10px;flex:none}
+.logo b{display:block;font:700 1.55rem/1 var(--display);letter-spacing:.02em;text-transform:uppercase;font-style:italic}
+.logo span{font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+nav.tabs{display:flex;flex-direction:column;gap:4px;padding:0;overflow:visible}
+nav.tabs button{appearance:none;display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:10px;background:none;color:var(--muted);font:600 .98rem var(--body);padding:12px 14px;min-height:46px;cursor:pointer;text-align:left;border-bottom:0}
+nav.tabs button svg{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.tabs button:hover{color:var(--ink);background:var(--panel2)}
+nav.tabs button[aria-selected="true"]{color:var(--ink);background:var(--good-bg);box-shadow:inset 3px 0 0 var(--accent)}
+nav.tabs button[aria-selected="true"] svg{color:var(--accent)}
+.side-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:0 8px;font-size:.78rem;color:var(--muted)}
+.side-foot a{color:var(--accent);text-decoration:none}
+.mainwrap{grid-column:2;grid-row:1;min-width:0}
+header.topbar{position:sticky;top:0;z-index:5;background:rgba(10,16,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.tb-in{max-width:1320px;margin:0 auto;display:flex;align-items:center;gap:12px;justify-content:space-between;padding:10px max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px))}
+.tb-title{display:flex;align-items:center;gap:10px;min-width:0}
+.tb-title b{font:700 1.3rem/1.1 var(--display);letter-spacing:.01em}
+.tb-title .sub{font-size:.75rem;color:var(--muted)}.tb-title .sub.stale{color:var(--warn);font-weight:600}
+.mlogo{display:none}.mlogo svg{width:32px;height:32px;border-radius:9px}
+.bk{display:flex;gap:8px;align-items:center;margin:0}
+.pill{display:inline-flex;gap:6px;align-items:baseline;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:7px 14px;font-size:.8rem}
+.pill b{font:600 1rem var(--mono)}
+main.wrap{max-width:1320px}
+.panel,.card,.bet,.kpi{background:var(--panel)}
+.kpis{background:var(--line)}
+input,select,textarea{background:var(--panel2)}
+.sub.stale{color:var(--warn)}
+/* home */
+.home{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+.home-main{display:flex;flex-direction:column;gap:18px;min-width:0}
+.rail{display:flex;flex-direction:column;gap:14px;position:sticky;top:76px}
+.rail .panel{display:flex;flex-direction:column;gap:12px;scroll-margin-top:84px}
+.hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:16px;padding:24px 22px;background:radial-gradient(120% 140% at 85% 20%,#163A2B 0,#0F1E2B 45%,#0C141D 100%)}
+.hero-art{position:absolute;right:-10px;top:6px;width:48%;max-width:380px;height:auto;pointer-events:none;opacity:.8}
+.hero-h{position:relative;margin:0;display:flex;flex-direction:column;font:800 italic 2.5rem/.95 var(--display);text-transform:uppercase;letter-spacing:.01em}
+.hero-h .acc{color:var(--accent)}
+.hero-p{position:relative;color:var(--muted);margin:10px 0 16px}
+.hero-stats{position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;max-width:620px}
+.hero-stats div{background:rgba(15,24,34,.88);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;flex-direction:column}
+.hero-stats b{font:600 1.15rem var(--mono)}.hero-stats span{font-size:.72rem;color:var(--muted)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px}
+.chipbtn{appearance:none;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:76px;padding:12px 10px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font:600 .8rem var(--body);cursor:pointer}
+.chipbtn[aria-pressed="true"]{color:var(--ink);border-color:var(--accent);background:var(--good-bg)}
+.spi{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.chipbtn[aria-pressed="true"] .spi{color:var(--accent)}
+.sech{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sech h3{margin:0;font-size:1.35rem}.flame{color:var(--accent);font-size:.9em}
+.linkbtn{appearance:none;border:0;background:none;color:var(--accent);font:600 .85rem var(--body);cursor:pointer;padding:6px 0}
+.topcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:12px}
+.pcard{position:relative;border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,#132131,#0F1822 60%);display:flex;flex-direction:column;gap:6px;min-width:0}
+.pc-top{display:flex;justify-content:space-between;align-items:flex-start}
+.sport-tag{display:inline-flex;align-items:center;gap:4px;font:600 .68rem var(--body);color:var(--muted);background:var(--panel2);border-radius:999px;padding:3px 8px}
+.sport-tag .spi{width:14px;height:14px}
+.pc-name{display:flex;flex-direction:column;margin-top:4px}.pc-name span{color:var(--muted);font-size:.85rem}
+.pc-line{font:700 1.35rem var(--display);letter-spacing:.02em}
+.pc-fair{font-size:.82rem;color:var(--muted)}
+.pc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:4px}
+.pc-game{display:flex;justify-content:space-between;gap:6px;font-size:.72rem;color:var(--accent);border-top:1px solid var(--line);padding-top:8px;margin-top:2px}
+.pc-game span:last-child{color:var(--muted);white-space:nowrap}
+.av{flex:none;width:36px;height:36px;border-radius:50%;display:inline-grid;place-items:center;font:700 .8rem var(--body);color:#fff;background:hsl(var(--h) 45% 32%);border:2px solid hsl(var(--h) 55% 48%)}
+.av.big{width:58px;height:58px;font-size:1.05rem}
+.echip{display:inline-block;font:600 .78rem var(--mono);padding:4px 9px;border-radius:7px}
+.echip.good{background:var(--good-bg);color:var(--good)}.echip.warn{background:var(--warn-bg);color:var(--warn)}.echip.bad{background:var(--bad-bg);color:var(--bad)}
+.add{appearance:none;width:38px;height:38px;border-radius:9px;border:0;background:var(--accent);color:var(--on-accent);font:700 1.3rem/1 var(--body);cursor:pointer;flex:none}
+.add.on{background:var(--panel2);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent);font-size:1rem}
+.seg2{display:flex;gap:6px;flex-wrap:wrap}
+.seg2 button{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);font:600 .82rem var(--body);border-radius:999px;padding:8px 14px;min-height:38px;cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.ptable{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+.pt-head,.pt-row{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(0,1.2fr) minmax(0,1fr) 72px 76px 50px;gap:10px;align-items:center;padding:10px 14px}
+.pt-head{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--line)}
+.pt-row{border-bottom:1px solid var(--line)}.pt-row:last-of-type{border-bottom:0}
+.pt-who{display:flex;align-items:center;gap:10px;min-width:0}.pt-who>div{min-width:0}
+.pt-sub{font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-mkt{font-size:.88rem}.pt-line{font:600 .9rem var(--mono);white-space:nowrap}
+.r{text-align:right}
+.star{appearance:none;border:0;background:none;color:var(--line);font-size:1.05rem;cursor:pointer;padding:4px;margin-left:auto}
+.star.on{color:var(--gold)}
+.slip h3 .count,.slipbar .count{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:var(--accent);color:var(--on-accent);font:700 .75rem var(--body);padding:0 6px;vertical-align:middle}
+.slip-legs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.slip-legs li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.sl-mid{min-width:0}.sl-right{display:flex;align-items:center;gap:8px;font-size:.85rem}
+.x{appearance:none;border:0;background:var(--panel2);color:var(--muted);width:30px;height:30px;border-radius:8px;cursor:pointer}
+.slip-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slip-sum div{display:flex;flex-direction:column;gap:2px}.slip-sum b{font:600 1rem var(--mono)}
+.btn.wide{width:100%;justify-content:center;min-height:50px;font-size:1rem}
+.payout{margin:0;text-align:center;color:var(--accent);font-size:.9rem}
+input[type=range]{accent-color:var(--accent);padding:0;min-height:30px;background:none;border:0}
+.cta{background:radial-gradient(140% 120% at 100% 0,#163A2B,#0F1822 60%)!important;align-items:flex-start}
+.cta-ic{width:30px;height:30px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round}
+.board{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.board li{display:flex;gap:12px;align-items:center}
+.bicon{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);color:var(--accent)}
+.slipbar{display:none}
+footer{border-top:1px solid var(--line)}
+@media (max-width:1180px){
+  .home{grid-template-columns:minmax(0,1fr)}
+  .rail{position:static;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+}
+@media (max-width:900px){
+  body{display:block}
+  aside.side{position:fixed;inset:auto 0 0 0;height:auto;z-index:20;flex-direction:row;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--line);background:rgba(10,16,23,.97);backdrop-filter:blur(8px)}
+  .logo,.side-foot{display:none}
+  nav.tabs{flex-direction:row;width:100%;overflow-x:auto;scrollbar-width:none;gap:2px}
+  nav.tabs button{flex:1 1 0;min-width:0;flex-direction:column;gap:3px;padding:6px 0;min-height:52px;font-size:.66rem;justify-content:center;text-align:center;border-radius:8px}
+  nav.tabs button span[data-s]{font-size:0}nav.tabs button span[data-s]::after{content:attr(data-s);font-size:.66rem}
+  nav.tabs button[aria-selected="true"]{box-shadow:none;background:var(--good-bg)}
+  nav.tabs button svg{width:22px;height:22px}
+  .mlogo{display:block}
+  main.wrap{padding-bottom:130px}
+  .hide-sm{display:none}
+  .hero{padding:20px 16px}.hero-h{font-size:2rem}.hero-art{width:70%;opacity:.6}
+  .pt-head{display:none}
+  .pt-row{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"who fair add" "mkt edge add";row-gap:4px}
+  .pt-who{grid-area:who}.pt-mkt{grid-area:mkt;font-size:.8rem;color:var(--muted)}
+  .pt-mkt::before{content:attr(data-line)}
+  .pt-line{display:none}.pt-fair{grid-area:fair}.pt-row>.r:nth-of-type(5){grid-area:edge}.pt-row>.r:last-child{grid-area:add}
+  .slipbar{position:fixed;left:10px;right:10px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:19;display:flex;justify-content:space-between;align-items:center;gap:8px;border:0;border-radius:12px;padding:12px 14px;background:var(--accent);color:var(--on-accent);font:600 .9rem var(--body);box-shadow:0 6px 20px rgba(0,0,0,.4);cursor:pointer}
+  .slipbar[hidden]{display:none}
+  .toast{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
+  .slipbar .count{background:var(--on-accent);color:var(--accent)}
+  .slipbar b.pos,.slipbar b.neg{color:inherit}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
-<header class="top">
-  <div class="wrap">
-    <div class="brand">
-      <svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#10161F"/><line x1="96" y1="300" x2="416" y2="300" stroke="#3A4658" stroke-width="10" stroke-dasharray="16 14" stroke-linecap="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#E8B23A" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#E8B23A" stroke="#E8B23A" stroke-width="28" stroke-linejoin="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#34D27B" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#34D27B" stroke="#34D27B" stroke-width="10" stroke-linejoin="round"/></svg>
-      <div><h1>Edge Finder</h1><div class="sub" id="dataNote">No picks loaded yet</div><div class="sub" id="syncNote">Connecting to your saved data…</div></div>
-      <div class="bk"><span class="muted">Bankroll</span><b id="hdrBank">–</b><span class="muted">At risk</span><b id="hdrRisk">–</b></div>
-    </div>
-    <nav class="tabs" role="tablist" aria-label="Sections">
-      <button role="tab" id="tab-dash" aria-selected="true" data-tab="dash">Dashboard</button>
-      <button role="tab" id="tab-picks" aria-selected="false" data-tab="picks">Today's picks</button>
-      <button role="tab" id="tab-build" aria-selected="false" data-tab="build">Build</button>
-      <button role="tab" id="tab-bets" aria-selected="false" data-tab="bets">Bet log</button>
-      <button role="tab" id="tab-calc" aria-selected="false" data-tab="calc">EV calculator</button>
-      <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings">Bankroll &amp; settings</button>
-      <button role="tab" id="tab-people" aria-selected="false" data-tab="people" hidden>People</button>
-    </nav>
-  </div>
-</header>
+<aside class="side" aria-label="Main">
+  <div class="logo"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#10161F"/><line x1="96" y1="300" x2="416" y2="300" stroke="#3A4658" stroke-width="10" stroke-dasharray="16 14" stroke-linecap="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#E8B23A" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#E8B23A" stroke="#E8B23A" stroke-width="28" stroke-linejoin="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#34D27B" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#34D27B" stroke="#34D27B" stroke-width="10" stroke-linejoin="round"/></svg><div><b>Edge Finder</b><span>Find the edge</span></div></div>
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-home" aria-selected="true" data-tab="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg><span>Home</span></button>
+    <button role="tab" id="tab-picks" aria-selected="false" data-tab="picks"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="2.5"/><path d="M8 8.5h8M8 12h8M8 15.5h5"/></svg><span>Plays</span></button>
+    <button role="tab" id="tab-build" aria-selected="false" data-tab="build"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6.5h14M5 12h14M5 17.5h9"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M18.5 16.3v2.4M17.3 17.5h2.4"/></svg><span data-s="Picks">My Picks</span></button>
+    <button role="tab" id="tab-bets" aria-selected="false" data-tab="bets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5h11l3 3v12H5z"/><path d="M8.5 11l2 2 4-4"/></svg><span data-s="Bets">Bet log</span></button>
+    <button role="tab" id="tab-dash" aria-selected="false" data-tab="dash"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10v4a5 5 0 0 1-10 0z"/><path d="M7 6.5H4.5a3 3 0 0 0 3 4M17 6.5h2.5a3 3 0 0 1-3 4"/><path d="M12 13.5v3.5M8.5 20h7M10 17h4v3h-4z"/></svg><span>Results</span></button>
+    <button role="tab" id="tab-calc" aria-selected="false" data-tab="calc"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M8.5 7.5h7"/><path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 15.5h.01M12 15.5h.01M15.5 15.5h.01"/></svg><span data-s="Calc">Calculator</span></button>
+    <button role="tab" id="tab-settings" aria-selected="false" data-tab="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M6 18l1.6-1.6M16.4 7.6 18 6"/></svg><span data-s="More">Settings</span></button>
+    <button role="tab" id="tab-people" aria-selected="false" data-tab="people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="9" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="10" r="2.3"/><path d="M15.5 14.6A4.5 4.5 0 0 1 21 19"/></svg><span>People</span></button>
+  </nav>
+  <div class="side-foot"><div class="sub" id="syncNote">Connecting to your saved data…</div><a class="sub" href="results.html">Public track record →</a></div>
+</aside>
+<div class="mainwrap">
+<header class="topbar"><div class="tb-in">
+  <div class="tb-title"><span class="mlogo"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#10161F"/><line x1="96" y1="300" x2="416" y2="300" stroke="#3A4658" stroke-width="10" stroke-dasharray="16 14" stroke-linecap="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#E8B23A" stroke-width="58" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#E8B23A" stroke="#E8B23A" stroke-width="28" stroke-linejoin="round"/><polyline points="96,360 196,330 276,348 380,199" fill="none" stroke="#34D27B" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/><polygon points="416,148 413,244 327,184" fill="#34D27B" stroke="#34D27B" stroke-width="10" stroke-linejoin="round"/></svg></span><div><b id="tbTitle">Home</b><div class="sub" id="dataNote">No picks loaded yet</div></div></div>
+  <div class="bk"><span class="pill"><span class="muted">Bankroll</span> <b id="hdrBank">–</b></span><span class="pill hide-sm"><span class="muted">At risk</span> <b id="hdrRisk">–</b></span></div>
+</div></header>
 
 <main class="wrap">
+  <!-- HOME -->
+  <section id="view-home" role="tabpanel" aria-labelledby="tab-home"><div class="home"><div class="home-main" id="homeMain"></div><aside class="rail" id="homeRail"></aside></div></section>
+
   <!-- DASHBOARD -->
   <section id="view-dash" role="tabpanel" aria-labelledby="tab-dash"></section>
 
@@ -309,6 +447,8 @@ footer{color:var(--muted);font-size:.78rem;padding-block:24px}
 
   <footer>Expected value is an estimate built on sportsbook prices; real results swing a lot over small samples. Bet only what you can afford to lose. Problem gambling help: <span class="num">1-800-GAMBLER</span>.</footer>
 </main>
+</div>
+<button class="slipbar" id="slipBar" hidden></button>
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="playerSheet" aria-labelledby="psName"><div class="sh"><h3 id="psName" style="margin:0"></h3><button class="btn sm" id="psClose">Close</button></div><div class="sb" id="psBody"></div></dialog>
 
@@ -694,6 +834,8 @@ function renderAll(){
   const A = analyze();
   renderDataNote();
   $("#hdrBank").textContent = money(A.bank); $("#hdrRisk").textContent = money(A.risk);
+  if(S.tab === "home") renderHome();
+  renderSlipBar();
   if(S.tab === "dash") renderDash(A);
   if(S.tab === "picks"){ renderPromo(); renderBoard(); }
   if(S.tab === "build") renderBuild();
@@ -1092,6 +1234,171 @@ $("#prApply").addEventListener("click", async () => {
 });
 document.addEventListener("click", async e => { if(!e.target.closest("#prEnd")) return; delete S.settings.promo; await store.saveSettings().catch(dbError); renderAll(); toast("Boost ended"); });
 
+/* ---------- home ---------- */
+S.home = (() => { try { return JSON.parse(localStorage.getItem("edgefinder.home") || "null") || {}; } catch(e){ return {}; } })();
+S.home = {sport:"", sort:"edge", app:"prizepicks", minEdge:-0.03, more:false, ...S.home};
+S.favs = (() => { try { return new Set(JSON.parse(localStorage.getItem("edgefinder.favs") || "[]")); } catch(e){ return new Set(); } })();
+function saveHome(){ try { localStorage.setItem("edgefinder.home", JSON.stringify(S.home)); localStorage.setItem("edgefinder.favs", JSON.stringify([...S.favs])); } catch(e){} }
+const SPORT_ICON = {
+  nba: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4v16M6.3 6.3c3 2.9 3 8.5 0 11.4M17.7 6.3c-3 2.9-3 8.5 0 11.4"/>',
+  wnba: '<circle cx="12" cy="12" r="8"/><path d="M4 12h16M12 4v16M6.3 6.3c3 2.9 3 8.5 0 11.4M17.7 6.3c-3 2.9-3 8.5 0 11.4"/>',
+  nfl: '<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)"/><path d="M9.5 14.5l5-5M10.5 11.5l2 2M12 10l2 2"/>',
+  cfb: '<ellipse cx="12" cy="12" rx="9" ry="5.5" transform="rotate(-35 12 12)"/><path d="M9.5 14.5l5-5M10.5 11.5l2 2M12 10l2 2"/>',
+  nhl: '<ellipse cx="12" cy="9" rx="7.5" ry="3"/><path d="M4.5 9v5c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V9"/>',
+  mlb: '<circle cx="12" cy="12" r="8"/><path d="M8 5.2c1.6 2 1.6 11.6 0 13.6M16 5.2c-1.6 2-1.6 11.6 0 13.6"/>',
+};
+const SPORT_NAME = {nba:"NBA", wnba:"WNBA", nfl:"NFL", cfb:"College FB", nhl:"NHL", mlb:"MLB"};
+const sportIcon = sp => `<svg class="spi" viewBox="0 0 24 24" aria-hidden="true">${SPORT_ICON[sp] || '<circle cx="12" cy="12" r="8"/>'}</svg>`;
+function initials(n){ return String(n||"?").replace(/[^A-Za-z\s'-]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join("").toUpperCase() || "?"; }
+const HUES = [152, 200, 222, 262, 290, 330, 12, 34, 180, 240];
+function hue(str){ let h = 0; for(const c of String(str||"")) h = (h*31 + c.charCodeAt(0)) % 9973; return HUES[h % HUES.length]; }
+function avatar(l, big){ const h = hue(l.team || l.player); return `<span class="av${big?" big":""}" style="--h:${h}" aria-hidden="true">${esc(initials(l.player))}</span>`; }
+function teamName(t){ return t ? String(t).replace(/\b\w/g, c => c.toUpperCase()) : ""; }
+function homeLegs(){
+  const app = S.home.app;
+  return [...legPool().values()].filter(l => (l.app||"prizepicks") === app && legOpen(l) && fin(+l.fair) && fin(+l.edge));
+}
+function autoEntry(){
+  const legs = buildLegs(), n = legs.length; if(n < 2) return;
+  const app = legs[0].app || "prizepicks";
+  const names = Object.keys(S.settings.payouts).filter(k => payTable(k) && payTable(k).n === n && appOf(k) === app);
+  if(names.includes(S.build.entry)) return;
+  let best = null; for(const k of names){ const e = entryStats(k, legs.map(l => +l.fair)).E; if(!best || e > best[1]) best = [k, e]; }
+  if(best) S.build.entry = best[0];
+}
+function sorted(list){
+  const mv = l => l.fair_open == null ? 0 : Math.abs(+l.fair - +l.fair_open);
+  const out = list.filter(l => +l.edge >= S.home.minEdge && (!S.home.sport || l.sport === S.home.sport));
+  if(S.home.sort === "saved") return out.filter(l => S.favs.has(normName(l.player))).sort((a,b) => b.edge - a.edge);
+  if(S.home.sort === "moving") return out.filter(l => mv(l) >= 0.005).sort((a,b) => mv(b) - mv(a));
+  if(S.home.sort === "fair") return out.sort((a,b) => b.fair - a.fair);
+  if(S.home.sort === "soon") return out.sort((a,b) => (a.start||"").localeCompare(b.start||"") || b.edge - a.edge);
+  return out.sort((a,b) => b.edge - a.edge);
+}
+function renderHome(){
+  const main = $("#homeMain"), rail = $("#homeRail"); if(!main) return;
+  const B = S.board, all = B ? homeLegs() : [];
+  const sports = [...new Set(all.map(l => l.sport))].sort();
+  if(S.home.sport && !sports.includes(S.home.sport)) S.home.sport = "";
+  const list = sorted(all.slice()), inSlip = new Set(S.build.legs);
+  const games = new Set(all.map(l => l.game)).size, best = all.reduce((m,l) => Math.max(m, +l.edge), -1);
+  const apps = [...new Set([...legPool().values()].map(l => l.app || "prizepicks"))];
+  const top = sorted(all.slice().filter(l => +l.edge > 0)).slice(0, 4);
+  const shown = S.home.more ? 60 : 20;
+  const addBtn = l => { const k = poolKey(l), on = inSlip.has(k);
+    return `<button class="add ${on?"on":""}" data-add="${esc(k)}" aria-label="${on?"Remove":"Add"} ${esc(l.player)} ${l.side} ${+l.line} ${esc(l.stat)} ${on?"from":"to"} your slip">${on ? "✓" : "+"}</button>`; };
+  const edgeChip = l => `<span class="echip ${+l.edge >= 0.01 ? "good" : +l.edge >= 0 ? "warn" : "bad"}">${pct(+l.edge,1,true)}</span>`;
+  main.innerHTML = `
+    <div class="hero">
+      <svg class="hero-art" viewBox="0 0 400 200" aria-hidden="true"><path d="M0 170 L70 150 L130 160 L190 120 L250 132 L310 80 L400 40" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/><path d="M0 185 L80 172 L150 178 L220 150 L290 156 L360 118 L400 104" fill="none" stroke="var(--gold)" stroke-width="3" stroke-linecap="round" opacity=".35"/></svg>
+      <h2 class="hero-h"><span>Bet smarter.</span><span class="acc">Not harder.</span></h2>
+      <p class="hero-p">Sharp-book prices with the vig removed. Every pick tracked.</p>
+      <div class="hero-stats">
+        <div><b class="pos">${best > -1 ? pct(best,1,true) : "–"}</b><span>Best edge now</span></div>
+        <div><b>${all.length}</b><span>Props priced</span></div>
+        <div><b>${games}</b><span>Games on the board</span></div>
+        <div><b>${B ? esc(ago(B.generated_at)) : "–"}</b><span>Last update</span></div>
+      </div>
+    </div>
+    <div class="chips" role="group" aria-label="Sport">
+      <button class="chipbtn" aria-pressed="${!S.home.sport}" data-hsport=""><svg class="spi" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg><span>All</span></button>
+      ${sports.map(sp => `<button class="chipbtn" aria-pressed="${S.home.sport===sp}" data-hsport="${esc(sp)}">${sportIcon(sp)}<span>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</span></button>`).join("")}
+    </div>
+    ${!B ? `<div class="panel empty"><h3>Loading today's props…</h3><p class="muted" style="margin:0">They come from your site's latest run.</p></div>` : `
+    <div class="sech"><h3><span class="flame" aria-hidden="true">▲</span> Top props right now</h3><button class="linkbtn" data-hsort="edge">View all →</button></div>
+    ${top.length ? `<div class="topcards">${top.map(l => `<div class="pcard">
+        <div class="pc-top">${avatar(l, true)}<span class="sport-tag">${sportIcon(l.sport)}${esc(SPORT_NAME[l.sport] || l.sport.toUpperCase())}</span></div>
+        <div class="pc-name">${plink(l)}<span>${esc(l.stat)}</span></div>
+        <div class="pc-line"><span class="side ${l.side}">${l.side}</span> ${+l.line}</div>
+        <div class="pc-fair"><span class="num">${pct(+l.fair)}</span> fair ${moveTag(l)}</div>
+        <div class="pc-foot">${edgeChip(l)}${addBtn(l)}</div>
+        <div class="pc-game"><span>${esc(l.game || "")}</span><span>${esc(timeOf(l.start))}</span></div></div>`).join("")}</div>`
+      : `<p class="muted small" style="margin:0">No props above break-even right now.</p>`}
+    <div class="sech"><h3>More props</h3>
+      <div class="seg2" role="group" aria-label="Sort props">${[["edge","Highest edge"],["moving","Moving"],["soon","Starting soon"],["saved","Saved"]].map(([k,t]) => `<button aria-pressed="${S.home.sort===k}" data-hsort="${k}">${t}</button>`).join("")}</div></div>
+    <div class="ptable">
+      <div class="pt-head"><span>Player</span><span>Market</span><span>Line</span><span class="r">Fair</span><span class="r">Edge</span><span></span></div>
+      ${list.length ? list.slice(0, shown).map(l => `<div class="pt-row">
+        <div class="pt-who">${avatar(l)}<div>${plink(l)}<div class="pt-sub">${esc((SPORT_NAME[l.sport] || l.sport.toUpperCase()))}${l.team ? " · " + esc(teamName(l.team)) : ""} · ${esc(timeOf(l.start))}</div></div>
+          <button class="star ${S.favs.has(normName(l.player))?"on":""}" data-fav="${esc(normName(l.player))}" aria-label="Save ${esc(l.player)}">★</button></div>
+        <div class="pt-mkt" data-line="${l.side} ${+l.line} · ">${esc(l.stat)}</div>
+        <div class="pt-line"><span class="side ${l.side}">${l.side}</span> ${+l.line}</div>
+        <div class="r num pt-fair">${pct(+l.fair)}<div>${moveTag(l)}</div></div>
+        <div class="r">${edgeChip(l)}</div>
+        <div class="r">${addBtn(l)}</div></div>`).join("")
+        : `<p class="muted small" style="padding:14px;margin:0">${S.home.sort === "saved" ? "Tap ★ next to a player to save them here." : S.home.sort === "moving" ? "No line moves yet. They show once props are priced on more than one run." : "No props match these filters."}</p>`}
+      ${list.length > shown ? `<button class="btn sm" id="hMore" style="margin:12px">Show ${Math.min(list.length, 60) - shown} more</button>` : ""}
+    </div>`}`;
+
+  // ---- right rail: slip, filters, builder shortcut, the board
+  const legs = buildLegs(), n = legs.length, locked = legs.filter(l => !legOpen(l));
+  const app = n ? (legs[0].app || "prizepicks") : S.home.app;
+  const entryNames = Object.keys(S.settings.payouts).filter(k => payTable(k) && payTable(k).n === n && appOf(k) === app);
+  const es = n >= 2 && entryNames.includes(S.build.entry) ? entryStats(S.build.entry, legs.map(l => +l.fair)) : null;
+  const sg = es ? suggestStake(es.kelly) : null, t = es ? payTable(S.build.entry) : null;
+  const topMult = t ? Math.max(...Object.values(t.pay).map(Number)) : 0;
+  const board = {}; for(const l of all){ const g = board[l.sport] || (board[l.sport] = {games:new Set(), n:0, next:null}); g.games.add(l.game); g.n++; if(!g.next || l.start < g.next) g.next = l.start; }
+  rail.innerHTML = `
+    <div class="panel slip" id="slipPanel">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">My Picks <span class="count">${n}</span></h3>${n ? `<button class="linkbtn" id="hClear">Clear all</button>` : ""}</div>
+      ${n ? `<ul class="slip-legs">${legs.map(l => `<li>${avatar(l)}<div class="sl-mid">${plink(l)}<div class="small"><span class="side ${l.side}">${l.side}</span> ${+l.line} ${esc(l.stat)}${legOpen(l) ? "" : ' <span class="chip warn">Started</span>'}</div></div>
+          <div class="sl-right"><span class="num">${pct(+l.fair)}</span><button class="x" data-drop="${esc(poolKey(l))}" aria-label="Remove ${esc(l.player)}">✕</button></div></li>`).join("")}</ul>`
+        : `<p class="muted small" style="margin:0">Tap + on any prop to add it here. Two to six picks make an entry.</p>`}
+      ${n === 1 ? `<p class="small muted" style="margin:0">Add at least one more pick.</p>` : ""}
+      ${n >= 2 && entryNames.length ? `<label class="f">Entry type<select id="hEntry">${entryNames.map(k => `<option ${k===S.build.entry?"selected":""}>${esc(k)}</option>`).join("")}</select></label>` : ""}
+      ${n >= 2 && !entryNames.length ? `<p class="small" style="margin:0;color:var(--warn)">No ${n}-pick entry type is set up for this app.</p>` : ""}
+      ${es ? `<div class="slip-sum"><div><span class="muted small">Expected return</span><b class="${cls(es.E-1)}">${pct(es.E-1,1,true)}</b></div><div><span class="muted small">Stake back</span><b>${pct(es.cash,0)}</b></div><div><span class="muted small">Break-even/leg</span><b>${pct(breakeven(S.build.entry),1)}</b></div></div>
+        ${locked.length ? `<div class="alert warn">${icon.warn}<span>Remove or swap the started ${locked.length===1?"pick":"picks"} first.</span></div>` : es.E <= 1 ? `<p class="small neg" style="margin:0">This slip loses money on average. Swap a pick or try another entry type.</p>` : smallNote(sg)}
+        <div class="row"><label class="f" style="flex:1">Stake ($)<input class="num" id="hStake" inputmode="decimal" value="${sg.stake||""}"></label></div>
+        <button class="btn primary wide" id="hLog" ${locked.length?"disabled":""}>Log entry</button>
+        <div class="small" id="hWarn" style="color:var(--warn)"></div>
+        <p class="payout">Payout if all hit: <b id="hPayout">${money((num($("#hStake")?.value) || sg.stake || 0) * topMult)}</b></p>` : ""}
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">Filters</h3></div>
+      <label class="f">Minimum edge <span class="num" id="hMinOut">${pct(S.home.minEdge,1,true)}</span><input type="range" id="hMin" min="-0.05" max="0.08" step="0.005" value="${S.home.minEdge}"></label>
+      ${apps.length > 1 ? `<label class="f">App<select id="hApp">${apps.map(a => `<option value="${a}" ${a===S.home.app?"selected":""}>${a === "underdog" ? "Underdog" : "PrizePicks"}</option>`).join("")}</select></label>` : ""}
+      <label class="f">Sort by<select id="hSort">${[["edge","Highest edge"],["fair","Highest fair %"],["moving","Biggest moves"],["soon","Starting soonest"],["saved","Saved players"]].map(([k,t]) => `<option value="${k}" ${k===S.home.sort?"selected":""}>${t}</option>`).join("")}</select></label>
+    </div>
+    <div class="panel cta"><svg viewBox="0 0 24 24" class="cta-ic" aria-hidden="true"><path d="M5 6.5h14M5 12h14M5 17.5h9"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M18.5 16.3v2.4M17.3 17.5h2.4"/></svg><h3 style="margin:0">Build your own slip</h3>
+      <p class="small muted" style="margin:0">Fill it with the best legs, swap out started games, and see the expected return as you go.</p>
+      <button class="btn sm" data-go="build">Open the builder →</button></div>
+    <div class="panel"><h3 style="margin:0 0 4px">On the board</h3>
+      ${Object.keys(board).length ? `<ul class="board">${Object.entries(board).sort().map(([sp,g]) => `<li><span class="bicon">${sportIcon(sp)}</span><div><b>${esc(SPORT_NAME[sp] || sp.toUpperCase())}</b><div class="small muted">${g.games.size} ${g.games.size===1?"game":"games"} · ${g.n} props · next ${esc(timeOf(g.next))}</div></div></li>`).join("")}</ul>`
+        : `<p class="small muted" style="margin:0">Nothing open right now.</p>`}
+    </div>`;
+
+  // ---- wiring
+  main.querySelectorAll("[data-hsport]").forEach(b => b.addEventListener("click", () => { S.home.sport = b.dataset.hsport; S.home.more = false; saveHome(); renderHome(); }));
+  main.querySelectorAll("[data-hsort]").forEach(b => b.addEventListener("click", () => { S.home.sort = b.dataset.hsort; S.home.more = false; saveHome(); renderHome(); }));
+  main.querySelectorAll("[data-fav]").forEach(b => b.addEventListener("click", () => { const k = b.dataset.fav; if(S.favs.has(k)) S.favs.delete(k); else S.favs.add(k); saveHome(); renderHome(); }));
+  $("#hMore")?.addEventListener("click", () => { S.home.more = true; renderHome(); });
+  $("#hClear")?.addEventListener("click", () => { S.build.legs = []; saveBuild(); renderAll(); });
+  $("#hEntry")?.addEventListener("change", e => { S.build.entry = e.target.value; saveBuild(); renderAll(); });
+  const mn = $("#hMin"); mn?.addEventListener("input", () => { $("#hMinOut").textContent = pct(+mn.value,1,true); });
+  mn?.addEventListener("change", () => { S.home.minEdge = +mn.value; saveHome(); renderHome(); });
+  $("#hApp")?.addEventListener("change", e => { S.home.app = e.target.value; saveHome(); renderHome(); });
+  $("#hSort")?.addEventListener("change", e => { S.home.sort = e.target.value; saveHome(); renderHome(); });
+  const si = $("#hStake"), lb = $("#hLog"), w = $("#hWarn");
+  if(si && lb && es){
+    const upd = () => { w.textContent = stakeWarnings(num(si.value)||0).join(" "); lb.dataset.armed = ""; lb.textContent = "Log entry"; $("#hPayout").textContent = money((num(si.value)||0) * topMult); };
+    si.addEventListener("input", upd); upd();
+    lb.addEventListener("click", async () => { const stake = num(si.value); if(!(stake > 0)){ w.textContent = "Enter a stake above $0."; return; }
+      const ws = stakeWarnings(stake); if(ws.length && !lb.dataset.armed){ lb.dataset.armed = "1"; lb.textContent = "Log anyway"; w.textContent = ws.join(" ") + " Tap again to log it anyway."; return; }
+      await logEntry({kind:"pp", entry:S.build.entry, stake, E:es.E, V:es.V, cash:es.cash, source:"builder",
+        legs: legs.map(l => ({sport:l.sport, player:l.player, market:l.market, stat:l.stat, line:+l.line, side:l.side, fair:+l.fair, start:l.start, result:"", injury:l.injury||""}))});
+      S.build.legs = []; saveBuild(); renderAll(); });
+  }
+}
+function renderSlipBar(){
+  const bar = $("#slipBar"); if(!bar) return; const n = S.build.legs.length;
+  bar.hidden = !(n && (S.tab === "home" || S.tab === "picks"));
+  if(bar.hidden) return;
+  const legs = buildLegs(), es = n >= 2 && payTable(S.build.entry) && payTable(S.build.entry).n === legs.length ? entryStats(S.build.entry, legs.map(l => +l.fair)) : null;
+  bar.innerHTML = `<span>My Picks <b class="count">${n}</b></span><span>${es ? `<b class="${cls(es.E-1)}">${pct(es.E-1,1,true)}</b> expected` : n === 1 ? "Add 1 more" : ""}</span><span>View slip →</span>`;
+}
+$("#slipBar").addEventListener("click", () => { if(S.tab !== "home") setTab("home"); setTimeout(() => $("#slipPanel")?.scrollIntoView({block:"start"}), 50); });
+
 /* ---------- lineup builder ---------- */
 const BK = "edgefinder.build";
 S.build = (() => { try { return JSON.parse(localStorage.getItem(BK) || "null") || {entry:"5-Pick Flex", legs:[]}; } catch(e){ return {entry:"5-Pick Flex", legs:[]}; } })();
@@ -1193,9 +1500,15 @@ document.addEventListener("click", e => {
   const t = e.target.closest("button"); if(!t) return;
   if(t.dataset.edit){ buildFromSlip(t.dataset.edit); return; }
   if(t.dataset.add){ const k = t.dataset.add;
-    if(S.build.legs.includes(k)) S.build.legs = S.build.legs.filter(x => x !== k); else S.build.legs.push(k);
-    saveBuild(); renderBuild(); return; }
-  if(t.dataset.drop){ S.build.legs = S.build.legs.filter(x => x !== t.dataset.drop); saveBuild(); renderBuild(); return; }
+    if(S.build.legs.includes(k)) S.build.legs = S.build.legs.filter(x => x !== k);
+    else { if(S.tab === "home" && S.build.legs.length >= 6){ toast("A slip holds up to 6 picks."); return; }
+      const nl = legPool().get(k), cur = buildLegs();
+      if(nl && cur.some(l => normName(l.player) === normName(nl.player))){ toast(`${nl.player} is already in your slip.`); return; }
+      if(nl && cur.length && (cur[0].app||"prizepicks") !== (nl.app||"prizepicks")){ toast("Keep a slip to one app. Clear it to switch."); return; }
+      S.build.legs.push(k); }
+    if(S.tab === "home") autoEntry();
+    saveBuild(); renderAll(); return; }
+  if(t.dataset.drop){ S.build.legs = S.build.legs.filter(x => x !== t.dataset.drop); if(S.tab === "home") autoEntry(); saveBuild(); renderAll(); return; }
   if(t.dataset.swap){ const k = t.dataset.swap, cur = buildLegs(), old = cur.find(l => poolKey(l) === k);
     const l = bestFor(cur, cur.length, appOf(S.build.entry), k);
     if(!l){ toast("No open leg to swap in."); return; }
@@ -1405,16 +1718,17 @@ async function renderPeople(){
 }
 
 /* ---------- tabs ---------- */
-const TABS = ["dash","picks","build","bets","calc","settings","people"];
-function setTab(t){ if(!TABS.includes(t) || (t === "people" && !S.isOwner)) t = "dash"; S.tab = t;
+const TABS = ["home","dash","picks","build","bets","calc","settings","people"];
+const TITLES = {home:"Home", dash:"Results", picks:"Today's plays", build:"My Picks", bets:"Bet log", calc:"EV calculator", settings:"Settings", people:"People"};
+function setTab(t){ if(!TABS.includes(t) || (t === "people" && !S.isOwner)) t = "home"; S.tab = t; $("#tbTitle").textContent = TITLES[t] || "Edge Finder";
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
   TABS.forEach(x => $("#view-"+x).hidden = x !== t); renderAll(); window.scrollTo(0,0); }
-$(".tabs").addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); });
+document.querySelectorAll(".tabs").forEach(n => n.addEventListener("click", e => { const b = e.target.closest("button[data-tab]"); if(b) setTab(b.dataset.tab); }));
 $("#betFilter").addEventListener("click", e => { const b = e.target.closest("button"); if(!b) return; S.betFilter = b.dataset.f;
   $("#betFilter").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b)); renderBets(); });
 
 buildCalc();
-setTab((location.hash || "").slice(1) || "dash");
+setTab((location.hash || "").slice(1) || "home");
 boot();
 </script>
 
