@@ -1,0 +1,70 @@
+name: Debug sports (temporary)
+on:
+  push:
+    branches: [debug-sports]
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[fast]"
+      - name: Probe
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: |
+          python - > debug.txt 2>&1 <<'PY' || true
+          import json, urllib.request, urllib.parse, os
+          K = os.environ["ODDS_API_KEY"]
+          def get(u):
+              with urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=30) as r:
+                  return json.loads(r.read()), dict(r.headers)
+          B = "https://api.the-odds-api.com/v4"
+          for sk in ["soccer_epl", "soccer_spain_la_liga", "soccer_italy_serie_a", "soccer_germany_bundesliga", "soccer_france_ligue_one", "soccer_usa_mls", "baseball_mlb", "americanfootball_nfl"]:
+              try:
+                  ev, h = get(f"{B}/sports/{sk}/events?apiKey={K}")
+                  print(sk, "events:", len(ev), [e["commence_time"] for e in ev[:3]])
+              except Exception as e:
+                  print(sk, "events error", e); ev = []
+              if sk in ("soccer_epl", "baseball_mlb") and ev:
+                  m = "player_shots_on_target" if sk.startswith("soccer") else "batter_total_bases"
+                  q = urllib.parse.urlencode({"apiKey": K, "bookmakers": "prizepicks,underdog,pinnacle,fanduel,draftkings,novig,betonlineag,prophetx,betmgm,williamhill_us", "markets": m, "oddsFormat": "american"})
+                  try:
+                      d, h = get(f"{B}/sports/{sk}/events/{ev[0]['id']}/odds?{q}")
+                      print(sk, ev[0]["home_team"], "cost", h.get("x-requests-last"), "remaining", h.get("x-requests-remaining"))
+                      for bk in d.get("bookmakers", []):
+                          n = sum(len(mk["outcomes"]) for mk in bk["markets"])
+                          print("   ", bk["key"], n, "outcomes", (bk["markets"][0]["outcomes"][:2] if bk["markets"] else ""))
+                  except Exception as e:
+                      print(sk, "odds error", e)
+          # ESPN soccer formats
+          E = "https://site.api.espn.com/apis/site/v2/sports"
+          sb, _ = get(f"{E}/soccer/eng.1/scoreboard?dates=20261018")
+          evs = sb.get("events", []); print("espn eng.1 10/18 events", len(evs))
+          if evs:
+              s, _ = get(f"{E}/soccer/eng.1/summary?event={evs[0]['id']}")
+              print("summary keys", list(s.keys()))
+              print("boxscore keys", list(s.get("boxscore", {}).keys()), "players" in s.get("boxscore", {}))
+              ro = s.get("rosters", [])
+              print("rosters", len(ro))
+              if ro:
+                  t = ro[0]; print("team", t.get("team", {}).get("displayName"), "home/away", t.get("homeAway"))
+                  r = t.get("roster", [])[:2]
+                  print(json.dumps(r, indent=0)[:2500])
+              print("comp", json.dumps(evs[0]["competitions"][0]["competitors"][0], indent=0)[:600])
+          try:
+              inj, _ = get(f"{E}/soccer/eng.1/injuries"); print("injuries keys", list(inj.keys())[:5], len(inj.get("injuries", [])))
+          except Exception as e: print("injuries err", e)
+          try:
+              t, _ = get(f"{E}/soccer/eng.1/teams"); tm = t["sports"][0]["leagues"][0]["teams"][0]["team"]; print("team", tm["id"], tm["displayName"], tm.get("color"))
+              ro, _ = get(f"{E}/soccer/eng.1/teams/{tm['id']}/roster"); a = ro.get("athletes", []); print("roster athletes", len(a), json.dumps(a[:1])[:600])
+          except Exception as e: print("teams err", e)
+          PY
+          cat debug.txt
+      - run: |
+          git config user.name "debug"; git config user.email "debug@users.noreply.github.com"
+          git add -f debug.txt && git commit -qm "debug output" && git push -q origin HEAD:debug-sports
