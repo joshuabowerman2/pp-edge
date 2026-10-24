@@ -2,12 +2,17 @@ name: Publish site (no Odds API credits)
 
 # Rebuilds the GitHub Pages site from the saved database and redeploys it. It never calls The Odds
 # API, so it costs no credits. Runs when the Edge Finder app (web/) or the results page code changes,
-# or by hand from the Actions tab.
+# twice a day on its own to grade finished games, or by hand from the Actions tab.
 
 on:
   push:
     branches: [main]
     paths: ["web/**", "assets/**", "edge_engine/results.py", "edge_engine/ui.py", "edge_engine/export.py", "edge_engine/players.py", "edge_engine/timeline.py", ".github/workflows/publish.yml"]
+  schedule:
+    # The model grades its own picks and settles its entries from free box scores, so results are
+    # in by morning instead of waiting for the 5:30 PM run. Times are UTC.
+    - cron: "37 7 * * *"     # about 2:37 AM Central, after late West Coast games
+    - cron: "47 14 * * *"    # about 9:47 AM Central, catches anything ESPN finalized late
   workflow_dispatch:
 
 permissions:
@@ -39,6 +44,7 @@ jobs:
           export SPORTS="${{ vars.SPORTS || 'nba nfl nhl' }} mlb"
           edge rosters || true          # jersey numbers and team colors (ESPN, free)
           edge backfill --days 30 || true   # recent box scores for game logs and projections (ESPN, free)
+          edge grade || true            # grade finished picks and settle the model's entries (free)
           edge results --out site/results.html
           edge export --out site/index.json
           if [ -d assets ]; then cp assets/* site/; fi
@@ -49,7 +55,7 @@ jobs:
           git config user.name "edge-engine bot"
           git config user.email "actions@users.noreply.github.com"
           git add data/edge.db
-          git diff --cached --quiet || { git commit -m "Box scores $(date -u +%FT%TZ)"; git pull --rebase -X theirs -q || true; git push; }
+          git diff --cached --quiet || { git commit -m "Graded and box scores $(date -u +%FT%TZ)"; git pull --rebase -X theirs -q || true; git push; }
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
