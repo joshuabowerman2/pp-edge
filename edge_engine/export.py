@@ -10,7 +10,7 @@ from .tracking import moves_for, prop_key
 
 HIST_FIELDS = ["id", "logged_at", "date", "sport", "player", "market", "stat", "line", "side", "pick_fair",
                "close_fair", "clv", "in_play", "home", "away", "start", "result", "actual", "graded_at",
-               "raw_fair", "sharp", "exact", "pp_line_now", "injury"]
+               "raw_fair", "sharp", "exact", "pp_line_now", "injury", "retired"]
 
 
 def _name(e):
@@ -67,8 +67,6 @@ def app_json(conn, cfg, now, days=60):
     hist = []
     from . import RETIRED_MODELS
     for p in conn.execute("SELECT * FROM picks WHERE created_at >= ? ORDER BY seq", (cutoff,)):
-        if p["model_version"] in RETIRED_MODELS:   # bad prices; kept in the public record, not in the app's stats
-            continue
         t = p["start"]
         from .tracking import parse_time
         st = parse_time(t)
@@ -80,7 +78,10 @@ def app_json(conn, cfg, now, days=60):
                      "result": p["result"] if p["result"] in ("hit", "miss", "push", "void") else "",
                      "actual": "" if p["actual"] is None else f"{p['actual']:g}", "graded_at": p["graded_at"] or "",
                      "raw_fair": _fmt(p["fair_market"]), "sharp": str(p["sharp"]), "exact": str(p["exact"]),
-                     "pp_line_now": "" if p["app_line_now"] is None else f"{p['app_line_now']:g}", "injury": p["injury"] or ""})
+                     "pp_line_now": "" if p["app_line_now"] is None else f"{p['app_line_now']:g}", "injury": p["injury"] or "",
+                     # Retired-model picks still go to the app so reviews of entries built from them can find
+                     # what the model said; the app leaves them out of its track-record stats.
+                     "retired": "1" if p["model_version"] in RETIRED_MODELS else ""})
     be = apps["prizepicks"]["breakeven"] if "prizepicks" in apps else 0.5
     return {"app": "edge-finder", "version": 2, "generated_at": board.get("generated_at", iso(now)), "exported_at": iso(now),
             "entry": apps.get("prizepicks", {}).get("main", ""), "breakeven": round(be or 0.5, 5),

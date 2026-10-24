@@ -747,7 +747,7 @@ function stakeWarnings(stake){
 function legStats(){
   // Every graded leg we know of, from your bets and the daily history, counted once.
   const seen = new Map();
-  for(const h of S.histLegs){ if(h.result==="hit"||h.result==="miss") seen.set(h.date+"|"+h.k, {fair:+h.fair, hit:h.result==="hit", clv:h.clv, sport:h.sport, played:false}); }
+  for(const h of S.histLegs){ if(!h.retired && (h.result==="hit"||h.result==="miss")) seen.set(h.date+"|"+h.k, {fair:+h.fair, hit:h.result==="hit", clv:h.clv, sport:h.sport, played:false}); }
   for(const b of S.bets){ if(b.kind!=="pp") continue; for(const l of b.legs){ if(!(l.result==="hit"||l.result==="miss") || !fin(+l.fair)) continue;
     const key = (l.start ? dayOf(l.start) : b.date) + "|" + (l.market ? legKey(l) : normName(l.player)+"|"+l.line+"|"+l.side);
     const prev = seen.get(key); seen.set(key, {fair:+l.fair, hit:l.result==="hit", clv: prev?.clv ?? l.clv, sport:l.sport, played:true}); } }
@@ -859,7 +859,7 @@ function parseCSV(text){
 }
 function compactHist(h){ return {k: legKey({player:h.player, market:h.market, line:h.line, side:h.side}), sport:h.sport, player:h.player, market:h.market,
   stat:h.stat, line:+h.line, side:h.side, fair:+h.pick_fair, clv: h.clv === "" || h.clv == null ? null : +h.clv, result:h.result||"", actual:h.actual||"",
-  injury:h.injury||"", pp:h.pp_line_now||"" }; }
+  injury:h.injury||"", pp:h.pp_line_now||"", ...(h.retired === "1" ? {retired: true} : {}) }; }
 async function importHistory(rows){
   const byDay = {}; for(const h of rows){ if(!h.date || !h.player) continue; (byDay[h.date] ||= []).push(compactHist(h)); }
   let n = 0;
@@ -1638,7 +1638,7 @@ function openPlayer(key, name){
 function renderSheet(){
   const sh = S.sheet; if(!sh) return; const l = sh.list[sh.i];
   const scroller = $("#playerSheet"), keepTop = scroller ? scroller.scrollTop : 0; requestAnimationFrame(() => { if(scroller && sh.keepScroll) scroller.scrollTop = keepTop; sh.keepScroll = true; });
-  const graded = S.histLegs.filter(h => normName(h.player) === sh.nn && (h.result === "hit" || h.result === "miss"));
+  const graded = S.histLegs.filter(h => !h.retired && normName(h.player) === sh.nn && (h.result === "hit" || h.result === "miss"));
   const hits = graded.filter(h => h.result === "hit").length, exp = graded.reduce((a, h) => a + (+h.fair || 0), 0);
   const team = l && l.team, followP = S.favs.has(sh.nn), followT = team && S.watch.teams.includes(team), followS = l && S.watch.stats.includes(l.market);
   $("#psName").textContent = sh.name;
@@ -2593,7 +2593,10 @@ function modelView(l, date){
   // What the model logged for this player and stat that day (it logs the side it liked, at break-even or better).
   if(!date || !l.player) return null;
   const nn = normName(l.player), st = String(l.stat || "").toLowerCase();
-  const c = S.histLegs.filter(h => h.date === date && normName(h.player) === nn && (l.market ? h.market === l.market : String(h.stat).toLowerCase() === st));
+  const on = d => S.histLegs.filter(h => h.date === d && normName(h.player) === nn && (l.market ? h.market === l.market : String(h.stat).toLowerCase() === st));
+  // An entry's date can be a day off from the game's (late games, entries logged the next day), so check the days either side.
+  const near = d => { const t = new Date(d + "T12:00:00Z"); return [-1, 1].map(n => new Date(+t + n * 864e5).toISOString().slice(0, 10)); };
+  let c = on(date); if(!c.length) for(const d of near(date)){ c = on(d); if(c.length) break; }
   if(!c.length) return null;
   const h = c.reduce((a, x) => Math.abs(+x.line - +l.line) < Math.abs(+a.line - +l.line) ? x : a);
   const sameLine = +h.line === +l.line, agree = h.side === l.side;
@@ -2931,7 +2934,7 @@ function reviewHTML(b){
   // What the model's own best legs did that day.
   const days = [...new Set(rows.map(r => r.date))];
   if(days.length === 1){ const seen = new Set();
-    const top = S.histLegs.filter(h => h.date === days[0] && (h.result === "hit" || h.result === "miss")).sort((a, x) => x.fair - a.fair)
+    const top = S.histLegs.filter(h => !h.retired && h.date === days[0] && (h.result === "hit" || h.result === "miss")).sort((a, x) => x.fair - a.fair)
       .filter(h => { const k = normName(h.player); if(seen.has(k)) return false; seen.add(k); return true; }).slice(0, b.legs.length);
     if(top.length === b.legs.length){ const th = top.filter(h => h.result === "hit").length, tp = b.stake * +(t.pay[th] || 0), te = entryStats(b.entry, top.map(h => +h.fair)).E;
       tk.push([tp > (b.profit ?? 0) + b.stake + 0.005 ? "warn" : "plain", `The model's ${top.length} best legs that day (${top.map(h => esc(h.player)).join(", ")}) went ${th} for ${top.length}. As a ${esc(b.entry)} at your stake that paid ${money(tp)}${settled ? ` against your ${money(b.stake + (b.profit ?? 0))}` : ""}, and it was worth ${pct(te-1,1,true)} beforehand vs ${pct(b.E-1,1,true)} for yours.`]); } }
