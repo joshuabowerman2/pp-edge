@@ -84,7 +84,7 @@ jobs:
           edge once --export site/index.json --results site/results.html
           mkdir -p data && cp site/index.json data/latest.json
           if [ -d assets ]; then cp assets/* site/; fi
-          if [ -d web ]; then cp web/* site/; fi   # the Edge Finder app (app.html)
+          if [ -d web ]; then cp web/* site/; sed -i "s/__APP_BUILD__/${GITHUB_SHA}/" site/app.html; echo "$GITHUB_SHA" > site/version.txt; fi   # the Edge Finder app (app.html)
           cp site/results.html site/index.html
       - name: Save database
         if: steps.when.outputs.skip != '1'

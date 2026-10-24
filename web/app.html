@@ -571,6 +571,7 @@ footer{border-top:1px solid var(--line)}
 "use strict";
 /* ============================== constants ============================== */
 const TZ = "America/Chicago";
+const APP_BUILD = "__APP_BUILD__";   // stamped with the commit at deploy; see checkAppUpdate()
 const PAYOUTS = {
   "2-Pick Power": {n:2, pay:{2:3}}, "3-Pick Power": {n:3, pay:{3:5}}, "4-Pick Power": {n:4, pay:{4:10}},
   "5-Pick Power": {n:5, pay:{5:20}}, "6-Pick Power": {n:6, pay:{6:37.5}},
@@ -896,8 +897,20 @@ async function importText(text, label, quiet){
     if(!quiet){ toast("Data loaded"); $("#pasteIn").value = ""; }
   } catch(e){ note.textContent = e.message && !/JSON/.test(e.name) ? e.message : "Couldn't read that data. Check that it's the whole file."; }
 }
+async function checkAppUpdate(){
+  // Phones keep an old copy of this page for a while. When the site has a newer build, reload once
+  // (with a fresh URL so no cache can serve the old page), unless a form is open.
+  if(APP_BUILD.startsWith("__") || location.protocol === "file:" || document.querySelector("dialog[open]")) return false;
+  try {
+    const r = await fetch("version.txt?t=" + Date.now(), {cache: "no-store"}); if(!r.ok) return false;
+    const v = (await r.text()).trim(); if(!/^[0-9a-f]{7,40}$/.test(v) || v === APP_BUILD) return false;
+    const k = "appReload:" + v; try { if(sessionStorage.getItem(k)) return false; sessionStorage.setItem(k, "1"); } catch(e){ return false; }
+    const u = new URL(location.href); u.searchParams.set("v", v.slice(0, 8)); location.replace(u.toString()); return true;
+  } catch(e){ return false; }
+}
 let autoLoading = false;
 async function autoLoad(){
+  if(await checkAppUpdate()) return;
   if(S.mode === "db" || autoLoading || location.protocol === "file:") return;
   autoLoading = true;
   try {

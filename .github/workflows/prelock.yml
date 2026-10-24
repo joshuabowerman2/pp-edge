@@ -54,7 +54,7 @@ jobs:
           edge results --out site/results.html
           mkdir -p data && cp site/index.json data/latest.json
           if [ -d assets ]; then cp assets/* site/; fi
-          if [ -d web ]; then cp web/* site/; fi
+          if [ -d web ]; then cp web/* site/; sed -i "s/__APP_BUILD__/${GITHUB_SHA}/" site/app.html; echo "$GITHUB_SHA" > site/version.txt; fi
           cp site/results.html site/index.html
       - name: Save database
         if: steps.pre.outputs.polled != '0'

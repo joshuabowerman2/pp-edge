@@ -48,7 +48,7 @@ jobs:
           edge results --out site/results.html
           edge export --out site/index.json
           if [ -d assets ]; then cp assets/* site/; fi
-          if [ -d web ]; then cp web/* site/; fi
+          if [ -d web ]; then cp web/* site/; sed -i "s/__APP_BUILD__/${GITHUB_SHA}/" site/app.html; echo "$GITHUB_SHA" > site/version.txt; fi
           cp site/results.html site/index.html
       - name: Save database
         run: |
