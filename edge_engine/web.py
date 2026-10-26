@@ -16,8 +16,8 @@ from .db import meta_get
 from .markets import LABELS, injury_level
 from .ui import cls, esc, page, pct
 
-NAV_PUBLIC = [("Track record", "/results"), ("Sign in", "/login")]
-NAV_USER = [("Today", "/board"), ("My bets", "/bets"), ("Track record", "/results"), ("Account", "/account")]
+NAV_PUBLIC = [("Track record", "/results"), ("All picks", "/picks"), ("Sign in", "/login")]
+NAV_USER = [("Today", "/board"), ("My bets", "/bets"), ("Track record", "/results"), ("All picks", "/picks"), ("Account", "/account")]
 MAX_BODY = 64 * 1024
 
 
@@ -142,7 +142,7 @@ class App:
     # ---- routing
     def route(self, req):
         p = req.path.rstrip("/") or "/"
-        public = {"/": self.home, "/results": self.results_page, "/picks.csv": self.picks_csv,
+        public = {"/": self.home, "/results": self.results_page, "/results.html": self.results_page, "/picks": self.all_picks, "/picks.html": self.all_picks, "/picks.csv": self.picks_csv,
                   "/api/results.json": self.api_results, "/terms": self.terms, "/healthz": lambda r: Resp("ok", ctype="text/plain"),
                   "/login": self.login, "/signup": self.signup, "/logout": self.logout,
                   "/api/latest.json": self.api_latest}
@@ -182,6 +182,14 @@ hash-verified record before the game starts.</p>
         if time.time() - t > 300:
             cached = results.html(self.conn(), self.nav(req), self.cfg.tz)
             self._results_cache = (time.time(), cached)
+        return Resp(cached)
+
+    def all_picks(self, req):
+        from . import allpicks
+        t, cached = getattr(self, "_picks_cache", (0, ""))
+        if time.time() - t > 300:
+            cached = allpicks.html(self.conn(), self.nav(req), self.cfg.tz)
+            self._picks_cache = (time.time(), cached)
         return Resp(cached)
 
     def picks_csv(self, req):

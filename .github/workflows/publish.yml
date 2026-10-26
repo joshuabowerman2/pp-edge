@@ -7,7 +7,7 @@ name: Publish site (no Odds API credits)
 on:
   push:
     branches: [main]
-    paths: ["web/**", "assets/**", "edge_engine/results.py", "edge_engine/ui.py", "edge_engine/export.py", "edge_engine/players.py", "edge_engine/timeline.py", ".github/workflows/publish.yml"]
+    paths: ["web/**", "assets/**", "edge_engine/results.py", "edge_engine/allpicks.py", "edge_engine/ui.py", "edge_engine/export.py", "edge_engine/players.py", "edge_engine/timeline.py", ".github/workflows/publish.yml"]
   schedule:
     # The model grades its own picks and settles its entries from free box scores, so results are
     # in by morning instead of waiting for the 5:30 PM run. Times are UTC.

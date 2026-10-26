@@ -420,6 +420,15 @@ class EndToEndTests(unittest.TestCase):
         self.assertIn("Flex plays", html_)
         self.assertIn("Team bets", html_)
         self.assertIn("2-0", html_)
+        # every prop, team bet and suggested entry is on the searchable all-picks page
+        self.assertIn('href="picks.html#props"', html_)
+        allp = open(os.path.join(site, "picks.html"), encoding="utf-8").read()
+        blob = json.loads(allp.split('id="allData">', 1)[1].split("</script>", 1)[0])
+        self.assertEqual(len(blob["props"]), self.conn.execute("SELECT COUNT(*) FROM picks").fetchone()[0])
+        self.assertTrue(blob["teams"] and blob["entries"] and all(e["legs"] for e in blob["entries"]))
+        self.assertTrue(all(p["d"] and p["sp"] for p in blob["props"]))
+        for fid in ("fDate", "fSport", "fTeam"):
+            self.assertIn(f'id="{fid}"', allp)
         from edge_engine.cli import verify_csv
         self.assertTrue(verify_csv(os.path.join(site, "picks.csv"))[0])
         self.assertIn("verdict", backtest.evaluate(self.conn, 0) | {"verdict": ""})

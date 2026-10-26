@@ -2,7 +2,6 @@
 paper portfolio. Written as a static page and served by the web app."""
 import csv
 import io
-import json
 import os
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
@@ -88,47 +87,6 @@ def _kpi(l, v, s):
     return f'<div class="kpi"><span class="l">{l}</span><span class="v">{v}</span><span class="s">{s}</span></div>'
 
 
-PICKS_SHOWN = 300
-RESULT_CHIP = {"hit": ("good", "Hit"), "miss": ("bad", "Miss"), "push": ("warn", "Push"), "void": ("warn", "Void"),
-               "unmatched": ("warn", "No stat"), "ungraded": ("warn", "Ungraded")}
-
-PICKS_CSS = """
-.pfilters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
-.pfilters button{appearance:none;font:600 .85rem var(--body);border:1px solid var(--line);background:var(--panel2);color:var(--muted);
-border-radius:99px;padding:8px 14px;min-height:40px;cursor:pointer}
-.pfilters button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
-.pday{font:700 1.05rem/1.2 var(--display);margin:14px 0 4px;color:var(--muted)}
-summary.pday{cursor:pointer;color:var(--ink);padding:6px 0;border-top:1px solid var(--line);margin:8px 0 0}
-summary.pday::marker{color:var(--accent)}
-.plist{list-style:none;margin:0;padding:0}
-.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
-.pick .who{font-weight:600;overflow-wrap:anywhere}.pick .what{font-size:.86rem}.pick .meta{font-size:.78rem;color:var(--muted)}
-.pick .right{grid-column:2;grid-row:1 / span 3;text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
-.pick .fair{font:500 .95rem var(--mono)}
-.pempty{display:none;padding:12px 0}
-"""
-
-PICKS_JS = """<script>
-(function(){
-  var root=document.getElementById('picks');if(!root)return;
-  var btns=root.querySelectorAll('.pfilters button'),empty=root.querySelector('.pempty');
-  function apply(f){
-    var shown=0;
-    root.querySelectorAll('.pick').forEach(function(li){
-      var ok=f==='all'||li.dataset.state===f;li.hidden=!ok;if(ok)shown++;});
-    root.querySelectorAll('.pgroup').forEach(function(g){
-      g.hidden=!g.querySelector('.pick:not([hidden])');});
-    empty.style.display=shown?'none':'block';
-    btns.forEach(function(b){b.setAttribute('aria-pressed',b.dataset.f===f?'true':'false');});
-    try{localStorage.setItem('picksFilter',f);}catch(e){}
-  }
-  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.f);});});
-  var saved='all';try{saved=localStorage.getItem('picksFilter')||'all';}catch(e){}
-  apply(saved);
-})();
-</script>"""
-
-
 def _local(iso, tz, fmt):
     try:
         t = datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
@@ -137,84 +95,29 @@ def _local(iso, tz, fmt):
     return t.astimezone(tz).strftime(fmt).replace(" 0", " ").lstrip("0")
 
 
-def _p1(x):
-    """Points to one decimal, with no sign on values that round to zero."""
-    if x is None:
-        return "–"
-    v = round(x * 100, 1)
-    return "0.0" if v == 0 else f"{'+' if v > 0 else '−'}{abs(v):.1f}"
+def _more_link(tab, text):
+    return (f'<p style="margin:12px 0 0"><a class="btn xlink" href="picks.html#{tab}">{esc(text)} →</a></p>')
 
 
-def _c1(x):
-    return "" if x is None or round(x * 100, 1) == 0 else cls(x)
+def picks_summary_html(conn):
+    """A short panel pointing to picks.html, where every prop, team bet and entry is listed and searchable."""
+    from .teams import ensure
+    ensure(conn)
+    n = conn.execute("SELECT COUNT(*) c, SUM(result='') o FROM picks").fetchone()
+    t = conn.execute("SELECT COUNT(*) FROM team_plays").fetchone()[0]
+    e = (conn.execute("SELECT COUNT(*) FROM flex_slips").fetchone()[0]
+         + conn.execute("SELECT COUNT(*) FROM system_entries").fetchone()[0])
+    btn = lambda tab, label, k: f'<a class="btn xlink" href="picks.html#{tab}">{label} <span class="num muted">{k:,}</span></a>'
+    return (f'<div class="panel" id="picks"><h2>Every pick</h2><p class="muted small" style="margin:0 0 12px">'
+            f'All {n["c"]:,} player props ({n["o"] or 0:,} still open), every team bet and every suggested entry are on their own '
+            f'page, searchable by date, team and sport.</p><div style="display:flex;gap:8px;flex-wrap:wrap">'
+            f'{btn("props", "Props", n["c"])}{btn("teams", "Team bets", t)}{btn("entries", "Suggested entries", e)}</div></div>')
 
-
-def picks_html(conn, tz, limit=PICKS_SHOWN):
-    """Every logged pick, newest games first, grouped by day, with open/graded filters."""
-    rows = [dict(r) for r in conn.execute(
-        "SELECT seq, model_version, sport, app, player, stat, line, side, tier, home, away, start, fair, edge, clv, result, actual "
-        "FROM picks ORDER BY start DESC, seq DESC LIMIT ?", (limit,))]
-    total = conn.execute("SELECT COUNT(*) c FROM picks").fetchone()["c"]
-    if not rows:
-        return '<div class="panel"><h2>Picks</h2><p class="muted">No picks logged yet.</p></div>'
-    n_open = sum(not r["result"] for r in rows)
-    # newest day first, earliest game first within a day
-    def _day(r):
-        return _local(r["start"], tz, "%Y-%m-%d")
-    rows.sort(key=lambda r: (r["start"] or "", r["seq"]))
-    rows.sort(key=_day, reverse=True)
-    groups, order = {}, []
-    for r in rows:
-        day = _local(r["start"], tz, "%A, %b %d") or "Date unknown"
-        if day not in groups:
-            groups[day] = []
-            order.append(day)
-        state = "open" if not r["result"] else "graded"
-        if r["result"] in RESULT_CHIP:
-            c, label = RESULT_CHIP[r["result"]]
-            res = f'<span class="chip {c}">{label}{" · " + esc(r["actual"]) if r["actual"] not in (None, "") else ""}</span>'
-        else:
-            res = f'<span class="chip warn">{esc(r["result"])}</span>' if r["result"] else '<span class="muted small">Pending</span>'
-        tier = f' · {esc(r["tier"])}' if r["tier"] else ""
-        if r["model_version"] in RETIRED_MODELS:
-            tier += f' · <span class="warn" title="{esc(RETIRED_MODELS[r["model_version"]])}">retired model {esc(r["model_version"])}</span>'
-        game = f'{esc(r["away"])} @ {esc(r["home"])}' if r["home"] or r["away"] else ""
-        when = _local(r["start"], tz, "%I:%M %p")
-        clv = f' · CLV <span class="{_c1(r["clv"])}">{_p1(r["clv"])}</span>' if r["clv"] is not None else ""
-        groups[day].append(
-            f'<li class="pick" data-state="{state}">'
-            f'<span class="who">{esc(r["player"])}</span>'
-            f'<span class="what"><span class="side {esc(r["side"])}">{esc(r["side"])}</span> {r["line"]:g} {esc(r["stat"])}</span>'
-            f'<span class="meta">{esc(r["sport"].upper())} · {esc(r["app"])}{tier} · {game}{" · " + when if when else ""}</span>'
-            f'<span class="right"><span class="fair">{pct(r["fair"])}</span>'
-            f'<span class="small {_c1(r["edge"])}">edge {_p1(r["edge"])}{clv}</span>{res}</span></li>')
-    body = "".join(f'<details class="pgroup"{" open" if i == 0 else ""}><summary class="pday">{esc(day)} '
-                   f'<span class="muted small">· {len(groups[day])} {"pick" if len(groups[day]) == 1 else "picks"}</span></summary>'
-                   f'<ul class="plist">{"".join(groups[day])}</ul></details>'
-                   for i, day in enumerate(order))
-    more = (f'<p class="muted small" style="margin:10px 0 0">Showing the latest {len(rows):,} of {total:,} picks. '
-            f'The full record is in the CSV below.</p>' if total > len(rows) else "")
-    return (f'<style>{PICKS_CSS}</style><div class="panel" id="picks"><h2>Picks</h2>'
-            f'<p class="muted small" style="margin:0 0 10px">Fair % is the model\'s chance the pick hits. '
-            f'Edge is how far that sits above break-even. Times are {"Central" if str(tz) == "America/Chicago" else esc(str(tz))} time.</p>'
-            f'<div class="pfilters" role="group" aria-label="Filter picks">'
-            f'<button type="button" data-f="all" aria-pressed="true">All</button>'
-            f'<button type="button" data-f="open" aria-pressed="false">Open ({n_open})</button>'
-            f'<button type="button" data-f="graded" aria-pressed="false">Graded ({len(rows) - n_open})</button></div>'
-            f'{body}<p class="pempty muted">No picks in this view.</p>{more}</div>{PICKS_JS}')
-
-
-LEG_MARK = {"hit": ("pos", "✓"), "miss": ("neg", "✗"), "push": ("muted", "–"), "void": ("muted", "–")}
 
 FLEX_CSS = """
 .fsizes{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin:0 0 6px}
 .fsize{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
 .fsize b{font:700 1.1rem/1.1 var(--display)}.fsize .v{font:500 1.25rem var(--mono)}.fsize .s{font-size:.78rem;color:var(--muted)}
-.fslips{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:12px}
-.fslip{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
-.fslip .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.fslip ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:.88rem}
-.fslip .mk{font-weight:700;margin-left:4px}
 """
 
 
@@ -244,7 +147,7 @@ def flex_data(conn):
     return sorted(out.values(), key=lambda s: s["n"])
 
 
-def flex_html(conn, tz, days=14):
+def flex_html(conn, tz):
     sizes = flex_data(conn)
     if not sizes:
         return ('<div class="panel"><h2>Flex plays</h2><p class="muted">Each day the engine locks in its best 3, 4, 5 and 6-pick '
@@ -262,44 +165,10 @@ def flex_html(conn, tz, days=14):
         f'<span class="s">Cashed {pct(s["cash_rate"], 0)} · ROI {pct(s["roi"], 1, True)}</span>'
         f'<span class="s">Expected {exp_units(s)}</span></div>'
         for s in sizes)
-    slips = [dict(e) for e in conn.execute("SELECT * FROM flex_slips ORDER BY day DESC, n, seq")]
-    shown_days = sorted({e["day"] for e in slips}, reverse=True)[:days]
-    ids = sorted({i for e in slips if e["day"] in shown_days for i in json.loads(e["pick_ids"])})
-    legs = {}
-    for i in range(0, len(ids), 500):
-        chunk = ids[i:i + 500]
-        for r in conn.execute(f"SELECT id, player, stat, line, side, fair, result, actual FROM picks "
-                              f"WHERE id IN ({','.join('?' * len(chunk))})", chunk):
-            legs[r["id"]] = dict(r)
-    blocks = []
-    for day in shown_days:
-        cards_d = []
-        for e in (x for x in slips if x["day"] == day):
-            lis = []
-            for pid in json.loads(e["pick_ids"]):
-                l = legs.get(pid)
-                if not l:
-                    continue
-                c, m = LEG_MARK.get(l["result"], ("muted", ""))
-                act = f' <span class="muted small">({l["actual"]:g})</span>' if l["actual"] is not None else ""
-                lis.append(f'<li><span class="side {esc(l["side"])}">{esc(l["side"])}</span> {esc(l["player"])} '
-                           f'<span class="muted">{l["line"]:g} {esc(l["stat"])}</span>{act}<span class="mk {c}">{m}</span></li>')
-            if e["status"] == "open":
-                chip = '<span class="chip warn">Open</span>'
-            elif e["status"] == "void":
-                chip = '<span class="chip warn">Void · refunded</span>'
-            else:
-                chip = (f'<span class="chip {"good" if e["ret"] >= 1 else "bad"}">{e["hits"]}/{e["n"]} · '
-                        f'{e["ret"]:g}x</span>')
-            cards_d.append(f'<div class="fslip"><div class="top"><b>{esc(e["entry"])}</b>{chip}</div><ol>{"".join(lis)}</ol>'
-                           f'<span class="muted small">Expected return {pct(e["ev"] - 1, 1, True)} · '
-                           f'stake back {pct(e["cash"], 0)} of the time</span></div>')
-        label = _local(day + "T12:00:00+00:00", tz, "%A, %b %d")
-        blocks.append(f'<h3 class="pday">{esc(label)}</h3><div class="fslips">{"".join(cards_d)}</div>')
     return (f'<style>{FLEX_CSS}</style><div class="panel" id="flex"><h2>Flex plays</h2>'
             f'<p class="muted small" style="margin:0 0 10px">Each day the engine locks in its best Flex slip of each size before '
             f'the games and never changes it. Results count each slip as 1 unit, so you can see which size works best.</p>'
-            f'<div class="fsizes">{cards}</div>{"".join(blocks)}</div>')
+            f'<div class="fsizes">{cards}</div>{_more_link("entries", "See every daily slip")}</div>')
 
 
 def daily(conn, tz, days=30):
@@ -371,27 +240,6 @@ def clv_curve(conn):
     return out
 
 
-def _bet_label(x):
-    from .teams import MARKET_NAME
-    pt = x["point"]
-    if pt is None or x["market"] == "h2h":
-        tail = ""
-    elif x["market"] == "spreads":
-        tail = f" {pt:+g}"
-    else:
-        tail = f" {pt:g}"
-    return f'{MARKET_NAME.get(x["market"], x["market"])}: <b>{esc(x["outcome"])}{tail}</b>'
-
-
-def _team_row(x, tz):
-    odds = f'{x["odds"]:+d}' if x["odds"] is not None else "–"
-    chip = "good" if x["result"] == "win" else "bad" if x["result"] == "loss" else "warn"
-    score = f' <span class="muted small">{x["away_score"]:g}-{x["home_score"]:g}</span>' if x["home_score"] is not None else ""
-    return (f'<tr><td class="small muted">{esc(_local(x["start"], tz, "%b %d"))}</td><td>{esc(x["away"])} @ {esc(x["home"])}</td>'
-            f'<td>{_bet_label(x)}</td><td class="num">{esc(x["book"])} {odds}</td><td class="r num">{pct(x["ev"], 1, True)}</td>'
-            f'<td class="r"><span class="chip {chip}">{esc(x["result"])}</span>{score}</td></tr>')
-
-
 def teams_html(conn, tz):
     from . import teams
     r = teams.record(conn)
@@ -400,10 +248,7 @@ def teams_html(conn, tz):
     rec = f'{r["won"]}-{r["lost"]}' + (f'-{r["push"]}' if r["push"] else "")
     units = f'<span class="{cls(r["units"])}">{r["units"]:+.2f}</span>'
     roi = f'<span class="{cls(r["roi"])}">{pct(r["roi"], 1, True)}</span>'
-    rows = "".join(_team_row(x, tz) for x in r["recent"][:25])
-    table = (f'<div class="scroll" style="margin-top:12px"><table><thead><tr><th>Day</th><th>Game</th><th>Bet</th><th>Price</th>'
-             f'<th class="r">EV</th><th class="r">Result</th></tr></thead><tbody>{rows}</tbody></table></div>' if rows
-             else '<p class="muted small" style="margin:10px 0 0">Results show here once the first games finish.</p>')
+    table = _more_link("teams", "See every team bet")
     return (f'<div class="panel" id="teams"><h2>Team bets</h2><p class="muted small" style="margin:0 0 10px">Moneylines, spreads '
             f"and totals where a sportsbook paid more than the sharp books' fair price. Every one is logged when first found and "
             f'graded from the final score at a flat 1 unit, wins and losses alike.</p>'
@@ -498,7 +343,7 @@ every hash after it. Anyone can download the full log and check it.</p></div>
 {sample_html(conn, d)}
 {flex_html(conn, tz)}
 {teams_html(conn, tz)}
-{picks_html(conn, tz)}
+{picks_summary_html(conn)}
 <div class="panel"><h2>Results by set</h2><div class="scroll"><table><thead><tr><th>Set</th><th class="r">Graded</th>
 <th class="r">Hit rate</th><th class="r">Expected</th><th class="r">Difference</th><th class="r">CLV (pts)</th><th class="r">Beat close</th>
 </tr></thead><tbody>{comp}</tbody></table></div>
@@ -547,7 +392,8 @@ every finished pick. Staying above zero means the sharp market keeps moving towa
 <li>Run <span class="num">edge verify --csv picks.csv</span> from the open-source engine, or recompute the hashes yourself, and compare the last one with the hash above.</li>
 <li>Copies of this hash posted publicly over time pin the record down, so it can't be rebuilt from scratch either.</li></ol></div>"""
     embed = """<style>html.embed header.top,html.embed footer,html.embed .app-link{display:none}html.embed main{padding-top:0}</style>
-<script>if(/[?&]embed=1/.test(location.search))document.documentElement.classList.add("embed")</script>"""
+<script>if(/[?&]embed=1/.test(location.search)){document.documentElement.classList.add("embed");
+addEventListener("DOMContentLoaded",function(){document.querySelectorAll("a.xlink").forEach(function(a){a.target="_blank";a.rel="noopener"})})}</script>"""
     return page("Edge Finder · Track record", embed + body, nav, "/results",
                 action='<a class="btn primary app-link" href="app.html">Open the app</a>')
 
@@ -560,3 +406,6 @@ def write(conn, cfg, path):
         f.write(html(conn, tz=cfg.tz))
     with open(os.path.join(d or ".", "picks.csv"), "w", encoding="utf-8", newline="") as f:
         f.write(csv_text(conn))
+    from . import allpicks
+    with open(os.path.join(d or ".", "picks.html"), "w", encoding="utf-8") as f:
+        f.write(allpicks.html(conn, tz=cfg.tz))
